@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Caleb Graham <graham.caleb.m@gmail.com>
+Date: Thu, 30 Oct 2025 14:25:39 -0500
+Subject: [PATCH] Only apply item gravity if not on ground
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/item/ItemEntity.java b/src/main/java/net/minecraft/world/entity/item/ItemEntity.java
+index c536c33719a64cde672241ccb3b565da2ad30d64..fa354db91e73cf4bbb60ca12811a0b40df7dc845 100644
+--- a/src/main/java/net/minecraft/world/entity/item/ItemEntity.java
++++ b/src/main/java/net/minecraft/world/entity/item/ItemEntity.java
+@@ -177,7 +177,7 @@ public class ItemEntity extends Entity implements TraceableEntity {
+             } else if (this.isInLava() && this.getFluidHeight(FluidTags.LAVA) > 0.10000000149011612D) {
+                 this.setUnderLavaMovement();
+             } else {
+-                this.applyGravity();
++                if (!this.onGround()) this.applyGravity(); // ShreddedPaper - only apply gravity if not on ground
+             }
+ 
+             if (this.level().isClientSide) {
