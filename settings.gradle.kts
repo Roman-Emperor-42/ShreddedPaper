@@ -5,14 +5,17 @@ pluginManagement {
         gradlePluginPortal()
         maven("https://papermc.io/repo/repository/maven-public/")
         // io.github.goooler.shadow
-        maven("https://plugins.gradle.org/m2/")
     }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 rootProject.name = "shreddedpaper"
 
 for (name in listOf("ShreddedPaper-API", "ShreddedPaper-Server")) {
-    val projName = name.toLowerCase(Locale.ENGLISH)
+    val projName = name.lowercase(Locale.ENGLISH)
     include(projName)
     findProject(":$projName")!!.projectDir = file(name)
 }
