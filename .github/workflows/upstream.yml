@@ -24,7 +24,7 @@ jobs:
       - name: Update Upstream Commit Hash
         run: ./gradlew purpurRefLatest --stacktrace
       - name: Apply Patches
-        run: ./gradlew applyPatches --stacktrace
+        run: ./gradlew applyAllPatches --stacktrace
       - name: Build Paperclip jar
         run: ./gradlew jar createMojmapPaperclipJar --stacktrace
       - name: Rebuild Patches

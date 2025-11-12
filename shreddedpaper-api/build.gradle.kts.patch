@@ -22,3 +22,15 @@
          }
      }
  }
+@@ -238,6 +_,11 @@
+ tasks.compileTestJava {
+     options.compilerArgs.add("-parameters")
+ }
++
++tasks.named<Jar>("sourcesJar") {
++    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
++}
++
+ 
+ val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {
+     badAnnotations.add("Lio/papermc/paper/annotation/DoNotUse;")

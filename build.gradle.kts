@@ -86,7 +86,7 @@ subprojects {
     extensions.configure<PublishingExtension> {
         repositories {
             maven("https://repo.purpurmc.org/snapshots") {
-                name = "ShreddedPaper"
+                name = "shreddedpaper"
                 credentials(PasswordCredentials::class)
             }
         }
