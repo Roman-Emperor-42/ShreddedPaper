@@ -14,7 +14,7 @@ plugins {
 
 rootProject.name = "shreddedpaper"
 
-for (name in listOf("ShreddedPaper-API", "ShreddedPaper-Server")) {
+for (name in listOf("shreddedpaper-api", "shreddedpaper-server")) {
     val projName = name.lowercase(Locale.ENGLISH)
     include(projName)
     findProject(":$projName")!!.projectDir = file(name)
