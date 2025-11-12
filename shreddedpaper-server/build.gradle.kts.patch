@@ -86,7 +86,7 @@
 -            "Brand-Id" to "purpurmc:purpur", // Purpur
 -            "Brand-Name" to "Purpur", // Purpur
 +            "Specification-Vendor" to "ShreddedPaper Team", // Purpur
-+            "Brand-Id" to "MultiPaper:ShreddedPaper", // Purpur
++            "Brand-Id" to "multipaper:shreddedpaper", // Purpur
 +            "Brand-Name" to "ShreddedPaper", // Purpur
              "Build-Number" to (build ?: ""),
              "Build-Time" to buildTime.toString(),
