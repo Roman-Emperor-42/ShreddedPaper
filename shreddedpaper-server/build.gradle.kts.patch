@@ -1,5 +1,17 @@
 --- a/purpur-server/build.gradle.kts
 +++ b/purpur-server/build.gradle.kts
+@@ -6,7 +_,10 @@
+ import java.time.Instant
+ import kotlin.io.path.readText
+ import kotlin.io.path.writeText
+-
++import io.papermc.paperweight.core.tasks.patching.RebuildFilePatches
++import org.gradle.api.tasks.Exec
++import org.gradle.kotlin.dsl.register
++import org.gradle.kotlin.dsl.withType
+ plugins {
+     `java-library`
+     `maven-publish`
 @@ -36,9 +_,33 @@
              outputDir = rootDirectory.dir("paper-server")
          }
@@ -79,3 +91,44 @@
              "Build-Number" to (build ?: ""),
              "Build-Time" to buildTime.toString(),
              "Git-Branch" to gitBranch,
+@@ -455,5 +_,40 @@
+                 nameResolver.set { project, _, version, build -> "$project-$version-$build.jar" }
+             }
+         }
++    }
++}
++
++val preparePaperServerGit = tasks.register<Exec>("preparePaperServerGit") {
++    workingDir = layout.projectDirectory.dir("../paper-server").asFile
++    isIgnoreExitValue = true
++    commandLine(
++        "bash", "-lc",
++        """
++        git am --abort || git am --quit || true
++        git rebase --abort || true
++        git switch -c patched || git switch -C patched
++        """.trimIndent()
++    )
++}
++
++val preparePurpurServerGit = tasks.register<Exec>("preparePurpurServerGit") {
++    workingDir = layout.projectDirectory.dir("../purpur-server").asFile
++    isIgnoreExitValue = true
++    commandLine(
++        "bash", "-lc",
++        """
++        git am --abort || git am --quit || true
++        git rebase --abort || true
++        git switch -c patched || git switch -C patched
++        """.trimIndent()
++    )
++}
++
++tasks.withType<RebuildFilePatches>().configureEach {
++    if (name.contains("PaperServer")) {
++        dependsOn(preparePaperServerGit)
++    }
++    if (name.contains("PurpurServer")) {
++        dependsOn(preparePurpurServerGit)
+     }
+ }
