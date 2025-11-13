@@ -21,7 +21,7 @@ index 0324ec640d4dd6b1f6287fc2ce9e8a0b3b87d5bf..57a211ab74ed7ddfba594e10bf956129
      }
  
 +    // ShreddedPaper start
-++    public boolean isFoliaSupported() {
++    public boolean isFoliaSupported() {
 +        return "true".equalsIgnoreCase(foliaSupported);
 +    }
 +
