@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Wed, 12 Nov 2025 18:42:52 -0600
+Subject: [PATCH] ShreddedPaper build changes
+
+
+diff --git a/net/minecraft/CrashReport.java b/net/minecraft/CrashReport.java
+index 394443d00e661715439be1e56dddc129947699a4..75cedc062c544bbe0ad39d538ecc058f079322b6 100644
+--- a/net/minecraft/CrashReport.java
++++ b/net/minecraft/CrashReport.java
+@@ -30,7 +30,7 @@ public class CrashReport {
+     private boolean trackingStackTrace = true;
+     private StackTraceElement[] uncategorizedStackTrace = new StackTraceElement[0];
+     private final SystemReport systemReport = new SystemReport();
+-    private List<String> extraInfo = List.of("", "DO NOT REPORT THIS TO PAPER! REPORT TO PURPUR INSTEAD!", ""); // Purpur - Rebrand
++    private List<String> extraInfo = List.of("", "DO NOT REPORT THIS TO PAPER! REPORT TO SHREDDEDPAPER INSTEAD!", ""); // Purpur - Rebrand // ShreddedPaper
+ 
+     public CrashReport(String title, Throwable exception) {
+         io.papermc.paper.util.StacktraceDeobfuscator.INSTANCE.deobfuscateThrowable(exception); // Paper
+diff --git a/net/minecraft/server/gui/MinecraftServerGui.java b/net/minecraft/server/gui/MinecraftServerGui.java
+index 614c7d9f673c926562acc8fa3b3788623900db41..68a03963b0f7e2a62b9f84e5404aebe848fefa9d 100644
+--- a/net/minecraft/server/gui/MinecraftServerGui.java
++++ b/net/minecraft/server/gui/MinecraftServerGui.java
+@@ -51,7 +51,7 @@ public class MinecraftServerGui extends JComponent {
+         } catch (Exception var3) {
+         }
+ 
+-        final JFrame jFrame = new JFrame("Purpur Minecraft server"); // Purpur - Improve GUI
++        final JFrame jFrame = new JFrame("ShreddedPaper Minecraft server"); // Purpur // ShreddedPaper
+         final MinecraftServerGui minecraftServerGui = new MinecraftServerGui(server);
+         jFrame.setDefaultCloseOperation(2);
+         jFrame.add(minecraftServerGui);
+@@ -59,7 +59,7 @@ public class MinecraftServerGui extends JComponent {
+         jFrame.setLocationRelativeTo(null);
+         jFrame.setVisible(true);
+         // Paper start - Improve ServerGUI
+-        jFrame.setName("Purpur Minecraft server"); // Purpur - Improve GUI
++        jFrame.setName("ShreddedPaper Minecraft server"); // Paper - Improve ServerGUI // Purpur // ShreddedPaper
+         try {
+             jFrame.setIconImage(javax.imageio.ImageIO.read(java.util.Objects.requireNonNull(MinecraftServerGui.class.getClassLoader().getResourceAsStream("logo.png"))));
+         } catch (java.io.IOException ignore) {
+@@ -69,7 +69,7 @@ public class MinecraftServerGui extends JComponent {
+             @Override
+             public void windowClosing(WindowEvent event) {
+                 if (!minecraftServerGui.isClosing.getAndSet(true)) {
+-                    jFrame.setTitle("Purpur Minecraft server - shutting down!"); // Purpur - Improve GUI
++                    jFrame.setTitle("ShreddedPaper Minecraft server - shutting down!"); // Purpur // ShreddedPaper
+                     server.halt(true);
+                     minecraftServerGui.runFinalizers();
+                 }
+diff --git a/net/minecraft/world/scores/Scoreboard.java b/net/minecraft/world/scores/Scoreboard.java
+index 4275d048a8f5e98c7436f5bf2d55a9b68f7ba818..04c48a95634dd3f0f9aeb0e6235c5ce780fe39dd 100644
+--- a/net/minecraft/world/scores/Scoreboard.java
++++ b/net/minecraft/world/scores/Scoreboard.java
+@@ -87,7 +87,7 @@ public class Scoreboard {
+             }
+ 
+             @Override
+-            public void set(int value) {
++            public void set(int newScoreValue) { // ShreddedPaper compile error - rename to newScoreValue
+                 if (!flag) {
+                     throw new IllegalStateException("Cannot modify read-only score");
+                 } else {
+@@ -100,8 +100,8 @@ public class Scoreboard {
+                         }
+                     }
+ 
+-                    if (value != score.value()) {
+-                        score.value(value);
++                    if (newScoreValue != score.value()) { // ShreddedPaper compile error - rename to newScoreValue
++                        score.value(newScoreValue); // ShreddedPaper compile error - rename to newScoreValue
+                         isTrue = true;
+                     }
+ 

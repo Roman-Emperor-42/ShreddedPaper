@@ -1,0 +1,79 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Wed, 12 Nov 2025 21:31:43 -0600
+Subject: [PATCH] ShreddedPaper config file
+
+
+diff --git a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+index a972eeddbdc59e53279a7c5c704e28c2fcdf7290..d47f34148555b0a33b95ba3f9833567393bdc070 100644
+--- a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
++++ b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+@@ -50,7 +50,6 @@ import java.lang.reflect.Type;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.nio.file.StandardCopyOption;
+-import java.util.ArrayList;
+ import java.util.List;
+ import java.util.function.Function;
+ import java.util.function.Supplier;
+@@ -202,7 +201,7 @@ public class PaperConfigurations extends Configurations<GlobalConfiguration, Wor
+     }
+ 
+     private static ObjectMapper.Factory.Builder defaultGlobalFactoryBuilder(ObjectMapper.Factory.Builder builder) {
+-        return builder.addDiscoverer(InnerClassFieldDiscoverer.globalConfig(defaultFieldProcessors()));
++        return builder.addDiscoverer(InnerClassFieldDiscoverer.globalConfig());
+     }
+ 
+     @Override
+diff --git a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+index a8a82aca70a97e30ca680c86421c6a04ed8172f8..c5e1a66e654c8b90f16ad21e3aab789d387b2444 100644
+--- a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
++++ b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+@@ -97,7 +97,7 @@ public final class InnerClassFieldDiscoverer implements FieldDiscoverer<Map<Fiel
+         return create(overrides, fieldProcessors);
+     }
+ 
+-    public static FieldDiscoverer<?> globalConfig(final List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>> fieldProcessors) {
++    public static FieldDiscoverer<?> globalConfig() {
+         return create(Collections.emptyMap(), fieldProcessors);
+     }
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index e62507c532307e6bed6617e0bf1e33e4854a0113..c95a18a165fc86140a2f91bff5b0fd0498d6eb2e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -271,6 +271,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
+ import org.yaml.snakeyaml.error.MarkedYAMLException;
+ 
+ import net.md_5.bungee.api.chat.BaseComponent; // Spigot
++import io.multipaper.shreddedpaper.permissions.ShreddedPaperPermissions;
+ 
+ public final class CraftServer implements Server {
+     private final String serverName = io.papermc.paper.ServerBuildInfo.buildInfo().brandName();
+@@ -629,6 +630,7 @@ public final class CraftServer implements Server {
+             // Spigot end
+             DefaultPermissions.registerCorePermissions();
+             CraftDefaultPermissions.registerCorePermissions();
++            ShreddedPaperPermissions.registerCorePermissions(); // ShreddedPaper
+             if (!io.papermc.paper.configuration.GlobalConfiguration.get().misc.loadPermissionsYmlBeforePlugins) this.loadCustomPermissions(); // Paper
+             this.helpMap.initializeCommands();
+             this.syncCommands();
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index 748bd9650da4a209743b7a5dde584b2e19c5a578..1faab126ec0748b733dbd3246e13fa60ed23d911 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -172,6 +172,14 @@ public class Main {
+                     .describedAs("Yml file");
+                 // Purpur end - Purpur config files
+ 
++                // ShreddedPaper start
++                acceptsAll(asList("shreddedpaper", "shreddedpaper-settings"), "File for shreddedpaper settings")
++                        .withRequiredArg()
++                        .ofType(File.class)
++                        .defaultsTo(new File("shreddedpaper.yml"))
++                        .describedAs("Yml file");
++                // ShreddedPaper end
++
+                 this.accepts("server-name", "Name of the server")
+                         .withRequiredArg()
+                         .ofType(String.class)

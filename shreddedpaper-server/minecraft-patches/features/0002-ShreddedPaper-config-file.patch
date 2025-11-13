@@ -1,0 +1,276 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Wed, 12 Nov 2025 21:31:43 -0600
+Subject: [PATCH] ShreddedPaper config file
+
+
+diff --git a/io/multipaper/shreddedpaper/config/ExceptionableConsumer.java b/io/multipaper/shreddedpaper/config/ExceptionableConsumer.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..272c3841caabc906d28f16e68bc9187379bf7951
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/config/ExceptionableConsumer.java
+@@ -0,0 +1,6 @@
++package io.multipaper.shreddedpaper.config;
++
++@FunctionalInterface
++public interface ExceptionableConsumer<T> {
++    void accept(T t) throws Exception;
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/config/ShreddedPaperConfiguration.java b/io/multipaper/shreddedpaper/config/ShreddedPaperConfiguration.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..e3e932d6f5dde630dcec3e5d98a233fd9887589d
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/config/ShreddedPaperConfiguration.java
+@@ -0,0 +1,44 @@
++package io.multipaper.shreddedpaper.config;
++
++import io.papermc.paper.configuration.ConfigurationPart;
++import org.spongepowered.configurate.objectmapping.meta.Comment;
++
++import java.util.List;
++
++@SuppressWarnings({"InnerClassMayBeStatic"})
++public class ShreddedPaperConfiguration extends ConfigurationPart {
++
++    public static final String HEADER = """
++            This is the main configuration file for ShreddedPaper.
++            There's quite alot to configure. Read the docs for more information.
++            
++            Docs: https://github.com/MultiPaper/ShreddedPaper/blob/main/SHREDDEDPAPER_YAML.md\s
++            """;
++
++    private static ShreddedPaperConfiguration instance;
++
++    public static ShreddedPaperConfiguration get() {
++        return instance;
++    }
++
++    static void set(ShreddedPaperConfiguration instance) {
++        ShreddedPaperConfiguration.instance = instance;
++    }
++
++    public Multithreading multithreading;
++
++    public class Multithreading extends ConfigurationPart {
++
++        public int threadCount = -1;
++        public int regionSize = 8;
++        public boolean runUnsupportedPluginsInSync = true;
++        public boolean allowUnsupportedPluginsToModifyChunksViaGlobalScheduler = true;
++
++    }
++
++    public Optimizations optimizations;
++
++    public class Optimizations extends ConfigurationPart {
++        public int entityActivationCheckFrequency = 20;
++    }
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/config/ShreddedPaperConfigurationLoader.java b/io/multipaper/shreddedpaper/config/ShreddedPaperConfigurationLoader.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..a9ae175f679200d214fa77a7519c74107aba5fa3
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/config/ShreddedPaperConfigurationLoader.java
+@@ -0,0 +1,128 @@
++package io.multipaper.shreddedpaper.config;
++
++import io.papermc.paper.configuration.ConfigurationLoaders;
++import io.papermc.paper.configuration.ConfigurationPart;
++import io.papermc.paper.configuration.constraint.Constraint;
++import io.papermc.paper.configuration.constraint.Constraints;
++import io.papermc.paper.configuration.mapping.InnerClassFieldDiscoverer;
++import org.spongepowered.configurate.BasicConfigurationNode;
++import org.spongepowered.configurate.CommentedConfigurationNode;
++import org.spongepowered.configurate.ConfigurateException;
++import org.spongepowered.configurate.ConfigurationNode;
++import org.spongepowered.configurate.ConfigurationOptions;
++import org.spongepowered.configurate.objectmapping.ObjectMapper;
++import org.spongepowered.configurate.serialize.SerializationException;
++import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
++
++import java.io.File;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Map;
++import java.util.function.UnaryOperator;
++
++import static io.leangen.geantyref.GenericTypeReflector.erase;
++
++public class ShreddedPaperConfigurationLoader {
++
++    public static void init(File file) {
++        try {
++            YamlConfigurationLoader.Builder loaderBuilder = ConfigurationLoaders.naturallySorted();
++            loaderBuilder.defaultOptions(options -> options.header(ShreddedPaperConfiguration.HEADER));
++
++            Path configFile = file.toPath();
++            YamlConfigurationLoader loader = loaderBuilder
++                    .defaultOptions(applyObjectMapperFactory(createObjectMapper().build()))
++                    .path(configFile)
++                    .build();
++            ConfigurationNode node;
++            if (Files.exists(configFile)) {
++                node = loader.load();
++            } else {
++                node = CommentedConfigurationNode.root(loader.defaultOptions());
++            }
++
++            String before = node.toString();
++            setFromProperties(node);
++
++            ShreddedPaperConfiguration instance = node.require(ShreddedPaperConfiguration.class);
++            transformLegacyConfig(node, instance);
++
++            for (Object key : node.childrenMap().keySet()) {
++                node.removeChild(key);
++            }
++
++            node.set(instance);
++
++            if (!node.toString().equals(before)) {
++                loader.save(node);
++            }
++
++            ShreddedPaperConfiguration.set(instance);
++        } catch (ConfigurateException e) {
++            throw new RuntimeException("Could not load shreddedpaper.yml", e);
++        }
++    }
++
++    private static void setFromProperties(ConfigurationNode node) {
++        for (Map.Entry<Object, Object> property : System.getProperties().entrySet()) {
++            if (property.getKey().toString().startsWith("shreddedpaper.")) {
++                String key = property.getKey().toString().substring("shreddedpaper.".length());
++                try {
++                    node.node((Object[]) key.split("\\.")).set(property.getValue());
++                } catch (SerializationException e) {
++                    e.printStackTrace();
++                }
++            }
++        }
++    }
++
++    private static ObjectMapper.Factory.Builder createObjectMapper() {
++        return ObjectMapper.factoryBuilder()
++                .addConstraint(Constraint.class, new Constraint.Factory())
++                .addConstraint(Constraints.Min.class, Number.class, new Constraints.Min.Factory())
++                .addDiscoverer(InnerClassFieldDiscoverer.globalConfig());
++    }
++
++    private static UnaryOperator<ConfigurationOptions> applyObjectMapperFactory(final ObjectMapper.Factory factory) {
++        return options -> options.serializers(builder -> builder
++                .register(type -> ConfigurationPart.class.isAssignableFrom(erase(type)), factory.asTypeSerializer())
++                .registerAnnotatedObjects(factory));
++    }
++
++    private static void transformLegacyConfig(ConfigurationNode node, ShreddedPaperConfiguration config) {
++        // getAndRemove(node, "oldValue.oldie", value -> config.newSection.newValue.newie = value.getString());
++    }
++
++    private static void getAndRemove(ConfigurationNode node, String key, ExceptionableConsumer<ConfigurationNode> consumer) {
++        if (System.getProperty(key) != null) {
++            try {
++                BasicConfigurationNode systemNode = BasicConfigurationNode.root();
++                systemNode.set(System.getProperty(key));
++                consumer.accept(systemNode);
++                return;
++            } catch (Exception e) {
++                e.printStackTrace();
++            }
++        }
++
++        String[] parts = key.split("\\.");
++
++        for (int i = 0; i < parts.length; i++) {
++            if (node.isMap() && node.childrenMap().containsKey(parts[i])) {
++                if (i == parts.length - 1) {
++                    try {
++                        consumer.accept(node.childrenMap().get(parts[i]));
++                        node.removeChild(parts[i]);
++                    } catch (Exception e) {
++                        e.printStackTrace();
++                    }
++                } else {
++                    node = node.childrenMap().get(parts[i]);
++                }
++            } else {
++                return;
++            }
++        }
++    }
++
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/permissions/ShreddedPaperCommandPermissions.java b/io/multipaper/shreddedpaper/permissions/ShreddedPaperCommandPermissions.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..a62307ea12508f00245afe63cc0ee529234ed45b
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/permissions/ShreddedPaperCommandPermissions.java
+@@ -0,0 +1,17 @@
++package io.multipaper.shreddedpaper.permissions;
++
++import org.bukkit.permissions.Permission;
++import org.bukkit.util.permissions.DefaultPermissions;
++import org.jetbrains.annotations.NotNull;
++
++public class ShreddedPaperCommandPermissions {
++    private static final String ROOT = "shreddedpaper.command";
++    private static final String PREFIX = ROOT + ".";
++
++    public static void registerPermissions(@NotNull Permission parent) {
++        Permission commands = DefaultPermissions.registerPermission(ROOT, "Gives the user the ability to use all ShreddedPaper commands", parent);
++
++
++        commands.recalculatePermissibles();
++    }
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/permissions/ShreddedPaperPermissions.java b/io/multipaper/shreddedpaper/permissions/ShreddedPaperPermissions.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..b521ff18f92735ddab4e20c785ea8126d532fbc9
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/permissions/ShreddedPaperPermissions.java
+@@ -0,0 +1,16 @@
++package io.multipaper.shreddedpaper.permissions;
++
++import org.bukkit.permissions.Permission;
++import org.bukkit.util.permissions.DefaultPermissions;
++
++public class ShreddedPaperPermissions {
++    private static final String ROOT = "shreddedpaper";
++
++    public static void registerCorePermissions() {
++        Permission parent = DefaultPermissions.registerPermission(ROOT, "Gives the user the ability to use all ShreddedPaper utilities and commands");
++
++        ShreddedPaperCommandPermissions.registerPermissions(parent);
++
++        parent.recalculatePermissibles();
++    }
++}
+\ No newline at end of file
+diff --git a/net/minecraft/server/Main.java b/net/minecraft/server/Main.java
+index b06c2c4aa77edafb374f7cf0406cf4d29c6e7f9f..22c537e7d38e5254af2c4d06c53c90f9c71b0f72 100644
+--- a/net/minecraft/server/Main.java
++++ b/net/minecraft/server/Main.java
+@@ -61,6 +61,9 @@ import net.minecraft.world.level.storage.PrimaryLevelData;
+ import net.minecraft.world.level.storage.WorldData;
+ import org.slf4j.Logger;
+ 
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfigurationLoader;
++
+ public class Main {
+     private static final Logger LOGGER = LogUtils.getLogger();
+ 
+@@ -109,6 +112,9 @@ public class Main {
+                 JvmProfiler.INSTANCE.start(Environment.SERVER);
+             }
+ 
++            ShreddedPaperConfigurationLoader.init((File) optionset.valueOf("shreddedpaper-settings")); // ShreddedPaper
++
++
+             // Purpur start - Add toggle for enchant level clamping - load config files early
+             org.bukkit.configuration.file.YamlConfiguration purpurConfiguration = io.papermc.paper.configuration.PaperConfigurations.loadLegacyConfigFile((File) optionSet.valueOf("purpur-settings"));
+             org.purpurmc.purpur.PurpurConfig.clampEnchantLevels = purpurConfiguration.getBoolean("settings.enchantment.clamp-levels", true);
