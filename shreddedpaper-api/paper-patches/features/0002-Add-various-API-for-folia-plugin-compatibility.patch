@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Wed, 12 Nov 2025 18:07:08 -0600
+Subject: [PATCH] Add various API for folia plugin compatibility
+
+
+diff --git a/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java b/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java
+index fe9dae4cf9c45eed2f15d27b10c4502ab0f3c484..be691a134390b17df338aa16dfd2a9f4802eb1e9 100644
+--- a/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java
++++ b/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java
+@@ -2,6 +2,8 @@ package io.papermc.paper.threadedregions;
+ 
+ import org.bukkit.event.HandlerList;
+ import org.bukkit.event.server.ServerEvent;
++import org.jetbrains.annotations.ApiStatus;
++import org.jetbrains.annotations.NotNull;
+ import org.jspecify.annotations.NullMarked;
+ 
+ /**
+@@ -14,12 +16,17 @@ public class RegionizedServerInitEvent extends ServerEvent {
+ 
+     private static final HandlerList handlers = new HandlerList();
+ 
++    @ApiStatus.Internal
++    public RegionizedServerInitEvent() {
++        super();
++    }
++
+     @Override
+-    public HandlerList getHandlers() {
++    public @NotNull HandlerList getHandlers() {
+         return handlers;
+     }
+ 
+-    public static HandlerList getHandlerList() {
++    public static @NotNull HandlerList getHandlerList() {
+         return handlers;
+     }
+ }
