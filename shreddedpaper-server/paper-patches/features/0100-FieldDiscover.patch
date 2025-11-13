@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Caleb Graham <graham.caleb.m@gmail.com>
+Date: Thu, 13 Nov 2025 00:44:27 -0600
+Subject: [PATCH] FieldDiscover
+
+
+diff --git a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+index c5e1a66e654c8b90f16ad21e3aab789d387b2444..06fc634d1b29ce4cd3b09bd6a3d662acd2bc7a96 100644
+--- a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
++++ b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+@@ -98,6 +98,6 @@ public final class InnerClassFieldDiscoverer implements FieldDiscoverer<Map<Fiel
+     }
+ 
+     public static FieldDiscoverer<?> globalConfig() {
+-        return create(Collections.emptyMap(), fieldProcessors);
++        return create(Collections.emptyMap(), Collections.emptyList());
+     }
+ }

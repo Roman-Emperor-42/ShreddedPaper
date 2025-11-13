@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Caleb Graham <graham.caleb.m@gmail.com>
+Date: Thu, 13 Nov 2025 00:27:08 -0600
+Subject: [PATCH] BRAND_SHREDDEDPAPER_ID
+
+
+diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+index fb1fe2651e53a9bf46b3632c638e13eea9dcda93..8dfddf5dcf014225dd0b839c5ce9b7626a4d3769 100644
+--- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
++++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+@@ -25,6 +25,14 @@ public interface ServerBuildInfo {
+      */
+     Key BRAND_PURPUR_ID = Key.key("purpurmc", "purpur");
+     // Purpur end
++
++    // ShreddedPaper start
++    /**
++     * The brand id for shreddedpaper.
++     */
++    Key BRAND_SHREDDEDPAPER_ID = Key.key("multipaper", "shreddedpaper");
++    // ShreddedPaper end
++
+     /**
+      * Gets the {@code ServerBuildInfo}.
+      *

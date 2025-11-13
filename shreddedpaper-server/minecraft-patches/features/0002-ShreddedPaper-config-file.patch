@@ -268,7 +268,7 @@ index b06c2c4aa77edafb374f7cf0406cf4d29c6e7f9f..22c537e7d38e5254af2c4d06c53c90f9
                  JvmProfiler.INSTANCE.start(Environment.SERVER);
              }
  
-+            ShreddedPaperConfigurationLoader.init((File) optionset.valueOf("shreddedpaper-settings")); // ShreddedPaper
++            ShreddedPaperConfigurationLoader.init((File) optionSet.valueOf("shreddedpaper-settings")); // ShreddedPaper
 +
 +
              // Purpur start - Add toggle for enchant level clamping - load config files early
