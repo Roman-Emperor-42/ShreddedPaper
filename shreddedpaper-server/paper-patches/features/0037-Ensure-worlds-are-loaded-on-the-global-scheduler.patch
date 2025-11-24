@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 3 Jul 2024 19:10:59 +0900
+Subject: [PATCH] Ensure worlds are loaded on the global scheduler
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index ae722ce431941c46e1ae05d51735306586fd702b..76a105451cce3a264be2a25ed15c6632e229d86b 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -894,6 +894,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     // CraftBukkit start
+     public void prepareLevels(ChunkProgressListener worldloadlistener, ServerLevel worldserver) {
+         // WorldServer worldserver = this.overworld();
++        if (!TickThread.isTickThread()) throw new IllegalStateException("Cannot load worlds async!!"); // ShreddedPaper
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread()) throw new IllegalStateException("Must load worlds from the global scheduler!"); // ShreddedPaper
+         this.forceTicks = true;
+         // CraftBukkit end
+ 
+diff --git a/org/bukkit/craftbukkit/CraftServer.java b/org/bukkit/craftbukkit/CraftServer.java
+index 2cb6d417f6d51ac32ac63b41d556675c1f76a216..3b853c322d2e0fe37720d981bbe25a4025e77a2e 100644
+--- a/org/bukkit/craftbukkit/CraftServer.java
++++ b/org/bukkit/craftbukkit/CraftServer.java
+@@ -1299,6 +1299,8 @@ public final class CraftServer implements Server {
+         Preconditions.checkState(this.console.getAllLevels().iterator().hasNext(), "Cannot create additional worlds on STARTUP");
+         //Preconditions.checkState(!this.console.isIteratingOverLevels, "Cannot create a world while worlds are being ticked"); // Paper - Cat - Temp disable. We'll see how this goes.
+         Preconditions.checkArgument(creator != null, "WorldCreator cannot be null");
++        if (!TickThread.isTickThread()) throw new IllegalStateException("Cannot load worlds async!!"); // ShreddedPaper
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread()) throw new IllegalStateException("Must load worlds from the global scheduler!"); // ShreddedPaper
+ 
+         String name = creator.name();
+         ChunkGenerator generator = creator.generator();
