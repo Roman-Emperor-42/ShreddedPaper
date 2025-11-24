@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Caleb Graham <graham.caleb.m@gmail.com>
+Date: Thu, 13 Nov 2025 01:55:57 -0600
+Subject: [PATCH] Add multithreading region scheduler
+
+
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
+index ebccb79ad627f55ba81ed323d3dc91927725661f..a92f7a013a4bbd073d8e88cdb2d815ec96f63f04 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
+@@ -1,5 +1,6 @@
+ package ca.spottedleaf.moonrise.common.util;
+ 
++import io.multipaper.shreddedpaper.region.RegionPos;
+ import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.MinecraftServer;
+@@ -9,9 +10,9 @@ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.phys.AABB;
+ import net.minecraft.world.phys.Vec3;
++import org.bukkit.Bukkit;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+-import io.multipaper.shreddedpaper.region.RegionPos;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+@@ -47,7 +48,7 @@ public class TickThread extends Thread {
+         for (ServerLevel level : MinecraftServer.getServer().getAllLevels()) {
+             Set<RegionPos> regions = level.chunkScheduler.getRegionLocker().getLockedRegions();
+             if (!regions.isEmpty()) {
+-                strings.add(level.convertable.getLevelId() + "=" + regions.stream().map(region -> "[" + region.x + "," + region.z + "]").toList());
++                strings.add(level.dimension() + "=" + regions.stream().map(region -> "[" + region.x + "," + region.z + "]").toList());
+             }
+         }
+ 
