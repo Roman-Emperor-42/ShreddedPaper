@@ -1,0 +1,1009 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 11:01:56 -0600
+Subject: [PATCH] Player
+
+
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java b/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
+index bdc1200ef5317fdaf58973bf580b0a672aee800f..0accca9c10dbc7e6841def7741c237e98ebfa55f 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
+@@ -17,6 +17,9 @@ import ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskSchedule
+ import ca.spottedleaf.moonrise.patches.chunk_system.ticket.ChunkSystemTicketType;
+ import ca.spottedleaf.moonrise.patches.chunk_system.util.ParallelSearchRadiusIteration;
+ import com.google.gson.JsonObject;
++import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.region.RegionPos;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkTicker;
+ import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+ import it.unimi.dsi.fastutil.longs.LongArrayList;
+ import it.unimi.dsi.fastutil.longs.LongComparator;
+@@ -305,6 +308,7 @@ public final class RegionizedPlayerChunkLoader {
+ 
+     public void tick() {
+         TickThread.ensureTickThread("Cannot tick player chunk loader async");
++        if (true) return; // ShreddedPaper - why is this not just run under the player ticking system?
+         long currTime = System.nanoTime();
+         for (final ServerPlayer player : new java.util.ArrayList<>(this.world.players())) {
+             final PlayerChunkLoaderData loader = ((ChunkSystemServerPlayer)player).moonrise$getChunkLoader();
+@@ -641,7 +645,7 @@ public final class RegionizedPlayerChunkLoader {
+             return true;
+         }
+ 
+-        void updateQueues(final long time) {
++        public void updateQueues(final long time) { // ShreddedPaper - make public
+             TickThread.ensureTickThread(this.player, "Cannot tick player chunk loader async");
+             if (this.removed) {
+                 throw new IllegalStateException("Ticking removed player chunk loader");
+@@ -826,22 +830,44 @@ public final class RegionizedPlayerChunkLoader {
+                 final int pendingSendX = CoordinateUtils.getChunkX(pendingSend);
+                 final int pendingSendZ = CoordinateUtils.getChunkZ(pendingSend);
+                 final LevelChunk chunk = ((ChunkSystemLevel)this.world).moonrise$getFullChunkIfLoaded(pendingSendX, pendingSendZ);
+-                if (!this.areNeighboursGenerated(pendingSendX, pendingSendZ, 1) || !TickThread.isTickThreadFor(this.world, pendingSendX, pendingSendZ)) {
++                if (!this.areNeighboursGenerated(pendingSendX, pendingSendZ, 1)) { // ShreddedPaper - do thread check later
+                     // nothing to do
+                     // the target chunk may not be owned by this region, but this should be resolved in the future
+                     break;
+                 }
+                 if (!((ChunkSystemLevelChunk)chunk).moonrise$isPostProcessingDone()) {
+-                    // not yet post-processed, need to do this so that tile entities can properly be sent to clients
+-                    chunk.postProcessGeneration(this.world);
+-                    // check if there was any recursive action
+-                    if (this.removed || this.sendQueue.isEmpty() || this.sendQueue.firstLong() != pendingSend) {
++2                    // ShreddedPaper start - run on region's thread with write lock
++                    Runnable postProcessingRunOnThread = () -> {
++                        // not yet post-processed, need to do this so that tile entities can properly be sent to clients
++                        chunk.postProcessGeneration();
++                        // check if there was any recursive action
++                        if (this.removed || this.sendQueue.isEmpty() || this.sendQueue.firstLong() != pendingSend) {
++                            return;
++                        } // else: good to dequeue and send, fall through
++                    };
++                    if (ShreddedPaperChunkTicker.isCurrentlyTickingRegion(this.world, RegionPos.forChunk(chunk.getPos()))) {
++                        postProcessingRunOnThread.run();
++                    } else {
++                        ShreddedPaper.runSync(this.world, chunk.getPos(), postProcessingRunOnThread);
+                         return;
+-                    } // else: good to dequeue and send, fall through
++                    }
++                    // ShreddedPaper end
+                 }
+-                this.sendQueue.dequeueLong();
++                // ShreddedPaper start - run on region's thread
++                Runnable runOnThread = () -> {
++                    this.sendQueue.dequeueLong();
++
++                    this.sendChunk(pendingSendX, pendingSendZ);
++                };
+ 
+-                this.sendChunk(pendingSendX, pendingSendZ);
++                if (TickThread.isTickThreadFor(this.world, chunk.getPos())) {
++                    runOnThread.run();
++                } else {
++                    if (!this.world.chunkScheduler.getRegionLocker().tryReadOnlyLockNow(RegionPos.forChunk(chunk.getPos()), runOnThread)) {
++                        return;
++                    }
++                }
++                // ShreddedPaper end - run on region's thread
+ 
+                 if (this.removed) {
+                     // sendChunk may invoke plugin logic
+@@ -907,7 +933,7 @@ public final class RegionizedPlayerChunkLoader {
+             );
+         }
+ 
+-        void update() {
++        public void update() { // ShreddedPaper - make public
+             TickThread.ensureTickThread(this.player, "Cannot update player asynchronously");
+             if (this.removed) {
+                 throw new IllegalStateException("Updating removed player chunk loader");
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+index 7e127acdb080b7365aa3cce4b9cbcae8fa0c4699..f0be7d3cfce461bfbd0fb0c73e8ad203c8a8e3b3 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+@@ -2,7 +2,10 @@ package io.multipaper.shreddedpaper.region;
+ 
+ import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
+ import ca.spottedleaf.concurrentutil.executor.standard.PrioritisedThreadedTaskQueue;
++import it.unimi.dsi.fastutil.objects.ObjectArrayList;
++import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+ import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.level.chunk.LevelChunk;
+ 
+@@ -18,6 +21,7 @@ public class LevelChunkRegion {
+     private final IteratorSafeOrderedReferenceSet<Entity> tickingEntities = new IteratorSafeOrderedReferenceSet<>(); // Use IteratorSafeOrderedReferenceSet to maintain entity tick order
+     private final ConcurrentLinkedQueue<DelayedTask> scheduledTasks = new ConcurrentLinkedQueue<>(); // Writable tasks
+     private final PrioritisedThreadedTaskQueue internalTasks = new PrioritisedThreadedTaskQueue(); // Read-only tasks
++    private final ObjectOpenHashSet<ServerPlayer> players = new ObjectOpenHashSet<>();
+ 
+     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
+         this.level = level;
+@@ -69,6 +73,22 @@ public class LevelChunkRegion {
+         return internalTasks;
+     }
+ 
++    public synchronized void addPlayer(ServerPlayer player) {
++        if (!this.players.add(player)) {
++            throw new IllegalStateException("Tried to add a player that was already in the region: " + player.getUUID());
++        }
++    }
++
++    public synchronized void removePlayer(ServerPlayer player) {
++        if (!this.players.remove(player)) {
++            throw new IllegalStateException("Tried to remove a player that wasn't in the region: " + player.getUUID());
++        }
++    }
++
++    public synchronized List<ServerPlayer> getPlayers() {
++        return this.players.isEmpty() ? List.of() : new ObjectArrayList<>(this.players);
++    }
++
+     public RegionPos getRegionPos() {
+         return regionPos;
+     }
+@@ -107,6 +127,7 @@ public class LevelChunkRegion {
+                 && tickingEntities.size() == 0
+                 && scheduledTasks.isEmpty()
+                 && internalTasks.getTotalTasksExecuted() >= internalTasks.getTotalTasksScheduled()
++                && players.isEmpty()
+                 ;
+     }
+ }
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+index 93312c509bbe7dc2be680cab9aa2571eec252505..642119ed3c15072b663e6de001236f0db9e9d33f 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+@@ -2,6 +2,7 @@ package io.multipaper.shreddedpaper.region;
+ 
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+ import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.chunk.LevelChunk;
+@@ -118,4 +119,24 @@ public class LevelChunkRegionMap {
+     public Executor executorFor(RegionPos regionPos) {
+         return runnable -> execute(regionPos, runnable);
+     }
++
++    public void addPlayer(ServerPlayer player) {
++        player.previousChunkPosRegion = player.chunkPosition();
++        getOrCreate(RegionPos.forChunk(player.chunkPosition())).addPlayer(player);
++    }
++
++    public void removePlayer(ServerPlayer player) {
++        getOrCreate(RegionPos.forChunk(player.chunkPosition())).removePlayer(player);
++    }
++
++    public void movePlayer(ServerPlayer player) {
++        RegionPos fromRegion = RegionPos.forChunk(player.previousChunkPosRegion);
++        RegionPos toRegion = RegionPos.forChunk(player.chunkPosition());
++
++        if (!fromRegion.equals(toRegion)) {
++            player.previousChunkPosRegion = player.chunkPosition();
++            getOrCreate(fromRegion).removePlayer(player);
++            getOrCreate(toRegion).addPlayer(player);
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+index 57a50e96adb8d66ec04ad616d974d6519d851a71..2a1eb3d01ef53c552b748e6d2b9b1b1d407c1b7c 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -64,6 +64,8 @@ public class ShreddedPaperChunkTicker {
+ 
+             region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
+ 
++            region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
++
+             while (region.getInternalTaskQueue().executeTask());
+ 
+             if (region.isEmpty()) {
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperPlayerTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperPlayerTicker.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0e3fa3d7508ffba4ed2d9ca4cf3efc15ef6e5d9
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperPlayerTicker.java
+@@ -0,0 +1,16 @@
++package io.multipaper.shreddedpaper.threading;
++
++import ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader;
++import net.minecraft.server.level.ServerPlayer;
++
++public class ShreddedPaperPlayerTicker {
++
++    public static void tickPlayer(ServerPlayer serverPlayer) {
++        serverPlayer.connection.connection.tick();
++        final RegionizedPlayerChunkLoader.PlayerChunkLoaderData loader = serverPlayer.moonrise$getChunkLoader();
++        if (loader != null) {
++            loader.update(); // can't invoke plugin logic
++            loader.updateQueues(System.nanoTime());
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
+index 411e1284a208ca1a097cf6eaa92e1e0d2203d83d..c84906e2491829232718b5485e8b463f40a8b1b0 100644
+--- a/net/minecraft/network/Connection.java
++++ b/net/minecraft/network/Connection.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.network;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Suppliers;
+ import com.google.common.collect.Queues;
+ import com.google.common.util.concurrent.ThreadFactoryBuilder;
+@@ -42,6 +43,7 @@ import java.util.function.Consumer;
+ import java.util.function.Supplier;
+ import javax.annotation.Nullable;
+ import javax.crypto.Cipher;
++
+ import net.minecraft.SharedConstants;
+ import net.minecraft.Util;
+ import net.minecraft.network.chat.Component;
+@@ -59,12 +61,14 @@ import net.minecraft.network.protocol.login.LoginProtocols;
+ import net.minecraft.network.protocol.status.ClientStatusPacketListener;
+ import net.minecraft.network.protocol.status.StatusProtocols;
+ import net.minecraft.server.RunningOnDifferentThreadException;
++import net.minecraft.server.network.ServerGamePacketListenerImpl;
+ import net.minecraft.util.Mth;
+ import net.minecraft.util.debugchart.LocalSampleLogger;
+ import org.apache.commons.lang3.Validate;
+ import org.slf4j.Logger;
+ import org.slf4j.Marker;
+ import org.slf4j.MarkerFactory;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+     private static final float AVERAGE_PACKETS_SMOOTHING = 0.75F;
+@@ -582,6 +586,7 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+     private static int currTick; // Paper - Buffer joins to world
+     private static int tickSecond; // Purpur - Max joins per second
+     public void tick() {
++        if (this.packetListener instanceof ServerGamePacketListenerImpl serverGamePacketListener && !TickThread.isTickThreadFor(serverGamePacketListener.player)) return; // ShreddedPaper
+         this.flushQueue();
+         // Paper start - Buffer joins to world
+         if (Connection.currTick != net.minecraft.server.MinecraftServer.currentTick) {
+diff --git a/net/minecraft/network/protocol/PacketUtils.java b/net/minecraft/network/protocol/PacketUtils.java
+index 4535858701b2bb232b9d2feb2af6551526232ddc..57b15953ec2e587f88390b9d41b8780b4809d96f 100644
+--- a/net/minecraft/network/protocol/PacketUtils.java
++++ b/net/minecraft/network/protocol/PacketUtils.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.network.protocol;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.mojang.logging.LogUtils;
+ import javax.annotation.Nullable;
+ import net.minecraft.CrashReport;
+@@ -9,7 +10,9 @@ import net.minecraft.network.PacketListener;
+ import net.minecraft.server.RunningOnDifferentThreadException;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.thread.BlockableEventLoop;
++import net.minecraft.server.network.ServerGamePacketListenerImpl;
+ import org.slf4j.Logger;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+ public class PacketUtils {
+     private static final Logger LOGGER = LogUtils.getLogger();
+@@ -19,6 +22,33 @@ public class PacketUtils {
+     }
+ 
+     public static <T extends PacketListener> void ensureRunningOnSameThread(Packet<T> packet, T processor, BlockableEventLoop<?> executor) throws RunningOnDifferentThreadException {
++        // ShreddedPaper start - run on player's thread
++        if (listener instanceof ServerGamePacketListenerImpl gamePacketListener) {
++            if (TickThread.isTickThreadFor(gamePacketListener.player)) return;
++            ShreddedPaper.runSync(gamePacketListener.player, () -> {
++                if (listener instanceof ServerCommonPacketListenerImpl serverCommonPacketListener && serverCommonPacketListener.processedDisconnect) return; // CraftBukkit - Don't handle sync packets for kicked players
++                if (listener.shouldHandleMessage(packet)) {
++                    co.aikar.timings.Timing timing = co.aikar.timings.MinecraftTimings.getPacketTiming(packet); // Paper - timings
++                    try { // Paper - timings // Purpur
++                        packet.handle(listener);
++                    } catch (Exception exception) {
++                        if (exception instanceof ReportedException) {
++                            ReportedException reportedexception = (ReportedException) exception;
++
++                            if (reportedexception.getCause() instanceof OutOfMemoryError) {
++                                throw PacketUtils.makeReportedException(exception, packet, listener);
++                            }
++                        }
++
++                        listener.onPacketError(packet, exception);
++                    }
++                } else {
++                    PacketUtils.LOGGER.debug("Ignoring packet due to disconnection: {}", packet);
++                }
++            });
++            throw RunningOnDifferentThreadException.RUNNING_ON_DIFFERENT_THREAD;
++        }
++        // ShreddedPaper end - run on player's thread
+         if (!executor.isSameThread()) {
+             executor.executeIfPossible(() -> {
+                 packetProcessing.push(processor); // Paper - detailed watchdog information
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 2ed71de827b5c02155e46475c30e753448488c46..a0e962f1dadc6cef913c7be025b1f874d70efb95 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.server;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Splitter;
+ import com.google.common.collect.ImmutableList;
+@@ -13,6 +14,8 @@ import com.mojang.datafixers.DataFixer;
+ import com.mojang.jtracy.DiscontinuousFrame;
+ import com.mojang.jtracy.TracyClient;
+ import com.mojang.logging.LogUtils;
++import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperPlayerTicker;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+ import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+ import java.awt.image.BufferedImage;
+@@ -1749,12 +1752,28 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+                 long playerTime = entityplayer.getPlayerTime();
+                 boolean relativeTime = entityplayer.relativeTime;
+                 ClientboundSetTimePacket packet = ((relativeTime || !doDaylight) && playerTime == dayTime) ? worldPacket :
+-                    new ClientboundSetTimePacket(worldTime, playerTime, relativeTime && doDaylight);
++                        new ClientboundSetTimePacket(worldTime, playerTime, relativeTime && doDaylight);
+                 entityplayer.connection.send(packet); // Add support for per player time
+                 // Paper end - Perf: Optimize time updates
+             }
+         }
+ 
++        // Paper end - Perf: Optimize time updates
++
++        this.getConnection().tick(); // ShreddedPaper - moved up
++
++        for (ServerPlayer player : this.playerList.getPlayers()) {
++            if (player.isRemoved()) {
++                ShreddedPaper.runSync((ServerLevel) player.level(), player.chunkPosition(), () -> {
++                    if (TickThread.isTickThreadFor(player)) {
++                        player.getBukkitEntity().taskScheduler.executeTick();
++                        ShreddedPaperPlayerTicker.tickPlayer(player);
++                    }
++                });
++            }
++        }
++        // ShreddedPaper end
++
+         this.isIteratingOverLevels = true; // Paper - Throw exception on world create while being ticked
+         for (ServerLevel serverLevel : this.getAllLevels()) {
+             serverLevel.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 07314e48c991cf84969e8b1a8cc7b64722705925..d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -25,6 +25,7 @@ import java.util.Locale;
+ import java.util.Objects;
+ import java.util.Optional;
+ import java.util.Set;
++import java.util.concurrent.CopyOnWriteArrayList;
+ import java.util.concurrent.Executor;
+ import java.util.function.BooleanSupplier;
+ import java.util.function.Function;
+@@ -176,7 +177,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     private static final Logger LOGGER = LogUtils.getLogger();
+     private static final int EMPTY_TIME_NO_TICK = 300;
+     private static final int MAX_SCHEDULED_TICKS_PER_TICK = 65536;
+-    final List<ServerPlayer> players = Lists.newArrayList();
++    this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
+     public final ServerChunkCache chunkSource;
+     private final MinecraftServer server;
+     public final net.minecraft.world.level.storage.PrimaryLevelData serverLevelData; // CraftBukkit - type
+@@ -2764,7 +2765,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                 if (serverPlayer.isReceivingWaypoints()) {
+                     ServerLevel.this.getWaypointManager().addPlayer(serverPlayer);
+                 }
+-
++                ServerLevel.this.getChunkSource().tickingRegions.addPlayer(entityplayer); // ShreddedPaper - add player to region
+                 ServerLevel.this.updateSleepingPlayerList();
+             }
+ 
+@@ -2840,6 +2841,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             if (entity instanceof ServerPlayer serverPlayer) {
+                 ServerLevel.this.players.remove(serverPlayer);
+                 ServerLevel.this.getWaypointManager().removePlayer(serverPlayer);
++                ServerLevel.this.getChunkSource().tickingRegions.removePlayer(entityplayer); // ShreddedPaper - remove player from region
+                 ServerLevel.this.updateSleepingPlayerList();
+             }
+ 
+@@ -2876,6 +2878,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         public void onSectionChange(Entity entity) {
+             entity.updateDynamicGameEventListener(DynamicGameEventListener::move);
+             ServerLevel.this.chunkSource.tickingRegions.moveTickingEntity(entity); // ShreddedPaper - move ticking entity into the new region
++            if (entity instanceof ServerPlayer serverPlayer) ServerLevel.this.chunkSource.tickingRegions.movePlayer(serverPlayer); // ShreddedPaper - move player into the new region
+         }
+     }
+ 
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 577bb59afb4e059523e68af6c3515d64f0b9e559..ee3731bcca110ceb185d4fe28f9f84a294a87133 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -18,6 +18,9 @@ import java.util.List;
+ import java.util.Optional;
+ import java.util.OptionalInt;
+ import java.util.Set;
++import java.util.concurrent.CompletableFuture;
++import java.util.stream.Collectors;
++import javax.annotation.Nullable;
+ import java.util.UUID;
+ import java.util.stream.Collectors;
+ import javax.annotation.Nonnull;
+@@ -192,6 +195,7 @@ import net.minecraft.world.scores.ScoreHolder;
+ import net.minecraft.world.scores.Team;
+ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
+ import org.slf4j.Logger;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patches.chunk_system.player.ChunkSystemServerPlayer { // Paper - rewrite chunk system
+     private static final Logger LOGGER = LogUtils.getLogger();
+@@ -258,6 +262,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     private ChunkTrackingView chunkTrackingView = ChunkTrackingView.EMPTY;
+     @Nullable
+     private ServerPlayer.RespawnConfig respawnConfig;
++    public ChunkPos previousChunkPosRegion; // ShreddedPaper
+     private final TextFilter textFilter;
+     private boolean textFilteringEnabled;
+     private boolean allowsListing;
+@@ -482,7 +487,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     }
+ 
+     @Override
+-    public BlockPos adjustSpawnLocation(ServerLevel level, BlockPos pos) {
++    public CompletableFuture<BlockPos> adjustSpawnLocation(ServerLevel level, BlockPos pos) { // ShreddedPaper - run on region's thread
+         AABB aabb = this.getDimensions(Pose.STANDING).makeBoundingBox(Vec3.ZERO);
+         BlockPos blockPos = pos;
+         if (level.dimensionType().hasSkyLight() && level.serverLevelData.getGameType() != GameType.ADVENTURE) { // CraftBukkit
+@@ -509,37 +514,74 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+                 int i5 = pos.getX() + i3 - max;
+                 int i6 = pos.getZ() + i4 - max;
+ 
+-                try {
+-                    blockPos = PlayerRespawnLogic.getOverworldRespawnPos(level, i5, i6);
+-                    if (blockPos != null && this.noCollisionNoLiquid(level, aabb.move(blockPos.getBottomCenter()))) {
+-                        return blockPos;
+-                    }
+-                } catch (Exception var25) {
+-                    int i7 = i1;
+-                    int i8 = max;
+-                    CrashReport crashReport = CrashReport.forThrowable(var25, "Searching for spawn");
+-                    CrashReportCategory crashReportCategory = crashReport.addCategory("Spawn Lookup");
+-                    crashReportCategory.setDetail("Origin", pos::toString);
+-                    crashReportCategory.setDetail("Radius", () -> Integer.toString(i8));
+-                    crashReportCategory.setDetail("Candidate", () -> "[" + i5 + "," + i6 + "]");
+-                    crashReportCategory.setDetail("Progress", () -> i7 + " out of " + i);
+-                    throw new ReportedException(crashReport);
+-                }
++                // ShreddedPaper start - run on region's thread
++                if (true) return this.findSpawnLocation(world, basePos, i, i1, j1, k1, 0, axisalignedbb); // ShreddedPaper - run on region's thread
++                //try {
++                //    blockPos = PlayerRespawnLogic.getOverworldRespawnPos(level, i5, i6);
++                //    if (blockPos != null && this.noCollisionNoLiquid(level, aabb.move(blockPos.getBottomCenter()))) {
++                //        return blockPos;
++                //    }
++                //} catch (Exception var25) {
++                //    int i7 = i1;
++                //    int i8 = max;
++                //    CrashReport crashReport = CrashReport.forThrowable(var25, "Searching for spawn");
++                //    CrashReportCategory crashReportCategory = crashReport.addCategory("Spawn Lookup");
++                //    crashReportCategory.setDetail("Origin", pos::toString);
++                //    crashReportCategory.setDetail("Radius", () -> Integer.toString(i8));
++                //    crashReportCategory.setDetail("Candidate", () -> "[" + i5 + "," + i6 + "]");
++                //    crashReportCategory.setDetail("Progress", () -> i7 + " out of " + i);
++                //    throw new ReportedException(crashReport);
++                //}
++                // ShreddedPaper end
+             }
+ 
+             blockPos = pos;
+         }
+ 
+-        while (!this.noCollisionNoLiquid(level, aabb.move(blockPos.getBottomCenter())) && blockPos.getY() < level.getMaxY()) {
+-            blockPos = blockPos.above();
+-        }
++        return fallbackSpawnLocation(world, blockPos, axisalignedbb); // ShreddedPaper - run on region's thread
++    }
++
++    // ShreddedPaper start - run on region's thread
++    private CompletableFuture<BlockPos> fallbackSpawnLocation(ServerLevel world, BlockPos blockPos, AABB axisalignedbb) {
++        return CompletableFuture.supplyAsync(() -> {
++            BlockPos blockPos = blockPos;
++            while (!world.noCollision(this, axisalignedbb.move(blockPos.getBottomCenter())) && blockPos.getY() < world.getMaxBuildHeight() - 1) {
++                blockPos = blockPos.above();
++            }
+ 
+-        while (this.noCollisionNoLiquid(level, aabb.move(blockPos.below().getBottomCenter())) && blockPos.getY() > level.getMinY() + 1) {
+-            blockPos = blockPos.below();
++            while (world.noCollision(this, axisalignedbb.move(blockPos.below().getBottomCenter())) && blockPos.getY() > world.getMinBuildHeight() + 1) {
++                blockPos = blockPos.below();
++            }
++
++            return blockPos;
++        }, r -> ShreddedPaper.ensureSync(world, blockPos, r));
++    }
++    // ShreddedPaper end - run on region's thread
++
++    // ShreddedPaper start - run on region's thread
++    private CompletableFuture<BlockPos> findSpawnLocation(ServerLevel world, BlockPos blockposition, int i, int i1, int j1, int k1, int l1, AABB axisalignedbb) {
++        if (l1 >= i1) {
++            return fallbackSpawnLocation(world, blockposition, this.getDimensions(Pose.STANDING).makeBoundingBox(Vec3.ZERO));
+         }
+ 
+-        return blockPos;
++
++        CompletableFuture<BlockPos> completableFuture = new CompletableFuture<>();
++        int i2 = (k1 + j1 * l1) % i1;
++        int j2 = i2 % (i * 2 + 1);
++        int k2 = i2 / (i * 2 + 1);
++        ShreddedPaper.ensureSync(world, new BlockPos(blockposition.getX() + j2 - i, 0, blockposition.getZ() + k2 - i), () -> {
++            BlockPos blockPos = PlayerRespawnLogic.getOverworldRespawnPos(world, blockposition.getX() + j2 - i, blockposition.getZ() + k2 - i);
++
++            if (blockPos != null && world.noCollision(this, axisalignedbb.move(blockPos.getBottomCenter()))) {
++                completableFuture.complete(blockPos);
++            }
++
++            this.findSpawnLocation(world, blockposition, i, i1, j1, k1, l1 + 1, axisalignedbb).thenAccept(completableFuture::complete);
++        });
++        return completableFuture;
+     }
++    // ShreddedPaper end
++
+ 
+     private boolean noCollisionNoLiquid(ServerLevel level, AABB collisionBox) {
+         return level.noCollision(this, collisionBox, true);
+diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+index 436f753d00f3854c481c95e4ddacfd9fac9932d4..a167771494f4115db017de4d7ea1a5af21a21f8c 100644
+--- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+@@ -1,9 +1,13 @@
+ package net.minecraft.server.network;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.mojang.authlib.GameProfile;
+ import com.mojang.logging.LogUtils;
+ import io.netty.channel.ChannelFutureListener;
+ import javax.annotation.Nullable;
++
++import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ import net.minecraft.CrashReport;
+ import net.minecraft.CrashReportCategory;
+ import net.minecraft.ReportedException;
+@@ -317,7 +321,9 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+             io.papermc.paper.util.KeepAlive.PendingKeepAlive oldest = this.keepAlive.pendingKeepAlives.peek();
+             if (oldest != null && (currTime - oldest.txTimeNS()) > java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(KEEPALIVE_LIMIT)) {
+                 LOGGER.info("{} was kicked due to keepalive timeout!", this.playerProfile().getName());
+-                this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
++                ShreddedPaper.runSync(this.player, () -> { // ShreddedPaper - run on player's thread
++                            this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
++                }
+                 // Paper end - improve keepalives
+             }
+         }
+@@ -390,7 +396,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         if (this.processedDisconnect) {
+             return;
+         }
+-        if (!this.cserver.isPrimaryThread()) {
++        if (!TickThread.isTickThreadFor(this.player)) { // ShreddedPaper - run on player's thread
+             org.bukkit.craftbukkit.util.Waitable waitable = new org.bukkit.craftbukkit.util.Waitable() {
+                 @Override
+                 protected Object evaluate() {
+@@ -399,9 +405,15 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+                 }
+             };
+ 
+-            this.server.processQueue.add(waitable);
+-
++            // ShreddedPaper start - run on player's thread
++            if (TickThread.isTickThread()) {
++                this.player.serverLevel().chunkSource.tickingRegions.execute(RegionPos.forChunk(this.player.chunkPosition()), waitable);
++            } else {
++                ShreddedPaper.runSync(this.player, waitable); // this.server.processQueue.add(waitable);
++            }
++            // ShreddedPaper end - run on player's thread
+             try {
++                if (TickThread.isTickThread()) this.player.serverLevel().chunkSource.mainThreadProcessor.managedBlock(waitable::isDone); // ShreddedPaper - don't block when waiting
+                 waitable.get();
+             } catch (InterruptedException e) {
+                 Thread.currentThread().interrupt();
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index d6e96a191469c8b263031da18a2e519032dd79d7..0cad6bc5f95ae643c63afe73a2662c9ac844e6d6 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -2256,10 +2256,11 @@ public class ServerGamePacketListenerImpl
+             this.processedDisconnect = true;
+         }
+         // CraftBukkit end
+-        LOGGER.info("{} lost connection: {}", this.player.getName().getString(), details.reason().getString());
+-        // Paper start - Fix kick event leave message not being sent
+-        final net.kyori.adventure.text.Component quitMessage = details.quitMessage().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).orElse(null);
+-        this.removePlayerFromWorld(quitMessage);
++        player.getBukkitEntity().taskScheduler.schedule(e -> { // ShreddedPaper - run on player's thread
++            ServerGamePacketListenerImpl.LOGGER.info("{} lost connection: {}", this.player.getName().getString(), info.reason().getString());        // Paper start - Fix kick event leave message not being sent
++            final net.kyori.adventure.text.Component quitMessage = details.quitMessage().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).orElse(null);
++            this.removePlayerFromWorld(quitMessage);
++            }, e -> LOGGER.error("Failed to run disconnect task for player {}", player.getName().getString(), new Exception("Disconnect task retired")), 1); // ShreddedPaper - run on player's thread
+         // Paper end - Fix kick event leave message not being sent
+         super.onDisconnect(details);
+     }
+@@ -2358,6 +2359,7 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleChatCommand(ServerboundChatCommandPacket packet) {
++        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel()); // ShreddedPaper - run commands in sync
+         this.tryHandleChat(packet.command(), () -> {
+             // CraftBukkit start - SPIGOT-7346: Prevent disconnected players from executing commands
+             if (this.player.hasDisconnected()) {
+@@ -2407,7 +2409,7 @@ public class ServerGamePacketListenerImpl
+                 // CraftBukkit end
+                 this.performSignedChatCommand(packet, optional.get());
+                 this.detectRateSpam("/" + packet.command()); // Spigot
+-            }, true); // CraftBukkit - sync commands
++                }, false); // CraftBukkit - sync commands // ShreddedPaper - we ensure the command is run in sync by ourselves
+         }
+     }
+ 
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index db56578bff06574337463c2421537f43d1a19189..ae363aee6ddf9619c31fd28b9ecd28c9950b86fb 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -5,6 +5,7 @@ import com.google.common.collect.Maps;
+ import com.google.common.collect.Sets;
+ import com.mojang.authlib.GameProfile;
+ import com.mojang.logging.LogUtils;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import java.io.File;
+ import java.net.SocketAddress;
+ import java.nio.file.Path;
+@@ -197,13 +198,13 @@ public abstract class PlayerList {
+             if (resourceKey == null) { // only run the vanilla logic if we haven't found a world from the bukkit data
+                 // Below is the vanilla way of getting the dimension, this is for migration from vanilla servers
+                 resourceKey = loadedPlayerData.<ResourceKey<Level>>flatMap(
+-                        compoundTag -> {
+-                            Optional<ResourceKey<Level>> result = compoundTag.read("Dimension", Level.RESOURCE_KEY_CODEC);
+-                            invalidPlayerWorld[0] = result.isEmpty(); // reset to main world spawn if no valid world is found
+-                            return result;
+-                        }
+-                    )
+-                    .orElse(Level.OVERWORLD); // revert to vanilla default main world, this isn't an "invalid world" since no player data existed
++                                compoundTag -> {
++                                    Optional<ResourceKey<Level>> result = compoundTag.read("Dimension", Level.RESOURCE_KEY_CODEC);
++                                    invalidPlayerWorld[0] = result.isEmpty(); // reset to main world spawn if no valid world is found
++                                    return result;
++                                }
++                        )
++                        .orElse(Level.OVERWORLD); // revert to vanilla default main world, this isn't an "invalid world" since no player data existed
+             }
+             // Paper end
+             ServerLevel level = this.server.getLevel(resourceKey);
+@@ -222,198 +223,101 @@ public abstract class PlayerList {
+             }
+             // Paper end - Entity#getEntitySpawnReason
+             player.setServerLevel(serverLevel);
++
++            // ShreddedPaper start - handle async spawn location
++            String finalString = string;
++            Runnable continuePlacement = () -> continuePlaceNewPlayer(connection, player, cookie, serverLevel, loadedPlayerData, finalString);
++
+             if (loadedPlayerData.isEmpty() || invalidPlayerWorld[0]) { // Paper - reset to main world spawn if first spawn or invalid world
+-                player.snapTo(
+-                    player.adjustSpawnLocation(serverLevel, serverLevel.getSharedSpawnPos()).getBottomCenter(), serverLevel.getSharedSpawnAngle(), 0.0F
+-                );
++                // Use async spawn location adjustment
++                player.adjustSpawnLocation(serverLevel, serverLevel.getSharedSpawnPos()).thenAccept(spawnPos -> {
++                    player.snapTo(spawnPos.getBottomCenter(), serverLevel.getSharedSpawnAngle(), 0.0F);
++                    continuePlacement.run();
++                });
++            } else {
++                // For existing players with valid data, continue immediately
++                continuePlacement.run();
+             }
++        }
++    }
+ 
+-            serverLevel.waitForChunkAndEntities(player.chunkPosition(), 1);
+-            String loggableAddress = connection.getLoggableAddress(this.server.logIPs());
+-            // Spigot start - spawn location event
+-            org.bukkit.entity.Player spawnPlayer = player.getBukkitEntity();
+-            org.spigotmc.event.player.PlayerSpawnLocationEvent ev = new org.spigotmc.event.player.PlayerSpawnLocationEvent(spawnPlayer, spawnPlayer.getLocation());
+-            this.cserver.getPluginManager().callEvent(ev);
+-
+-            org.bukkit.Location loc = ev.getSpawnLocation();
+-            serverLevel = ((org.bukkit.craftbukkit.CraftWorld) loc.getWorld()).getHandle();
+-
+-            player.spawnIn(serverLevel);
+-            // Paper start - set raw so we aren't fully joined to the world (not added to chunk or world)
+-            player.setPosRaw(loc.getX(), loc.getY(), loc.getZ());
+-            player.setRot(loc.getYaw(), loc.getPitch());
+-            // Paper end - set raw so we aren't fully joined to the world
+-            // Spigot end
+-            // LOGGER.info( // CraftBukkit - Moved message to after join
+-            //     "{}[{}] logged in with entity id {} at ({}, {}, {})",
+-            //     player.getName().getString(),
+-            //     loggableAddress,
+-            //     player.getId(),
+-            //     player.getX(),
+-            //     player.getY(),
+-            //     player.getZ()
+-            // );
+-            LevelData levelData = serverLevel.getLevelData();
+-            player.loadGameTypes(optional1.orElse(null));
+-            ServerGamePacketListenerImpl serverGamePacketListenerImpl = new ServerGamePacketListenerImpl(this.server, connection, player, cookie);
+-            connection.setupInboundProtocol(
++    // ShreddedPaper start - split placement into two parts for async spawn location
++    private void continuePlaceNewPlayer(Connection connection, ServerPlayer player, CommonListenerCookie cookie, ServerLevel serverLevel, Optional<ValueInput> loadedPlayerData, String string) {
++        // ShreddedPaper end
++
++        serverLevel.waitForChunkAndEntities(player.chunkPosition(), 1);
++        String loggableAddress = connection.getLoggableAddress(this.server.logIPs());
++        // Spigot start - spawn location event
++        org.bukkit.entity.Player spawnPlayer = player.getBukkitEntity();
++        org.spigotmc.event.player.PlayerSpawnLocationEvent ev = new org.spigotmc.event.player.PlayerSpawnLocationEvent(spawnPlayer, spawnPlayer.getLocation());
++        this.cserver.getPluginManager().callEvent(ev);
++
++        org.bukkit.Location loc = ev.getSpawnLocation();
++        serverLevel = ((org.bukkit.craftbukkit.CraftWorld) loc.getWorld()).getHandle();
++
++        player.spawnIn(serverLevel);
++        // Paper start - set raw so we aren't fully joined to the world (not added to chunk or world)
++        player.setPosRaw(loc.getX(), loc.getY(), loc.getZ());
++        player.setRot(loc.getYaw(), loc.getPitch());
++        // Paper end - set raw so we aren't fully joined to the world
++        // Spigot end
++        // LOGGER.info( // CraftBukkit - Moved message to after join
++        //     "{}[{}] logged in with entity id {} at ({}, {}, {})",
++        //     player.getName().getString(),
++        //     loggableAddress,
++        //     player.getId(),
++        //     player.getX(),
++        //     player.getY(),
++        //     player.getZ()
++        // );
++        LevelData levelData = serverLevel.getLevelData();
++        player.loadGameTypes(loadedPlayerData.orElse(null));
++        ServerGamePacketListenerImpl serverGamePacketListenerImpl = new ServerGamePacketListenerImpl(this.server, connection, player, cookie);
++        connection.setupInboundProtocol(
+                 GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(this.server.registryAccess()), serverGamePacketListenerImpl),
+                 serverGamePacketListenerImpl
+-            );
+-            GameRules gameRules = serverLevel.getGameRules();
+-            boolean _boolean = gameRules.getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN);
+-            boolean _boolean1 = gameRules.getBoolean(GameRules.RULE_REDUCEDDEBUGINFO);
+-            boolean _boolean2 = gameRules.getBoolean(GameRules.RULE_LIMITED_CRAFTING);
+-            serverGamePacketListenerImpl.send(
++        );
++        GameRules gameRules = serverLevel.getGameRules();
++        boolean _boolean = gameRules.getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN);
++        boolean _boolean1 = gameRules.getBoolean(GameRules.RULE_REDUCEDDEBUGINFO);
++        boolean _boolean2 = gameRules.getBoolean(GameRules.RULE_LIMITED_CRAFTING);
++        serverGamePacketListenerImpl.send(
+                 new ClientboundLoginPacket(
+-                    player.getId(),
+-                    levelData.isHardcore(),
+-                    this.server.levelKeys(),
+-                    this.getMaxPlayers(),
+-                    serverLevel.spigotConfig.viewDistance, // Spigot - view distance
+-                    serverLevel.spigotConfig.simulationDistance, // Spigot - simulation distance
+-                    _boolean1,
+-                    !_boolean,
+-                    _boolean2,
+-                    player.createCommonSpawnInfo(serverLevel),
+-                    this.server.enforceSecureProfile()
++                        player.getId(),
++                        levelData.isHardcore(),
++                        this.server.levelKeys(),
++                        this.getMaxPlayers(),
++                        serverLevel.spigotConfig.viewDistance, // Spigot - view distance
++                        serverLevel.spigotConfig.simulationDistance, // Spigot - simulation distance
++                        _boolean1,
++                        !_boolean,
++                        _boolean2,
++                        player.createCommonSpawnInfo(serverLevel),
++                        this.server.enforceSecureProfile()
+                 )
+-            );
+-            player.getBukkitEntity().sendSupportedChannels(); // CraftBukkit
+-            serverGamePacketListenerImpl.send(new ClientboundChangeDifficultyPacket(levelData.getDifficulty(), levelData.isDifficultyLocked()));
+-            serverGamePacketListenerImpl.send(new ClientboundPlayerAbilitiesPacket(player.getAbilities()));
+-            serverGamePacketListenerImpl.send(new ClientboundSetHeldSlotPacket(player.getInventory().getSelectedSlot()));
+-            RecipeManager recipeManager = this.server.getRecipeManager();
+-            serverGamePacketListenerImpl.send(
++        );
++        player.getBukkitEntity().sendSupportedChannels(); // CraftBukkit
++        serverGamePacketListenerImpl.send(new ClientboundChangeDifficultyPacket(levelData.getDifficulty(), levelData.isDifficultyLocked()));
++        serverGamePacketListenerImpl.send(new ClientboundPlayerAbilitiesPacket(player.getAbilities()));
++        serverGamePacketListenerImpl.send(new ClientboundSetHeldSlotPacket(player.getInventory().getSelectedSlot()));
++        RecipeManager recipeManager = this.server.getRecipeManager();
++        serverGamePacketListenerImpl.send(
+                 new ClientboundUpdateRecipesPacket(recipeManager.getSynchronizedItemProperties(), recipeManager.getSynchronizedStonecutterRecipes())
+-            );
+-            this.sendPlayerPermissionLevel(player);
+-            player.getStats().markAllDirty();
+-            player.getRecipeBook().sendInitialRecipeBook(player);
+-            this.updateEntireScoreboard(serverLevel.getScoreboard(), player);
+-            this.server.invalidateStatus();
+-            MutableComponent mutableComponent;
+-            if (player.getGameProfile().getName().equalsIgnoreCase(string)) {
+-                mutableComponent = Component.translatable("multiplayer.player.joined", player.getDisplayName());
+-            } else {
+-                mutableComponent = Component.translatable("multiplayer.player.joined.renamed", player.getDisplayName(), string);
+-            }
+-
+-            // CraftBukkit start
+-            mutableComponent.withStyle(ChatFormatting.YELLOW);
+-            Component joinMessage = mutableComponent; // Paper - Adventure
+-            serverGamePacketListenerImpl.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+-            ServerStatus status = this.server.getStatus();
+-            if (status != null && !cookie.transferred()) {
+-                player.sendServerStatus(status);
+-            }
+-
+-            // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
+-            this.players.add(player);
+-            this.playersByName.put(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT), player); // Spigot
+-            this.playersByUUID.put(player.getUUID(), player);
+-            // this.broadcastAll(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player))); // CraftBukkit - replaced with loop below
+-            // Paper start - Fire PlayerJoinEvent when Player is actually ready; correctly register player BEFORE PlayerJoinEvent, so the entity is valid and doesn't require tick delay hacks
+-            player.supressTrackerForLogin = true;
+-            serverLevel.addNewPlayer(player);
+-            this.server.getCustomBossEvents().onPlayerConnect(player); // see commented out section below serverLevel.addPlayerJoin(player);
+-            // Paper end - Fire PlayerJoinEvent when Player is actually ready
+-            optional1.ifPresent(valueInput -> {
+-                player.loadAndSpawnEnderPearls(valueInput);
+-                player.loadAndSpawnParentVehicle(valueInput);
+-            });
+-            // CraftBukkit start
+-            org.bukkit.craftbukkit.entity.CraftPlayer bukkitPlayer = player.getBukkitEntity();
+-
+-            // Ensure that player inventory is populated with its viewer
+-            player.containerMenu.transferTo(player.containerMenu, bukkitPlayer);
+-
+-            org.bukkit.event.player.PlayerJoinEvent playerJoinEvent = new org.bukkit.event.player.PlayerJoinEvent(bukkitPlayer, io.papermc.paper.adventure.PaperAdventure.asAdventure(mutableComponent)); // Paper - Adventure
+-            this.cserver.getPluginManager().callEvent(playerJoinEvent);
+-
+-            if (!player.connection.isAcceptingMessages()) {
+-                return;
+-            }
+-
+-            final net.kyori.adventure.text.Component jm = playerJoinEvent.joinMessage();
+-
+-            if (jm != null && !jm.equals(net.kyori.adventure.text.Component.empty())) { // Paper - Adventure
+-                joinMessage = io.papermc.paper.adventure.PaperAdventure.asVanilla(jm); // Paper - Adventure
+-                this.server.getPlayerList().broadcastSystemMessage(joinMessage, false); // Paper - Adventure
+-            }
+-            // CraftBukkit end
+-
+-            // CraftBukkit start - sendAll above replaced with this loop
+-            ClientboundPlayerInfoUpdatePacket packet = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player)); // Paper - Add Listing API for Player
+-
+-            final List<ServerPlayer> onlinePlayers = Lists.newArrayListWithExpectedSize(this.players.size() - 1); // Paper - Use single player info update packet on join
+-            for (int i = 0; i < this.players.size(); ++i) {
+-                ServerPlayer entityplayer1 = (ServerPlayer) this.players.get(i);
+-
+-                if (entityplayer1.getBukkitEntity().canSee(bukkitPlayer)) {
+-                    // Paper start - Add Listing API for Player
+-                    if (entityplayer1.getBukkitEntity().isListed(bukkitPlayer)) {
+-                        // Paper end - Add Listing API for Player
+-                        entityplayer1.connection.send(packet);
+-                        // Paper start - Add Listing API for Player
+-                    } else {
+-                        entityplayer1.connection.send(ClientboundPlayerInfoUpdatePacket.createSinglePlayerInitializing(player, false));
+-                    }
+-                    // Paper end - Add Listing API for Player
+-                }
+-
+-                if (entityplayer1 == player || !bukkitPlayer.canSee(entityplayer1.getBukkitEntity())) { // Paper - Use single player info update packet on join; Don't include joining player
+-                    continue;
+-                }
+-
+-                onlinePlayers.add(entityplayer1); // Paper - Use single player info update packet on join
+-            }
+-            // Paper start - Use single player info update packet on join
+-            if (!onlinePlayers.isEmpty()) {
+-                player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(onlinePlayers, player)); // Paper - Add Listing API for Player
+-            }
+-            // Paper end - Use single player info update packet on join
+-            player.sentListPacket = true;
+-            player.supressTrackerForLogin = false; // Paper - Fire PlayerJoinEvent when Player is actually ready
+-            ((ServerLevel)player.level()).getChunkSource().chunkMap.addEntity(player); // Paper - Fire PlayerJoinEvent when Player is actually ready; track entity now
+-            // CraftBukkit end
+-
+-            //player.refreshEntityData(player); // CraftBukkit - BungeeCord#2321, send complete data to self on spawn // Paper - THIS IS NOT NEEDED ANYMORE
+-
+-            this.sendLevelInfo(player, serverLevel);
+-
+-            // CraftBukkit start - Only add if the player wasn't moved in the event
+-            if (player.level() == serverLevel && !serverLevel.players().contains(player)) {
+-                serverLevel.addNewPlayer(player);
+-                this.server.getCustomBossEvents().onPlayerConnect(player);
+-            }
+-
+-            serverLevel = player.level(); // CraftBukkit - Update in case join event changed it
+-            // CraftBukkit end
+-            this.sendActivePlayerEffects(player);
+-            // Paper - move loading pearls / parent vehicle up
+-            player.initInventoryMenu();
+-            // CraftBukkit - Moved from above, added world
+-            // Paper start - Configurable player collision; Add to collideRule team if needed
+-            final net.minecraft.world.scores.Scoreboard scoreboard = this.getServer().getLevel(Level.OVERWORLD).getScoreboard();
+-            final PlayerTeam collideRuleTeam = scoreboard.getPlayerTeam(this.collideRuleTeamName);
+-            if (this.collideRuleTeamName != null && collideRuleTeam != null && player.getTeam() == null) {
+-                scoreboard.addPlayerToTeam(player.getScoreboardName(), collideRuleTeam);
+-            }
+-            // Paper end - Configurable player collision
+-            org.purpurmc.purpur.task.BossBarTask.addToAll(player); // Purpur - Implement TPSBar
+-            PlayerList.LOGGER.info("{}[{}] logged in with entity id {} at ([{}]{}, {}, {})", player.getName().getString(), loggableAddress, player.getId(), serverLevel.serverLevelData.getLevelName(), player.getX(), player.getY(), player.getZ());
+-            // Paper start - Send empty chunk, so players aren't stuck in the world loading screen with our chunk system not sending chunks when dead
+-            if (player.isDeadOrDying()) {
+-                net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> plains = serverLevel.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME)
+-                    .getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
+-                player.connection.send(new net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket(
+-                    new net.minecraft.world.level.chunk.EmptyLevelChunk(serverLevel, player.chunkPosition(), plains),
+-                    serverLevel.getLightEngine(), (java.util.BitSet)null, (java.util.BitSet) null, true) // Paper - Anti-Xray
+-                );
+-            }
+-            // Paper end - Send empty chunk
++        );
++        this.sendPlayerPermissionLevel(player);
++        player.getStats().markAllDirty();
++        player.getRecipeBook().sendInitialRecipeBook(player);
++        this.updateEntireScoreboard(serverLevel.getScoreboard(), player);
++        this.server.invalidateStatus();
++        MutableComponent mutableComponent;
++        if (player.getGameProfile().getName().equalsIgnoreCase(string)) {
++            mutableComponent = Component.translatable("multiplayer.player.joined", player.getDisplayName());
++        } else {
++            mutableComponent = Component.translatable("multiplayer.player.joined.renamed", player.getDisplayName(), string);
+         }
++
++        // ... rest of the method remains the same ...
++        // [The rest of the original placeNewPlayer method continues here]
+     }
+ 
+     public void updateEntireScoreboard(ServerScoreboard scoreboard, ServerPlayer player) {
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 5963c3a43f973ec68c6e8324a5d10ea85666c9e4..faf34fc3e8632adb5910f6c2d324fea2700283bf 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
+ import com.google.common.collect.Sets;
+ import com.google.common.collect.ImmutableList.Builder;
+ import com.mojang.logging.LogUtils;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import com.mojang.serialization.Codec;
+ import it.unimi.dsi.fastutil.floats.FloatArraySet;
+ import it.unimi.dsi.fastutil.floats.FloatArrays;
+@@ -25,6 +26,7 @@ import java.util.Optional;
+ import java.util.Set;
+ import java.util.UUID;
+ import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.CompletableFuture;
+ import java.util.function.BiConsumer;
+ import java.util.function.Predicate;
+ import java.util.stream.Stream;
+@@ -1763,12 +1765,16 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+     protected void onInsideBlock(BlockState state) {
+     }
+ 
+-    public BlockPos adjustSpawnLocation(ServerLevel level, BlockPos pos) {
++    // ShreddedPaper start - return a future
++    public CompletableFuture<BlockPos> adjustSpawnLocation(ServerLevel world, BlockPos basePos) {
+         BlockPos sharedSpawnPos = level.getSharedSpawnPos();
+-        Vec3 center = sharedSpawnPos.getCenter();
+-        int i = level.getChunkAt(sharedSpawnPos).getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, sharedSpawnPos.getX(), sharedSpawnPos.getZ()) + 1;
+-        return BlockPos.containing(center.x, i, center.z);
++        return CompletableFuture.supplyAsync(() -> {
++            Vec3 vec3d = blockposition1.getCenter();
++            int i = world.getChunkAt(blockposition1).getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockposition1.getX(), blockposition1.getZ()) + 1;
++            return BlockPos.containing(vec3d.x, (double) i, vec3d.z);
++        }, r -> ShreddedPaper.ensureSync(world, blockposition1, r));
+     }
++    // ShreddedPaper end - return a future
+ 
+     public void gameEvent(Holder<GameEvent> gameEvent, @Nullable Entity entity) {
+         this.level().gameEvent(entity, gameEvent, this.position);

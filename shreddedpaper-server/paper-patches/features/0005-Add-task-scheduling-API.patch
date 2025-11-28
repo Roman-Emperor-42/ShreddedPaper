@@ -1,0 +1,87 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 09:08:51 -0600
+Subject: [PATCH] Add-task-scheduling-API
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index c95a18a165fc86140a2f91bff5b0fd0498d6eb2e..78eb132db5ed6e4c09759cb86a033d3f9e7310dc 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -272,6 +272,7 @@ import org.yaml.snakeyaml.error.MarkedYAMLException;
+ 
+ import net.md_5.bungee.api.chat.BaseComponent; // Spigot
+ import io.multipaper.shreddedpaper.permissions.ShreddedPaperPermissions;
++import io.multipaper.shreddedpaper.region.ShreddedPaperRegionSchedulerApiImpl;
+ 
+ public final class CraftServer implements Server {
+     private final String serverName = io.papermc.paper.ServerBuildInfo.buildInfo().brandName();
+@@ -319,7 +320,7 @@ public final class CraftServer implements Server {
+     private final ServerConfiguration serverConfig = new PaperServerConfiguration();
+ 
+     // Paper start - Folia region threading API
+-    private final io.papermc.paper.threadedregions.scheduler.FallbackRegionScheduler regionizedScheduler = new io.papermc.paper.threadedregions.scheduler.FallbackRegionScheduler();
++    private final io.papermc.paper.threadedregions.scheduler.RegionScheduler regionizedScheduler = new ShreddedPaperRegionSchedulerApiImpl(); // ShreddedPaper
+     private final io.papermc.paper.threadedregions.scheduler.FoliaAsyncScheduler asyncScheduler = new io.papermc.paper.threadedregions.scheduler.FoliaAsyncScheduler();
+     private final io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler globalRegionScheduler = new io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler();
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index 61121d2efd0df2fcafdc4c272e1cd1b986f42e24..d06727d8df701a3a057321130d6daa8e5e94f752 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -2,9 +2,12 @@ package org.bukkit.craftbukkit;
+ 
+ import ca.spottedleaf.moonrise.common.list.ReferenceList;
+ import ca.spottedleaf.moonrise.common.util.CoordinateUtils;
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Predicates;
+ import com.mojang.datafixers.util.Pair;
++import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ import io.papermc.paper.FeatureHooks;
+ import io.papermc.paper.raytracing.RayTraceTarget;
+ import io.papermc.paper.registry.RegistryAccess;
+@@ -27,6 +30,7 @@ import java.util.PrimitiveIterator;
+ import java.util.Random;
+ import java.util.Set;
+ import java.util.UUID;
++import java.util.concurrent.CompletableFuture;
+ import java.util.function.Consumer;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+@@ -407,11 +411,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+     @Override
+     public boolean isChunkGenerated(int x, int z) {
+         // Paper start - Fix this method
+-        if (!Bukkit.isPrimaryThread()) {
+-            return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
++        if (!TickThread.isTickThreadFor(this.world, x, z)) { // ShreddedPaper - regions
++            CompletableFuture<Boolean> future = java.util.concurrent.CompletableFuture.supplyAsync(() -> { // ShreddedPaper - regions
+                 return CraftWorld.this.isChunkGenerated(x, z);
+-            }, world.getChunkSource().mainThreadProcessor).join();
+-        }
++                }, world.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(x, z))); // ShreddedPaper - regions
++            if (TickThread.isTickThread()) this.getHandle().chunkSource.mainThreadProcessor.managedBlock(future::isDone); // ShreddedPaper - run tick thread tasks (this might be one tick thread accessing a chunk in another tick thread)
++            return future.join(); // ShreddedPaper - regions        }
+         ChunkAccess chunk = world.getChunkSource().getChunkAtImmediately(x, z);
+         if (chunk != null) {
+             return chunk instanceof ImposterProtoChunk || chunk instanceof net.minecraft.world.level.chunk.LevelChunk;
+@@ -2485,11 +2490,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+     @Override
+     public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
+         warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper
+-        ca.spottedleaf.moonrise.common.PlatformHooks.get().scheduleChunkLoad(
+-            this.getHandle(), x, z, gen, ChunkStatus.FULL, true,
+-            urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-            (ChunkAccess chunk) -> {
+-                cb.accept(chunk == null ? null : new CraftChunk((net.minecraft.world.level.chunk.LevelChunk)chunk));
++            ShreddedPaper.ensureSync(this.getHandle(), c.getPos(), () -> { // ShreddedPaper - ensure on correct thread
++                this.getHandle(), x, z, gen, ChunkStatus.FULL, true,
++                        urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
++                        (ChunkAccess chunk) -> {
++                            cb.accept(chunk == null ? null : new CraftChunk((net.minecraft.world.level.chunk.LevelChunk) chunk));
++                        }
+             }
+         );
+ 

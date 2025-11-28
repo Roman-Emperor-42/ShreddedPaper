@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 11:01:56 -0600
+Subject: [PATCH] Player
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Waitable.java b/src/main/java/org/bukkit/craftbukkit/util/Waitable.java
+index 864a213adaef77cf24327ed5de61cd5cae10176d..fa4b350d42a773843f45bfdda5fbc8c579a251fb 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Waitable.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Waitable.java
+@@ -33,6 +33,12 @@ public abstract class Waitable<T> implements Runnable {
+ 
+     protected abstract T evaluate();
+ 
++    // ShreddedPaper start
++    public boolean isDone() {
++        return this.status == Status.FINISHED;
++    }
++    // ShreddedPaper end
++
+     public synchronized T get() throws InterruptedException, ExecutionException {
+         while (this.status != Status.FINISHED) {
+             this.wait();
