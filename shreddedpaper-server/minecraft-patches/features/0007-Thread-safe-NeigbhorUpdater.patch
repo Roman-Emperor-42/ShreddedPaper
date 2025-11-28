@@ -1,0 +1,87 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 07:24:10 -0600
+Subject: [PATCH] Thread-safe-NeigbhorUpdater
+
+
+diff --git a/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java b/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..410801379638a353e421fdc3cb282e7141414d37
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java
+@@ -0,0 +1,44 @@
++package io.multipaper.shreddedpaper.threading;
++
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Direction;
++import net.minecraft.world.level.block.Block;
++import net.minecraft.world.level.block.state.BlockState;
++import net.minecraft.world.level.redstone.NeighborUpdater;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++
++import java.util.function.Supplier;
++
++public class PerThreadNeighborUpdater implements NeighborUpdater {
++
++    private final ThreadLocal<NeighborUpdater> threadLocalNeighborUpdater;
++
++    public PerThreadNeighborUpdater(Supplier<NeighborUpdater> factory) {
++        this.threadLocalNeighborUpdater = ThreadLocal.withInitial(factory);
++    }
++
++    private NeighborUpdater getOrCreate() {
++        return threadLocalNeighborUpdater.get();
++    }
++
++    @Override
++    public void shapeUpdate(@NotNull Direction direction, @NotNull BlockState neighborState, @NotNull BlockPos pos, @NotNull BlockPos neighborPos, int flags, int maxUpdateDepth) {
++        getOrCreate().shapeUpdate(direction, neighborState, pos, neighborPos, flags, maxUpdateDepth);
++    }
++
++    @Override
++    public void neighborChanged(@NotNull BlockPos pos, @NotNull Block sourceBlock, @NotNull BlockPos sourcePos) {
++        getOrCreate().neighborChanged(pos, sourceBlock, sourcePos);
++    }
++
++    @Override
++    public void neighborChanged(@NotNull BlockState state, @NotNull BlockPos pos, @NotNull Block sourceBlock, @NotNull BlockPos sourcePos, boolean notify) {
++        getOrCreate().neighborChanged(state, pos, sourceBlock, sourcePos, notify);
++    }
++
++    @Override
++    public void updateNeighborsAtExceptFromFacing(@NotNull BlockPos pos, @NotNull Block sourceBlock, @Nullable Direction except) {
++        getOrCreate().updateNeighborsAtExceptFromFacing(pos, sourceBlock, except);
++    }
++}
+\ No newline at end of file
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index a0f3795f3aee1541ddab81da3cd8391f0a70e03d..190d45570c38cebfaf338a2ade545353d01f66f5 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -92,6 +92,7 @@ import org.bukkit.craftbukkit.CraftWorld;
+ import org.bukkit.craftbukkit.block.CraftBlockState;
+ import org.bukkit.craftbukkit.block.data.CraftBlockData;
+ import org.bukkit.entity.SpawnCategory;
++import io.multipaper.shreddedpaper.threading.PerThreadNeighborUpdater;
+ // CraftBukkit end
+ 
+ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCloseable, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel, ca.spottedleaf.moonrise.patches.chunk_system.world.ChunkSystemEntityGetter { // Paper - rewrite chunk system // Paper - optimise collisions
+@@ -132,7 +133,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+     private final DamageSources damageSources;
+     private long subTickCount;
+ 
+-    // CraftBukkit start
++    // CraftBukkit startLegacyRandom
+     public final io.papermc.paper.antixray.ChunkPacketBlockController chunkPacketBlockController; // Paper - Anti-Xray
+     private final CraftWorld world;
+     public boolean pvpMode;
+@@ -919,7 +920,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         this.thread = Thread.currentThread();
+         this.biomeManager = new BiomeManager(this, biomeZoomSeed);
+         this.isDebug = isDebug;
+-        this.neighborUpdater = new CollectingNeighborUpdater(this, maxChainedNeighborUpdates);
++        this.neighborUpdater = new PerThreadNeighborUpdater(() -> new CollectingNeighborUpdater(this, j)); // ShreddedPaper - thread-safe
+         this.registryAccess = registryAccess;
+         this.damageSources = new DamageSources(registryAccess);
+ 
