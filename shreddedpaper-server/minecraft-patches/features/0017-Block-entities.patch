@@ -1,0 +1,244 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 13:31:20 -0600
+Subject: [PATCH] Block-entities
+
+
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+index d2a7a4b5f1d219526ce289e4c1cec64320584860..cc248b69627dd6cd1fa3ca53d82e7dd4df94a28f 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+@@ -5,9 +5,11 @@ import ca.spottedleaf.concurrentutil.executor.standard.PrioritisedThreadedTaskQu
+ import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
++import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.Entity;
++import net.minecraft.world.level.block.entity.TickingBlockEntity;
+ import net.minecraft.world.level.chunk.LevelChunk;
+ 
+ import java.util.ArrayList;
+@@ -24,6 +26,8 @@ public class LevelChunkRegion {
+     private final PrioritisedThreadedTaskQueue internalTasks = new PrioritisedThreadedTaskQueue(); // Read-only tasks
+     private final ObjectOpenHashSet<ServerPlayer> players = new ObjectOpenHashSet<>();
+     public final LongLinkedOpenHashSet unloadQueue = new LongLinkedOpenHashSet();
++    public final List<TickingBlockEntity> tickingBlockEntities = new ReferenceArrayList<>();
++    public final List<TickingBlockEntity> pendingBlockEntityTickers = new ReferenceArrayList<>();
+ 
+     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
+         this.level = level;
+@@ -131,6 +135,8 @@ public class LevelChunkRegion {
+                 && internalTasks.getTotalTasksExecuted() >= internalTasks.getTotalTasksScheduled()
+                 && players.isEmpty()
+                 && unloadQueue.isEmpty()
++                && tickingBlockEntities.isEmpty()
++                && pendingBlockEntityTickers.isEmpty()
+                 ;
+     }
+ }
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+index c11db9c38e8ca30e57533e13a5de4685dd4e1322..b114dd49eea93bff9a179ff0dd3808f1b6762471 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -71,6 +71,8 @@ public class ShreddedPaperChunkTicker {
+ 
+             region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
+ 
++            level.tickBlockEntities(region.tickingBlockEntities, region.pendingBlockEntityTickers);
++
+             region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
+ 
+             while (region.getInternalTaskQueue().executeTask());
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index b88364e9a0d652d881ee389a7fa7f2039b42499b..0f3d77efaf20807f563378a525eda4388d5f728b 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -845,8 +845,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                 //    }
+                 //);
+             // ShreddedPaper start - handled ourselves
+-            profilerFiller.pop();
+-            this.tickBlockEntities();
++            // profilerFiller.pop();
++            // this.tickBlockEntities(); // ShreddedPaper - handled locally in the region
+         }
+ 
+         profilerFiller.push("entityManagement");
+@@ -2405,7 +2405,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             }
+ 
+             bufferedWriter.write(String.format(Locale.ROOT, "entities: %s\n", this.moonrise$getEntityLookup().getDebugInfo()));  // Paper - rewrite chunk system
+-            bufferedWriter.write(String.format(Locale.ROOT, "block_entity_tickers: %d\n", this.blockEntityTickers.size()));
++            // bufferedwriter.write(String.format(Locale.ROOT, "block_entity_tickers: %d\n", this.blockEntityTickers.size())); // ShreddedPaper - removed blockEntityTickers
+             bufferedWriter.write(String.format(Locale.ROOT, "block_ticks: %d\n", this.getBlockTicks().count()));
+             bufferedWriter.write(String.format(Locale.ROOT, "fluid_ticks: %d\n", this.getFluidTicks().count()));
+             bufferedWriter.write("distance_manager: " + chunkMap.getDistanceManager().getDebugStatus() + "\n");
+@@ -2475,10 +2475,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     private void dumpBlockEntityTickers(Writer output) throws IOException {
+         CsvOutput csvOutput = CsvOutput.builder().addColumn("x").addColumn("y").addColumn("z").addColumn("type").build(output);
+ 
+-        for (TickingBlockEntity tickingBlockEntity : this.blockEntityTickers) {
+-            BlockPos pos = tickingBlockEntity.getPos();
+-            csvOutput.writeRow(pos.getX(), pos.getY(), pos.getZ(), tickingBlockEntity.getType());
+-        }
++        // ShreddedPaper start - removed blockEntityTickers
++        // for (TickingBlockEntity tickingBlockEntity : this.blockEntityTickers) {
++        //    BlockPos pos = tickingBlockEntity.getPos();
++        //    csvOutput.writeRow(pos.getX(), pos.getY(), pos.getZ(), tickingBlockEntity.getType());
++        // }
++        // ShreddedPaper end - removed blockEntityTickers
+     }
+ 
+     @VisibleForTesting
+@@ -2527,11 +2529,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             this.players.size(),
+             this.moonrise$getEntityLookup().getDebugInfo(), // Paper - rewrite chunk system
+             getTypeCount(this.moonrise$getEntityLookup().getAll(), entity -> BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()), // Paper - rewrite chunk system
+-            this.blockEntityTickers.size(),
+-            getTypeCount(this.blockEntityTickers, TickingBlockEntity::getType),
+-            this.getBlockTicks().count(),
+-            this.getFluidTicks().count(),
+-            this.gatherChunkSourceStats()
++                0 /*this.blockEntityTickers.size()*/,
++                "" /*ServerLevel.getTypeCount(this.blockEntityTickers, TickingBlockEntity::getType)*/,  // ShreddedPaper - removed blockEntityTickers
++                this.getBlockTicks().count(),
++                this.getFluidTicks().count(),
++                this.gatherChunkSourceStats());
+         );
+     }
+ 
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c2108639f 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -7,6 +7,7 @@ import java.util.Collection;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.UUID;
++import java.util.Set;
+ import java.util.function.Consumer;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+@@ -93,6 +94,8 @@ import org.bukkit.craftbukkit.block.CraftBlockState;
+ import org.bukkit.craftbukkit.block.data.CraftBlockData;
+ import org.bukkit.entity.SpawnCategory;
+ import io.multipaper.shreddedpaper.threading.PerThreadNeighborUpdater;
++import io.multipaper.shreddedpaper.region.LevelChunkRegion;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ // CraftBukkit end
+ 
+ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCloseable, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel, ca.spottedleaf.moonrise.patches.chunk_system.world.ChunkSystemEntityGetter { // Paper - rewrite chunk system // Paper - optimise collisions
+@@ -107,9 +110,9 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+     public static final int TICKS_PER_DAY = 24000;
+     public static final int MAX_ENTITY_SPAWN_Y = 20000000;
+     public static final int MIN_ENTITY_SPAWN_Y = -20000000;
+-    public final List<TickingBlockEntity> blockEntityTickers = Lists.newArrayList();
++    // public final List<TickingBlockEntity> blockEntityTickers = Lists.newArrayList(); // Paper - public // ShreddedPaper - handled locally in the region
+     protected final NeighborUpdater neighborUpdater;
+-    private final List<TickingBlockEntity> pendingBlockEntityTickers = Lists.newArrayList();
++    // private final List<TickingBlockEntity> pendingBlockEntityTickers = Lists.newArrayList(); // ShreddedPaper - handled locally in the region
+     private boolean tickingBlockEntities;
+     public final Thread thread;
+     private final boolean isDebug;
+@@ -163,7 +166,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+ 
+     public final org.purpurmc.purpur.PurpurWorldConfig purpurConfig; // Purpur - Purpur config files
+     public static @Nullable BlockPos lastPhysicsProblem; // Spigot
+-    private int tileTickPosition;
++    // private int tileTickPosition; // ShreddedPaper - removed tileTickPosition
+     public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions
+     public java.util.ArrayDeque<net.minecraft.world.level.block.RedstoneTorchBlock.Toggle> redstoneUpdateInfos; // Paper - Faster redstone torch rapid clock removal; Move from Map in BlockRedstoneTorch to here
+ 
+@@ -1486,41 +1489,52 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+     }
+ 
+     public void addBlockEntityTicker(TickingBlockEntity ticker) {
+-        (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker);
++        // ShreddedPaper start
++        LevelChunkRegion region = ((ServerLevel) this).chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(ticker.getPos())));
++        synchronized (region.pendingBlockEntityTickers) {
++            region.pendingBlockEntityTickers.add(ticker);
++        }
++        // ShreddedPaper end
++        // (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker); // ShreddedPaper
+     }
+ 
+-    protected void tickBlockEntities() {
++    public void tickBlockEntities(List<TickingBlockEntity> blockEntityTickers, List<TickingBlockEntity> pendingBlockEntityTickers) { // ShreddedPaper
+         ProfilerFiller profilerFiller = Profiler.get();
+         profilerFiller.push("blockEntities");
+-        this.tickingBlockEntities = true;
+-        if (!this.pendingBlockEntityTickers.isEmpty()) {
+-            this.blockEntityTickers.addAll(this.pendingBlockEntityTickers);
+-            this.pendingBlockEntityTickers.clear();
+-        }
++        tickingBlockEntities = true;
++        if (!pendingBlockEntityTickers.isEmpty()) { // ShreddedPaper
++            synchronized (pendingBlockEntityTickers) { // ShreddedPaper
++                blockEntityTickers.addAll(pendingBlockEntityTickers); // ShreddedPaper
++                pendingBlockEntityTickers.clear(); // ShreddedPaper
++            } // ShreddedPaper
++
+ 
+         // Spigot start
+         boolean runsNormally = this.tickRateManager().runsNormally();
+ 
+-        int tickedEntities = 0; // Paper - rewrite chunk system
+-        var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
+-        toRemove.add(null); // Paper - Fix MC-117075
+-        for (this.tileTickPosition = 0; this.tileTickPosition < this.blockEntityTickers.size(); this.tileTickPosition++) { // Paper - Disable tick limiters
+-            TickingBlockEntity tickingBlockEntity = this.blockEntityTickers.get(this.tileTickPosition);
+-            // Spigot end
+-            if (tickingBlockEntity.isRemoved()) {
+-                toRemove.add(tickingBlockEntity); // Paper - Fix MC-117075; use removeAll
+-            } else if (runsNormally && this.shouldTickBlocksAt(tickingBlockEntity.getPos())) {
+-                tickingBlockEntity.tick();
+-                // Paper start - rewrite chunk system
+-                if ((++tickedEntities & 7) == 0) {
+-                    ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel)(Level)(Object)this).moonrise$midTickTasks();
++            int tilesThisCycle = 0;
++            var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
++            toRemove.add(null); // Paper - Fix MC-117075
++            // ShreddedPaper start - use local variable for tile tick position
++            for (int tileTickPosition = 0; tileTickPosition < this.blockEntityTickers.size(); tileTickPosition++) { // Paper - Disable tick limiters
++                TickingBlockEntity tickingblockentity = this.blockEntityTickers.get(tileTickPosition);
++                // ShreddedPaper end
++                // Spigot end
++
++                if (tickingblockentity.isRemoved()) {
++                    toRemove.add(tickingblockentity); // Paper - Fix MC-117075; use removeAll
++                } else if (this.shouldTickBlocksAt(tickingblockentity.getPos())) {
++                    tickingblockentity.tick();
++                    // Paper start - execute chunk tasks during tick
++                    if ((++tilesThisCycle & 7) == 0) {
++                        net.minecraft.server.MinecraftServer.getServer().executeMidTickTasks(); // Paper - execute chunk tasks during tick
++                    }
++                    // Paper end - execute chunk tasks during tick
+                 }
+-                // Paper end - rewrite chunk system
+             }
+-        }
+-        this.blockEntityTickers.removeAll(toRemove); // Paper - Fix MC-117075
++            blockEntityTickers.removeAll(toRemove); // Paper - Fix MC-117075 // ShreddedPaper
+ 
+-        this.tickingBlockEntities = false;
++            tickingBlockEntities = false;
+         profilerFiller.pop();
+         this.spigotConfig.currentPrimedTnt = 0; // Spigot
+     }
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index 75578e6ed7233a03d9b6cd3c6d3997f1c6148392..144d79351b08ef3f6b81615f4865ece619e10e70 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -77,7 +77,7 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+             return "<null>";
+         }
+     };
+-    private final Map<BlockPos, LevelChunk.RebindableTickingBlockEntityWrapper> tickersInLevel = Maps.newHashMap();
++    private final Map<BlockPos, LevelChunk.RebindableTickingBlockEntityWrapper> tickersInLevel = Maps.newConcurrentMap(); // ShreddedPaper - use concurrent map
+     public boolean loaded;
+     public final ServerLevel level; // CraftBukkit - type
+     @Nullable
