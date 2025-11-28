@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 13:00:47 -0600
+Subject: [PATCH] EntityLookup-accessibleEntities
+
+
+diff --git a/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java b/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
+index e3ddc201b3285d5ffdad2e912cc4f75b7a64cd11..a36eccbdbfebd7aaaf9c58ea865cc7915c8a38e2 100644
+--- a/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
++++ b/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
+@@ -103,6 +103,7 @@ public final class EntityCommand implements PaperSubcommand {
+             Map<ResourceLocation, Integer> nonEntityTicking = Maps.newHashMap();
+             ServerChunkCache chunkProviderServer = world.getChunkSource();
+             FeatureHooks.getAllEntities(world).forEach(e -> {
++                if (e == null) return; // ShreddedPaper - Concurrent modification
+                 ResourceLocation key = EntityType.getKey(e.getType());
+ 
+                 MutablePair<Integer, Map<ChunkPos, Integer>> info = list.computeIfAbsent(key, k -> MutablePair.of(0, Maps.newHashMap()));

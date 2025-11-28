@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 13:02:32 -0600
+Subject: [PATCH] World-gen
+
+
+diff --git a/net/minecraft/server/level/PlayerRespawnLogic.java b/net/minecraft/server/level/PlayerRespawnLogic.java
+index 8ad30d708f0c54f6db91662c12e72d72696f15e1..693f9aa6fb651c6f34cabb60fa1e12f5c7f45d72 100644
+--- a/net/minecraft/server/level/PlayerRespawnLogic.java
++++ b/net/minecraft/server/level/PlayerRespawnLogic.java
+@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.chunk.LevelChunk;
+ import net.minecraft.world.level.levelgen.Heightmap;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ 
+ public class PlayerRespawnLogic {
+     @Nullable
+@@ -20,6 +21,7 @@ public class PlayerRespawnLogic {
+         if (i < level.getMinY()) {
+             return null;
+         } else {
++            return world.chunkScheduler.getRegionLocker().lockRegion(RegionPos.forChunk(chunkPos), () -> { // ShreddedPaper - lock region
+             int height = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+             if (height <= i && height > chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
+                 return null;
+@@ -39,6 +41,7 @@ public class PlayerRespawnLogic {
+                 }
+ 
+                 return null;
++                }); // ShreddedPaper
+             }
+         }
+     }

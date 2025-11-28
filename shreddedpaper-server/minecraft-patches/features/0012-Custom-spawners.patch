@@ -1,0 +1,397 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 12:07:17 -0600
+Subject: [PATCH] Custom-spawners
+
+
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index e5464824046c7390cc5b8e65dc848a11492e913f..b88364e9a0d652d881ee389a7fa7f2039b42499b 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -902,7 +902,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+     public void tickCustomSpawners(boolean spawnEnemies, boolean spawnFriendlies) {
+         for (CustomSpawner customSpawner : this.customSpawners) {
+-            customSpawner.tick(this, spawnEnemies, spawnFriendlies);
++            customSpawner.tick(this, spawnMonsters, spawnAnimals); // ShreddedPaper - ensure return value remains unused
+         }
+     }
+ 
+diff --git a/net/minecraft/world/entity/ai/village/VillageSiege.java b/net/minecraft/world/entity/ai/village/VillageSiege.java
+index 69825fc6941047723919a6079ce4a0b9d1a06006..9c38559b28d39ba6ba12441ef57b70275974eea6 100644
+--- a/net/minecraft/world/entity/ai/village/VillageSiege.java
++++ b/net/minecraft/world/entity/ai/village/VillageSiege.java
+@@ -15,6 +15,7 @@ import net.minecraft.world.level.CustomSpawner;
+ import net.minecraft.world.level.levelgen.Heightmap;
+ import net.minecraft.world.phys.Vec3;
+ import org.slf4j.Logger;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+ public class VillageSiege implements CustomSpawner {
+     private static final Logger LOGGER = LogUtils.getLogger();
+@@ -89,18 +90,19 @@ public class VillageSiege implements CustomSpawner {
+     private void trySpawn(ServerLevel level) {
+         Vec3 vec3 = this.findRandomSpawnPos(level, new BlockPos(this.spawnX, this.spawnY, this.spawnZ));
+         if (vec3 != null) {
+-            Zombie zombie;
+-            try {
+-                zombie = new Zombie(level);
+-                zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(zombie.blockPosition()), EntitySpawnReason.EVENT, null);
+-            } catch (Exception var5) {
+-                LOGGER.warn("Failed to create zombie for village siege at {}", vec3, var5);
+-                com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(var5); // Paper - ServerExceptionEvent
+-                return;
+-            }
++            ShreddedPaper.runSync(world, new BlockPos((int) vec3d.x, (int) vec3d.y, (int) vec3d.z), () -> { // ShreddedPaper - run on block's thread
++                Zombie zombie;
++                try {
++                    zombie = new Zombie(level);
++                    entityzombie.finalizeSpawn(world, world.getCurrentDifficultyAt(new BlockPos((int) vec3d.x, (int) vec3d.y, (int) vec3d.z)), MobSpawnType.EVENT, (SpawnGroupData) null); // ShreddedPaper - use zombie's planned position, not 0,0            } catch (Exception var5) {
++                    LOGGER.warn("Failed to create zombie for village siege at {}", vec3, var5);
++                    com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(var5); // Paper - ServerExceptionEvent
++                    return;
++                }
+ 
+-            zombie.snapTo(vec3.x, vec3.y, vec3.z, level.random.nextFloat() * 360.0F, 0.0F);
+-            level.addFreshEntityWithPassengers(zombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
++                zombie.snapTo(vec3.x, vec3.y, vec3.z, level.random.nextFloat() * 360.0F, 0.0F);
++                level.addFreshEntityWithPassengers(zombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
++            }); // ShreddedPaper - run on block's thread
+         }
+     }
+ 
+diff --git a/net/minecraft/world/entity/npc/CatSpawner.java b/net/minecraft/world/entity/npc/CatSpawner.java
+index d6ae13c19481ce33bfa0b6c9db63283009339d8c..e084986fde83c3c5a460509961a8a71b3fa89d45 100644
+--- a/net/minecraft/world/entity/npc/CatSpawner.java
++++ b/net/minecraft/world/entity/npc/CatSpawner.java
+@@ -28,20 +28,23 @@ public class CatSpawner implements CustomSpawner {
+                 this.nextTick = level.purpurConfig.catSpawnDelay; // Purpur - Cat spawning options
+                 Player randomPlayer = level.getRandomPlayer();
+                 if (randomPlayer != null) {
+-                    RandomSource randomSource = level.random;
+-                    int i = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
+-                    int i1 = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
+-                    BlockPos blockPos = randomPlayer.blockPosition().offset(i, 0, i1);
+-                    int i2 = 10;
+-                    if (level.hasChunksAt(blockPos.getX() - 10, blockPos.getZ() - 10, blockPos.getX() + 10, blockPos.getZ() + 10)) {
+-                        if (SpawnPlacements.isSpawnPositionOk(EntityType.CAT, level, blockPos)) {
+-                            if (level.isCloseToVillage(blockPos, 2)) {
+-                                this.spawnInVillage(level, blockPos);
+-                            } else if (level.structureManager().getStructureWithPieceAt(blockPos, StructureTags.CATS_SPAWN_IN).isValid()) {
+-                                this.spawnInHut(level, blockPos);
++                    player.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++                        RandomSource randomSource = level.random;
++                        int i = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
++                        int i1 = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
++                        BlockPos blockPos = randomPlayer.blockPosition().offset(i, 0, i1);
++                        int i2 = 10;
++                        if (level.hasChunksAt(blockPos.getX() - 10, blockPos.getZ() - 10, blockPos.getX() + 10, blockPos.getZ() + 10)) {
++                            if (SpawnPlacements.isSpawnPositionOk(EntityType.CAT, level, blockPos)) {
++                                if (level.isCloseToVillage(blockPos, 2)) {
++                                    this.spawnInVillage(level, blockPos);
++                                } else if (level.structureManager().getStructureWithPieceAt(blockPos, StructureTags.CATS_SPAWN_IN).isValid()) {
++                                    this.spawnInHut(level, blockPos);
++                                }
+                             }
+                         }
+-                    }
++                    }), e -> {}, 1); // ShreddedPaper - run on entity's thread
++                    return 1; // ShreddedPaper - return value is unused, let's just say 1
+                 }
+             }
+         }
+diff --git a/net/minecraft/world/entity/npc/WanderingTraderSpawner.java b/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
+index 352f55882ea77e8d89942e6c58ef3b4b78eec887..62e597faecc343dc86ac6cc8a2cd22caa38753b9 100644
+--- a/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
++++ b/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
+@@ -89,32 +89,35 @@ public class WanderingTraderSpawner implements CustomSpawner {
+         } else if (this.random.nextInt(10) != 0) {
+             return false;
+         } else {
+-            BlockPos blockPos = randomPlayer.blockPosition();
+-            int i = 48;
+-            PoiManager poiManager = serverLevel.getPoiManager();
+-            Optional<BlockPos> optional = poiManager.find(holder -> holder.is(PoiTypes.MEETING), blockPos3 -> true, blockPos, 48, PoiManager.Occupancy.ANY);
+-            BlockPos blockPos1 = optional.orElse(blockPos);
+-            BlockPos blockPos2 = this.findSpawnPositionNear(serverLevel, blockPos1, 48);
+-            if (blockPos2 != null && this.hasEnoughSpace(serverLevel, blockPos2)) {
+-                if (serverLevel.getBiome(blockPos2).is(BiomeTags.WITHOUT_WANDERING_TRADER_SPAWNS)) {
+-                    return false;
+-                }
+-
+-                WanderingTrader wanderingTrader = EntityType.WANDERING_TRADER.spawn(serverLevel, trader -> trader.setDespawnDelay(48000), blockPos2, EntitySpawnReason.EVENT, false, false, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit // Paper - set despawnTimer before spawn events called
+-                if (wanderingTrader != null) {
+-                    for (int i1 = 0; i1 < 2; i1++) {
+-                        this.tryToSpawnLlamaFor(serverLevel, wanderingTrader, 4);
++            entityplayer.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++                BlockPos blockPos = randomPlayer.blockPosition();
++                int i = 48;
++                PoiManager poiManager = serverLevel.getPoiManager();
++                Optional<BlockPos> optional = poiManager.find(holder -> holder.is(PoiTypes.MEETING), blockPos3 -> true, blockPos, 48, PoiManager.Occupancy.ANY);
++                BlockPos blockPos1 = optional.orElse(blockPos);
++                BlockPos blockPos2 = this.findSpawnPositionNear(serverLevel, blockPos1, 48);
++                if (blockPos2 != null && this.hasEnoughSpace(serverLevel, blockPos2)) {
++                    if (serverLevel.getBiome(blockPos2).is(BiomeTags.WITHOUT_WANDERING_TRADER_SPAWNS)) {
++                        return false;
+                     }
+ 
+-                    this.serverLevelData.setWanderingTraderId(wanderingTrader.getUUID());
+-                    // wanderingTrader.setDespawnDelay(48000); // Paper - moved above, modifiable by plugins on CreatureSpawnEvent
+-                    wanderingTrader.setWanderTarget(blockPos1);
+-                    wanderingTrader.setHomeTo(blockPos1, 16);
+-                    return true;
++                    WanderingTrader wanderingTrader = EntityType.WANDERING_TRADER.spawn(serverLevel, trader -> trader.setDespawnDelay(48000), blockPos2, EntitySpawnReason.EVENT, false, false, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit // Paper - set despawnTimer before spawn events called
++                    if (wanderingTrader != null) {
++                        for (int i1 = 0; i1 < 2; i1++) {
++                            this.tryToSpawnLlamaFor(serverLevel, wanderingTrader, 4);
++                        }
++
++                        this.serverLevelData.setWanderingTraderId(wanderingTrader.getUUID());
++                        // wanderingTrader.setDespawnDelay(48000); // Paper - moved above, modifiable by plugins on CreatureSpawnEvent
++                        wanderingTrader.setWanderTarget(blockPos1);
++                        wanderingTrader.setHomeTo(blockPos1, 16);
++                        return true;
++                    }
+                 }
+-            }
+ 
+-            return false;
++                return false;
++            }), e -> {}, 1); // ShreddedPaper - run on entity's thread
++            return true; // ShreddedPaper - assume success?
+         }
+     }
+ 
+diff --git a/net/minecraft/world/level/CustomSpawner.java b/net/minecraft/world/level/CustomSpawner.java
+index fd3633716f574a0580744cfa5809290ecf7f6451..7eb6f80df002c9b636aaa6597961524edfd249b2 100644
+--- a/net/minecraft/world/level/CustomSpawner.java
++++ b/net/minecraft/world/level/CustomSpawner.java
+@@ -1,7 +1,14 @@
+ package net.minecraft.world.level;
+ 
+ import net.minecraft.server.level.ServerLevel;
++import java.util.function.Supplier
+ 
+ public interface CustomSpawner {
+     void tick(ServerLevel level, boolean spawnEnemies, boolean spawnFriendlies);
+-}
++    
++    // ShreddedPaper start
++    public static void voidReturnValue(Supplier<?> supplier) {
++        supplier.get();
++    }
++    // ShreddedPaper end
++}
+\ No newline at end of file
+diff --git a/net/minecraft/world/level/levelgen/PatrolSpawner.java b/net/minecraft/world/level/levelgen/PatrolSpawner.java
+index c2e37714bae008087b0b5086e51d675beb672ca4..ee932d203f20d7ce75137eac511fb6d234866dea 100644
+--- a/net/minecraft/world/level/levelgen/PatrolSpawner.java
++++ b/net/minecraft/world/level/levelgen/PatrolSpawner.java
+@@ -45,49 +45,51 @@ public class PatrolSpawner implements CustomSpawner {
+                     patrolSpawnDelay = this.nextTick;
+                 }
+                 if (patrolSpawnDelay <= 0) {
+-                    long days;
+-                    if (level.paperConfig().entities.behavior.pillagerPatrols.start.perPlayer) {
+-                        days = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) / 24000L; // PLAY_TIME is counting in ticks
+-                    } else {
+-                        days = level.getDayTime() / 24000L;
+-                    }
+-                    if (level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.perPlayer) {
+-                        player.patrolSpawnDelay += level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.ticks + randomSource.nextInt(1200);
+-                    } else {
+-                        this.nextTick += level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.ticks + randomSource.nextInt(1200);
+-                    }
++                    entityhuman.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++                        long days;
++                        if (level.paperConfig().entities.behavior.pillagerPatrols.start.perPlayer) {
++                            days = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) / 24000L; // PLAY_TIME is counting in ticks
++                        } else {
++                            days = level.getDayTime() / 24000L;
++                        }
++                        if (level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.perPlayer) {
++                            player.patrolSpawnDelay += level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.ticks + randomSource.nextInt(1200);
++                        } else {
++                            this.nextTick += level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.ticks + randomSource.nextInt(1200);
++                        }
+ 
+-                    if (days >= level.paperConfig().entities.behavior.pillagerPatrols.start.day && level.isBrightOutside()) {
+-                        if (randomSource.nextDouble() < level.paperConfig().entities.behavior.pillagerPatrols.spawnChance) {
+-                            // Paper end - Pillager patrol spawn settings and per player options
+-                            if (size >= 1) {
+-                                if (!player.isSpectator()) {
+-                                    if (!level.isCloseToVillage(player.blockPosition(), 2)) {
+-                                        int i = (24 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
+-                                        int i1 = (24 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
+-                                        BlockPos.MutableBlockPos mutableBlockPos = player.blockPosition().mutable().move(i, 0, i1);
+-                                        int i2 = 10;
+-                                        if (level.hasChunksAt(
+-                                            mutableBlockPos.getX() - 10, mutableBlockPos.getZ() - 10, mutableBlockPos.getX() + 10, mutableBlockPos.getZ() + 10
+-                                        )) {
+-                                            Holder<Biome> biome = level.getBiome(mutableBlockPos);
+-                                            if (!biome.is(BiomeTags.WITHOUT_PATROL_SPAWNS)) {
+-                                                int i3 = (int)Math.ceil(level.getCurrentDifficultyAt(mutableBlockPos).getEffectiveDifficulty()) + 1;
++                        if (days >= level.paperConfig().entities.behavior.pillagerPatrols.start.day && level.isBrightOutside()) {
++                            if (randomSource.nextDouble() < level.paperConfig().entities.behavior.pillagerPatrols.spawnChance) {
++                                // Paper end - Pillager patrol spawn settings and per player options
++                                if (size >= 1) {
++                                    if (!player.isSpectator()) {
++                                        if (!level.isCloseToVillage(player.blockPosition(), 2)) {
++                                            int i = (24 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
++                                            int i1 = (24 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
++                                            BlockPos.MutableBlockPos mutableBlockPos = player.blockPosition().mutable().move(i, 0, i1);
++                                            int i2 = 10;
++                                            if (level.hasChunksAt(
++                                                mutableBlockPos.getX() - 10, mutableBlockPos.getZ() - 10, mutableBlockPos.getX() + 10, mutableBlockPos.getZ() + 10
++                                            )) {
++                                                Holder<Biome> biome = level.getBiome(mutableBlockPos);
++                                                if (!biome.is(BiomeTags.WITHOUT_PATROL_SPAWNS)) {
++                                                    int i3 = (int)Math.ceil(level.getCurrentDifficultyAt(mutableBlockPos).getEffectiveDifficulty()) + 1;
+ 
+-                                                for (int i4 = 0; i4 < i3; i4++) {
+-                                                    mutableBlockPos.setY(
+-                                                        level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, mutableBlockPos).getY()
+-                                                    );
+-                                                    if (i4 == 0) {
+-                                                        if (!this.spawnPatrolMember(level, mutableBlockPos, randomSource, true)) {
+-                                                            break;
++                                                    for (int i4 = 0; i4 < i3; i4++) {
++                                                        mutableBlockPos.setY(
++                                                            level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, mutableBlockPos).getY()
++                                                        );
++                                                        if (i4 == 0) {
++                                                            if (!this.spawnPatrolMember(level, mutableBlockPos, randomSource, true)) {
++                                                                break;
++                                                            }
++                                                        } else {
++                                                            this.spawnPatrolMember(level, mutableBlockPos, randomSource, false);
+                                                         }
+-                                                    } else {
+-                                                        this.spawnPatrolMember(level, mutableBlockPos, randomSource, false);
+-                                                    }
+ 
+-                                                    mutableBlockPos.setX(mutableBlockPos.getX() + randomSource.nextInt(5) - randomSource.nextInt(5));
+-                                                    mutableBlockPos.setZ(mutableBlockPos.getZ() + randomSource.nextInt(5) - randomSource.nextInt(5));
++                                                        mutableBlockPos.setX(mutableBlockPos.getX() + randomSource.nextInt(5) - randomSource.nextInt(5));
++                                                        mutableBlockPos.setZ(mutableBlockPos.getZ() + randomSource.nextInt(5) - randomSource.nextInt(5));
++                                                    }
+                                                 }
+                                             }
+                                         }
+@@ -96,7 +98,8 @@ public class PatrolSpawner implements CustomSpawner {
+                             }
+                         }
+                     }
+-                }
++                }), e -> {}, 1); // ShreddedPaper - run on entity's thread
++                return 1; // ShreddedPaper - return value is unused, let's just say 1
+             }
+         }
+     }
+diff --git a/net/minecraft/world/level/levelgen/PhantomSpawner.java b/net/minecraft/world/level/levelgen/PhantomSpawner.java
+index d99bda335e7d3b49919fd6732b0052a9da70df70..b8137ef4086e11a4d9e0bae1a4dcd185169d0c10 100644
+--- a/net/minecraft/world/level/levelgen/PhantomSpawner.java
++++ b/net/minecraft/world/level/levelgen/PhantomSpawner.java
+@@ -17,6 +17,7 @@ import net.minecraft.world.level.GameRules;
+ import net.minecraft.world.level.NaturalSpawner;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.material.FluidState;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+ public class PhantomSpawner implements CustomSpawner {
+     private int nextTick;
+@@ -40,53 +41,57 @@ public class PhantomSpawner implements CustomSpawner {
+                     // Paper end - Ability to control player's insomnia and phantoms
+                     if (level.getSkyDarken() >= level.purpurConfig.phantomSpawnMinSkyDarkness || !level.dimensionType().hasSkyLight()) { // Purpur - Add phantom spawning options
+                         for (ServerPlayer serverPlayer : level.players()) {
+-                            if (!serverPlayer.isSpectator() && (!level.paperConfig().entities.behavior.phantomsDoNotSpawnOnCreativePlayers || !serverPlayer.isCreative())) { // Paper - Add phantom creative and insomniac controls
+-                                BlockPos blockPos = serverPlayer.blockPosition();
+-                                if (!level.dimensionType().hasSkyLight() || (!level.purpurConfig.phantomSpawnOnlyAboveSeaLevel || blockPos.getY() >= level.getSeaLevel()) && (!level.purpurConfig.phantomSpawnOnlyWithVisibleSky || level.canSeeSky(blockPos))) { // Purpur - Add phantom spawning options
+-                                    DifficultyInstance currentDifficultyAt = level.getCurrentDifficultyAt(blockPos);
+-                                    if (currentDifficultyAt.isHarderThan(randomSource.nextFloat() * (float) level.purpurConfig.phantomSpawnLocalDifficultyChance)) { // Purpur - Add phantom spawning options
+-                                        ServerStatsCounter stats = serverPlayer.getStats();
+-                                        int i = Mth.clamp(stats.getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), 1, Integer.MAX_VALUE);
+-                                        int i1 = 24000;
+-                                        if (randomSource.nextInt(i) >= 72000) {
+-                                            BlockPos blockPos1 = blockPos.above(20 + randomSource.nextInt(15))
+-                                                .east(-10 + randomSource.nextInt(21))
+-                                                .south(-10 + randomSource.nextInt(21));
+-                                            BlockState blockState = level.getBlockState(blockPos1);
+-                                            FluidState fluidState = level.getFluidState(blockPos1);
+-                                            if (NaturalSpawner.isValidEmptySpawnBlock(level, blockPos1, blockState, fluidState, EntityType.PHANTOM)) {
+-                                                SpawnGroupData spawnGroupData = null;
+-                                                int i2 = level.purpurConfig.phantomSpawnMinPerAttempt + randomSource.nextInt((level.purpurConfig.phantomSpawnMaxPerAttempt < 0 ? currentDifficultyAt.getDifficulty().getId() : level.purpurConfig.phantomSpawnMaxPerAttempt - level.purpurConfig.phantomSpawnMinPerAttempt) + 1); // Purpur - Add phantom spawning options
++                            // ShreddedPaper start - run on player's region thread
++                            serverPlayer.getBukkitEntity().taskScheduler.schedule(e -> {
++                                if (!serverPlayer.isSpectator() && (!level.paperConfig().entities.behavior.phantomsDoNotSpawnOnCreativePlayers || !serverPlayer.isCreative())) { // Paper - Add phantom creative and insomniac controls
++                                    BlockPos blockPos = serverPlayer.blockPosition();
++                                    if (!level.dimensionType().hasSkyLight() || (!level.purpurConfig.phantomSpawnOnlyAboveSeaLevel || blockPos.getY() >= level.getSeaLevel()) && (!level.purpurConfig.phantomSpawnOnlyWithVisibleSky || level.canSeeSky(blockPos))) { // Purpur - Add phantom spawning options
++                                        DifficultyInstance currentDifficultyAt = level.getCurrentDifficultyAt(blockPos);
++                                        if (currentDifficultyAt.isHarderThan(randomSource.nextFloat() * (float) level.purpurConfig.phantomSpawnLocalDifficultyChance)) { // Purpur - Add phantom spawning options
++                                            ServerStatsCounter stats = serverPlayer.getStats();
++                                            int i = Mth.clamp(stats.getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), 1, Integer.MAX_VALUE);
++                                            int i1 = 24000;
++                                            if (randomSource.nextInt(i) >= 72000) {
++                                                BlockPos blockPos1 = blockPos.above(20 + randomSource.nextInt(15))
++                                                        .east(-10 + randomSource.nextInt(21))
++                                                        .south(-10 + randomSource.nextInt(21));
++                                                BlockState blockState = level.getBlockState(blockPos1);
++                                                FluidState fluidState = level.getFluidState(blockPos1);
++                                                if (NaturalSpawner.isValidEmptySpawnBlock(level, blockPos1, blockState, fluidState, EntityType.PHANTOM)) {
++                                                    SpawnGroupData spawnGroupData = null;
++                                                    int i2 = level.purpurConfig.phantomSpawnMinPerAttempt + randomSource.nextInt((level.purpurConfig.phantomSpawnMaxPerAttempt < 0 ? currentDifficultyAt.getDifficulty().getId() : level.purpurConfig.phantomSpawnMaxPerAttempt - level.purpurConfig.phantomSpawnMinPerAttempt) + 1); // Purpur - Add phantom spawning options
+ 
+-                                                for (int i3 = 0; i3 < i2; i3++) {
+-                                                    // Paper start - PhantomPreSpawnEvent
+-                                                    com.destroystokyo.paper.event.entity.PhantomPreSpawnEvent event = new com.destroystokyo.paper.event.entity.PhantomPreSpawnEvent(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(blockPos1, level), serverPlayer.getBukkitEntity(), org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
+-                                                    if (!event.callEvent()) {
+-                                                        if (event.shouldAbortSpawn()) {
+-                                                            break;
++                                                    for (int i3 = 0; i3 < i2; i3++) {
++                                                        // Paper start - PhantomPreSpawnEvent
++                                                        com.destroystokyo.paper.event.entity.PhantomPreSpawnEvent event = new com.destroystokyo.paper.event.entity.PhantomPreSpawnEvent(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(blockPos1, level), serverPlayer.getBukkitEntity(), org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
++                                                        if (!event.callEvent()) {
++                                                            if (event.shouldAbortSpawn()) {
++                                                                break;
++                                                            }
++                                                            continue;
++                                                        }
++                                                        // Paper end - PhantomPreSpawnEvent
++                                                        Phantom phantom = EntityType.PHANTOM.create(level, EntitySpawnReason.NATURAL);
++                                                        if (phantom != null) {
++                                                            phantom.spawningEntity = serverPlayer.getUUID(); // Paper - PhantomPreSpawnEvent
++                                                            phantom.snapTo(blockPos1, 0.0F, 0.0F);
++                                                            spawnGroupData = phantom.finalizeSpawn(
++                                                                    level, currentDifficultyAt, EntitySpawnReason.NATURAL, spawnGroupData
++                                                            );
++                                                            level.addFreshEntityWithPassengers(phantom, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit
+                                                         }
+-                                                        continue;
+-                                                    }
+-                                                    // Paper end - PhantomPreSpawnEvent
+-                                                    Phantom phantom = EntityType.PHANTOM.create(level, EntitySpawnReason.NATURAL);
+-                                                    if (phantom != null) {
+-                                                        phantom.spawningEntity = serverPlayer.getUUID(); // Paper - PhantomPreSpawnEvent
+-                                                        phantom.snapTo(blockPos1, 0.0F, 0.0F);
+-                                                        spawnGroupData = phantom.finalizeSpawn(
+-                                                            level, currentDifficultyAt, EntitySpawnReason.NATURAL, spawnGroupData
+-                                                        );
+-                                                        level.addFreshEntityWithPassengers(phantom, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit
+                                                     }
+                                                 }
+                                             }
+                                         }
+                                     }
+                                 }
+-                            }
++                            }, e -> {}, 1); // ShreddedPaper - run on player's region thread
++                            // ShreddedPaper end
+                         }
+                     }
+                 }
+             }
+         }
+     }
+-}
++}
+\ No newline at end of file
