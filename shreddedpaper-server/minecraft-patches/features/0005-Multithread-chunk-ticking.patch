@@ -1,0 +1,458 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 07:02:57 -0600
+Subject: [PATCH] Multithread-chunk-ticking
+
+
+diff --git a/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java b/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
+index 975a2e4ea1f84e81fa3526395b43cb8157a06243..2d8345371aaf78e7d864c4bf70a048f0daac1eef 100644
+--- a/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
++++ b/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
+@@ -98,13 +98,17 @@ public abstract class BaseChunkSystemHooks implements ca.spottedleaf.moonrise.co
+ 
+     @Override
+     public void onChunkBorder(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getLoadedChunks().add(chunk);
++        // ShreddedPaper start - unused
++        //((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getLoadedChunks().add(chunk);
++        // ShreddedPaper end - unused
+         chunk.loadCallback();
+     }
+ 
+     @Override
+     public void onChunkNotBorder(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getLoadedChunks().remove(chunk);
++        // ShreddedPaper start - unused
++        //((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getLoadedChunks().remove(chunk);
++        // ShreddedPaper end - unused
+         chunk.unloadCallback();
+     }
+ 
+@@ -116,29 +120,42 @@ public abstract class BaseChunkSystemHooks implements ca.spottedleaf.moonrise.co
+ 
+     @Override
+     public void onChunkTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().add(chunk);
++        // ShreddedPaper start - unused, replaced by TickingRegions
++        // ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().add(chunk);
++        // ShreddedPaper end - unused
+         if (!((ChunkSystemLevelChunk)chunk).moonrise$isPostProcessingDone()) {
+             chunk.postProcessGeneration((ServerLevel)chunk.getLevel());
+         }
+         ((ServerLevel)chunk.getLevel()).startTickingChunk(chunk);
+         ((ServerLevel)chunk.getLevel()).getChunkSource().chunkMap.tickingGenerated.incrementAndGet();
++        ((ServerLevel)chunk.getLevel()).getChunkSource().tickingRegions.addTickingChunk(chunk); // ShreddedPaper
+     }
+ 
+     @Override
+     public void onChunkNotTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().remove(chunk);
++        //((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().remove(chunk);
++        // ShreddedPaper start - unused, replaced by tickingRegions
++        // ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().remove(
++        // ((ChunkSystemLevelChunk)chunk).moonrise$getChunkAndHolder()
++        // );
++        // ShreddedPaper end - unused, replaced by tickingRegions
++        ((ServerLevel)chunk.getLevel()).getChunkSource().tickingRegions.removeTickingChunk(chunk); // ShreddedPaper
+     }
+ 
+     @Override
+     public void onChunkEntityTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().add(chunk);
+-        ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$markChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // ShreddedPaper start - unused, replaced by tickingRegions
++        // ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().add(chunk);
++          ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$markChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // ShreddedPaper end - unused, replaced by tickingRegions
+     }
+ 
+     @Override
+     public void onChunkNotEntityTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().remove(chunk);
+-        ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$removeChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // ShreddedPaper start - unused, replaced by tickingRegions
++        // ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().remove(chunk);
++        // ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$removeChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // ShreddedPaper end - unused, replaced by tickingRegions
+     }
+ 
+     @Override
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
+index 7964905786ed4cf2b31e7b0d74ad7a6bf9c52851..9aa3b2dedcf304d03b86de972db6015024141c55 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
+@@ -56,9 +56,11 @@ public interface ChunkSystemServerLevel extends ChunkSystemLevel {
+ 
+     public NearbyPlayers moonrise$getNearbyPlayers();
+ 
+-    public ReferenceList<LevelChunk> moonrise$getLoadedChunks();
++    // ShreddedPaper start - unused
++    // public ReferenceList<LevelChunk> moonrise$getLoadedChunks();
+ 
+-    public ReferenceList<LevelChunk> moonrise$getTickingChunks();
++    // public ReferenceList<LevelChunk> moonrise$getTickingChunks();
+ 
+-    public ReferenceList<LevelChunk> moonrise$getEntityTickingChunks();
++    // public ReferenceList<LevelChunk> moonrise$getEntityTickingChunks();
++    // ShreddedPaper end - unused
+ }
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..137f87c5eefc3416004c0018a928586119dba5b6
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+@@ -0,0 +1,55 @@
++package io.multipaper.shreddedpaper.region;
++
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.chunk.LevelChunk;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.function.Consumer;
++
++public class LevelChunkRegion {
++    private final ServerLevel level;
++    private final RegionPos regionPos;
++    private final List<LevelChunk> tickingChunks = new ArrayList<>(RegionPos.REGION_SIZE * RegionPos.REGION_SIZE);
++
++    public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
++        this.level = level;
++        this.regionPos = regionPos;
++    }
++
++    public synchronized void addTickingChunk(LevelChunk levelChunk) {
++        tickingChunks.add(levelChunk);
++    }
++
++    public synchronized void removeTickingChunk(LevelChunk levelChunk) {
++        if (!tickingChunks.remove(levelChunk)) {
++            throw new IllegalStateException("Tried to remove a chunk that wasn't in the region: " + levelChunk.getPos());
++        }
++    }
++
++    public ServerLevel getLevel() {
++        return level;
++    }
++
++    public RegionPos getRegionPos() {
++        return regionPos;
++    }
++
++    public void forEachTickingChunk(Consumer<LevelChunk> consumer) {
++        // This method has the chance of skipping a chunk if a chunk is removed via another thread during this iteration
++        for (int i = 0; i < tickingChunks.size(); i++) {
++            try {
++                LevelChunk levelChunk = tickingChunks.get(i);
++                if (levelChunk != null) {
++                    consumer.accept(levelChunk);
++                }
++            } catch (IndexOutOfBoundsException e) {
++                // Ignore - multithreaded modification
++            }
++        }
++    }
++
++    public boolean isEmpty() {
++        return tickingChunks.isEmpty();
++    }
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..52b82d0b9c12c0f2d1000106db4a874cd2978b69
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+@@ -0,0 +1,56 @@
++package io.multipaper.shreddedpaper.region;
++
++import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.chunk.LevelChunk;
++import io.multipaper.shreddedpaper.util.SimpleStampedLock;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.function.Consumer;
++
++public class LevelChunkRegionMap {
++    private final ServerLevel level;
++    private final SimpleStampedLock regionsLock = new SimpleStampedLock();
++    private final Long2ObjectOpenHashMap<LevelChunkRegion> regions = new Long2ObjectOpenHashMap<>(2048, 0.5f);
++
++    public LevelChunkRegionMap(ServerLevel level) {
++        this.level = level;
++    }
++
++    public LevelChunkRegion getOrCreate(RegionPos regionPos) {
++        LevelChunkRegion levelChunkRegion = get(regionPos);
++        if (levelChunkRegion != null) {
++            return levelChunkRegion;
++        }
++        return regionsLock.write(() -> regions.computeIfAbsent(regionPos.longKey, k -> new LevelChunkRegion(level, regionPos)));
++    }
++
++    public LevelChunkRegion get(RegionPos regionPos) {
++        return regionsLock.optimisticRead(() -> regions.get(regionPos.longKey));
++    }
++
++    public void remove(RegionPos regionPos) {
++        regionsLock.write(() -> {
++            LevelChunkRegion region = regions.remove(regionPos.longKey);
++            if (!region.isEmpty()) {
++                // Guess this region has been modified by another thread, re-add it
++                regions.put(regionPos.longKey, region);
++            }
++        });
++    }
++
++    public void addTickingChunk(LevelChunk levelChunk) {
++        getOrCreate(RegionPos.forChunk(levelChunk.getPos())).addTickingChunk(levelChunk);
++    }
++
++    public void removeTickingChunk(LevelChunk levelChunk) {
++        getOrCreate(RegionPos.forChunk(levelChunk.getPos())).removeTickingChunk(levelChunk);
++    }
++
++    public void forEach(Consumer<LevelChunkRegion> consumer) {
++        List<LevelChunkRegion> regionsCopy = new ArrayList<>(regions.size());
++        regionsLock.read(() -> regionsCopy.addAll(regions.values()));
++        regionsCopy.forEach(consumer);
++    }
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..75ebd5eb6f3b2cbab7960bd09402f99e45913502
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -0,0 +1,76 @@
++package io.multipaper.shreddedpaper.threading;
++
++import com.mojang.logging.LogUtils;
++import io.multipaper.shreddedpaper.region.RegionPos;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.GameRules;
++import net.minecraft.world.level.Level;
++import net.minecraft.world.level.NaturalSpawner;
++import net.minecraft.world.level.chunk.LevelChunk;
++import io.multipaper.shreddedpaper.region.LevelChunkRegion;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.CompletableFuture;
++
++public class ShreddedPaperChunkTicker {
++    public static void tickChunks(ServerLevel level, NaturalSpawner.SpawnState spawnercreature_d) {
++        List<CompletableFuture<Void>> futures = new ArrayList<>();
++        level.chunkSource.tickingRegions.forEach(
++                region -> futures.add(tickRegion(level, region, spawnercreature_d))
++        );
++        for (CompletableFuture<Void> future : futures) {
++            if (!future.isDone()) {
++                level.getChunkSource().mainThreadProcessor.managedBlock(future::isDone);
++            }
++        }
++    }
++
++    public static CompletableFuture<Void> tickRegion(ServerLevel level, LevelChunkRegion region, NaturalSpawner.SpawnState spawnercreature_d) {
++        return level.chunkScheduler.schedule(region.getRegionPos(), () -> _tickRegion(level, region, spawnercreature_d)).exceptionally(e -> {
++            LogUtils.getClassLogger().error("Exception ticking region {}", region.getRegionPos(), e);
++            MinecraftServer.threadCrash = new RuntimeException("Ticking thread crash while ticking region " + region.getRegionPos(), e);
++            return null;
++        });
++    }
++
++    public static boolean isCurrentlyTickingRegion(Level level, RegionPos regionPos) {
++        LevelChunkRegion region = currentlyTickingRegion.get();
++        return region != null && level.equals(region.getLevel()) && regionPos.equals(region.getRegionPos());
++    }
++
++    private static final ThreadLocal<LevelChunkRegion> currentlyTickingRegion = new ThreadLocal<>();
++
++    private static void _tickRegion(ServerLevel level, LevelChunkRegion region, NaturalSpawner.SpawnState spawnercreature_d) {
++        try {
++            currentlyTickingRegion.set(region);
++            region.forEachTickingChunk(chunk -> _tickChunk(level, chunk, spawnercreature_d));
++            if (region.isEmpty()) {
++                level.chunkSource.tickingRegions.remove(region.getRegionPos());
++            }
++        } finally {
++            currentlyTickingRegion.remove();
++        }
++    }
++
++    private static void _tickChunk(ServerLevel level, LevelChunk chunk1, NaturalSpawner.SpawnState spawnercreature_d) {
++        // Start - Import the same variables as the original chunk ticking method to make copying new changes easier
++        int j = 1; // Inhabited time increment in ticks
++        boolean flag = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !level.players().isEmpty(); // Should run mob spawning code
++        ChunkPos chunkcoordintpair = chunk1.getPos();
++        boolean flag1 = level.ticksPerSpawnCategory.getLong(org.bukkit.entity.SpawnCategory.ANIMAL) != 0L && level.getLevelData().getGameTime() % level.ticksPerSpawnCategory.getLong(org.bukkit.entity.SpawnCategory.ANIMAL) == 0L; // CraftBukkit
++        int l = level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
++        // End - Import the same variables as the original chunk ticking method to make copying new changes easier
++        if (true && level.getChunkSource().chunkMap.anyPlayerCloseEnoughForSpawning(chunkcoordintpair)) { // Paper - rewrite chunk system
++            chunk1.incrementInhabitedTime(j);
++            if (flag && (level.getChunkSource().spawnEnemies || level.getChunkSource().spawnFriendlies) && (!gg.pufferfish.pufferfish.PufferfishConfig.enableAsyncMobSpawning || level.getChunkSource()._pufferfish_spawnCountsReady.get()) && level.getWorldBorder().isWithinBounds(chunkcoordintpair) && level.getChunkSource().chunkMap.anyPlayerCloseEnoughForSpawning(chunkcoordintpair, true)) { // Spigot
++                NaturalSpawner.spawnForChunk(level, chunk1, spawnercreature_d, level.getChunkSource().spawnFriendlies, level.getChunkSource().spawnEnemies, flag1); // Pufferfish
++            }
++            if (true) { // Paper - rewrite chunk system
++                level.tickChunk(chunk1, l);
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 1c0d1b9154aa37ce7fbfe3ff71f6c1be5c26e53f..688abb1b597e9515a109675f1363518391ea6f73 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1176,6 +1176,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     private static final java.math.BigDecimal TPS_BASE = new java.math.BigDecimal(1E9).multiply(new java.math.BigDecimal(SAMPLE_INTERVAL));
+     // Paper end
+ 
++    public static volatile @Nullable RuntimeException threadCrash; // ShreddedPaper - thread crash
++
+     protected void runServer() {
+         try {
+             if (!this.initServer()) {
+@@ -1227,6 +1229,11 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             // Purpur end - config for startup commands
+ 
+             while (this.running) {
++                // ShreddedPaper start - thread crash
++                if (MinecraftServer.threadCrash != null) {
++                    throw MinecraftServer.threadCrash;
++                }
++                // ShreddedPaper end - thread crash
+                 long l;
+                 if (!this.isPaused() && this.tickRateManager.isSprinting() && this.tickRateManager.checkShouldSprintThisTick()) {
+                     l = 0L;
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index eb352aa4296abc3ed4cf31c590bc0be66daf4de3..4d56f49c49646198d2cadb20c302fe4c26868b2e 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -759,8 +759,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+         return this.anyPlayerCloseEnoughForSpawning(chunkPos, false);
+     }
+ 
+-    boolean anyPlayerCloseEnoughForSpawning(ChunkPos chunkPos, boolean reducedRange) {
+-        // Paper - chunk tick iteration optimisation - cannot use narrow check due to custom range
++    public boolean anyPlayerCloseEnoughForSpawning(ChunkPos chunkPos, boolean reducedRange) { // ShreddedPaper - make public        // Paper - chunk tick iteration optimisation - cannot use narrow check due to custom range
+         return this.anyPlayerCloseEnoughForSpawningInternal(chunkPos, reducedRange); // Paper - chunk tick iteration optimisation
+         // Spigot end
+     }
+diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
+index 2882cd829d4d8e1f8615f085f6908efcdf68ac62..b098feae6fa0dec1840d88b6bbf0a9945df468b3 100644
+--- a/net/minecraft/server/level/ServerChunkCache.java
++++ b/net/minecraft/server/level/ServerChunkCache.java
+@@ -19,6 +19,8 @@ import java.util.function.Consumer;
+ import java.util.function.Supplier;
+ import javax.annotation.Nullable;
+ import net.minecraft.FileUtil;
++import io.multipaper.shreddedpaper.region.LevelChunkRegionMap;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkTicker;
+ import net.minecraft.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.SectionPos;
+@@ -77,6 +79,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+     @Nullable
+     @VisibleForDebug
+     private NaturalSpawner.SpawnState lastSpawnState;
++    public final LevelChunkRegionMap tickingRegions; // ShreddedPaper
+     // Paper start
+     public final ca.spottedleaf.concurrentutil.map.ConcurrentLong2ReferenceChainedHashTable<net.minecraft.world.level.chunk.LevelChunk> fullChunks = new ca.spottedleaf.concurrentutil.map.ConcurrentLong2ReferenceChainedHashTable<>();
+     public int getFullChunksCount() {
+@@ -200,6 +203,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+         Supplier<DimensionDataStorage> overworldDataStorage
+     ) {
+         this.level = level;
++        this.tickingRegions = new LevelChunkRegionMap(this.level); // ShreddedPaper
+         this.mainThreadProcessor = new ServerChunkCache.MainThreadExecutor(level);
+         this.mainThread = Thread.currentThread();
+         Path path = levelStorageAccess.getDimensionPath(level.dimension()).resolve("data");
+@@ -566,6 +570,20 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+         this.lastSpawnState = spawnState;
+         profiler.popPush("spawnAndTick");
+         boolean _boolean = this.level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !this.level.players().isEmpty(); // CraftBukkit
++
++        // ShreddedPaper start - handled by ShreddedPaperChunkTicker
++        if (_boolean && (this.spawnEnemies || this.spawnFriendlies)) {
++            // Paper start - PlayerNaturallySpawnCreaturesEvent
++            for (ServerPlayer entityPlayer : this.level.players()) {
++                int chunkRange = Math.min(level.spigotConfig.mobSpawnRange, entityPlayer.getBukkitEntity().getViewDistance());
++                chunkRange = Math.min(chunkRange, 8);
++                entityPlayer.playerNaturallySpawnedEvent = new com.destroystokyo.paper.event.entity.PlayerNaturallySpawnCreaturesEvent(entityPlayer.getBukkitEntity(), (byte) chunkRange);
++                entityPlayer.playerNaturallySpawnedEvent.callEvent();
++            }
++            // Paper end - PlayerNaturallySpawnCreaturesEvent
++        }
++
++        /*
+         int _int = this.level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
+         List<MobCategory> filteredSpawningCategories;
+         if (_boolean && (this.spawnEnemies || this.spawnFriendlies)) {
+@@ -602,8 +620,9 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+             list.clear();
+         }
+ 
++         */
+         profiler.popPush("tickTickingChunks");
+-        this.iterateTickingChunksFaster(); // Paper - chunk tick iteration optimisations
++        ShreddedPaperChunkTicker.tickChunks(level, lastSpawnState); // ShreddedPaper - tick chunks
+         profiler.pop();
+         profiler.popPush("customSpawners");
+         if (_boolean) {
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index a04547852854eb1c1fa077c62cc25063e6124289..d0977f2ab127e47a4b2c011cd453c0ee1af81694 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -301,9 +301,9 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     private long tickedBlocksOrFluids;
+     private final ca.spottedleaf.moonrise.common.misc.NearbyPlayers nearbyPlayers = new ca.spottedleaf.moonrise.common.misc.NearbyPlayers((ServerLevel)(Object)this);
+     private static final LevelChunk[] EMPTY_LEVEL_CHUNKS = new LevelChunk[0];
+-    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> loadedChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
+-    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> tickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
+-    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> entityTickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
++    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> loadedChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);  // ShreddedPaper - unused
++    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> tickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS); // ShreddedPaper - unused
++    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> entityTickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);   // ShreddedPaper - unused
+ 
+     @Override
+     public final LevelChunk moonrise$getFullChunkIfLoaded(final int chunkX, final int chunkZ) {
+@@ -465,20 +465,22 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         return this.nearbyPlayers;
+     }
+ 
+-    @Override
+-    public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getLoadedChunks() {
+-        return this.loadedChunks;
+-    }
++    // ShreddedPaper start - unused
++    // @Override
++    //public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getLoadedChunks() {
++    //    return this.loadedChunks;
++    //}
+ 
+-    @Override
+-    public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getTickingChunks() {
+-        return this.tickingChunks;
+-    }
++    @// Override
++    // public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getTickingChunks() {
++    //     return this.tickingChunks;
++    // }
+ 
+-    @Override
+-    public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getEntityTickingChunks() {
+-        return this.entityTickingChunks;
+-    }
++    // @Override
++    // public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getEntityTickingChunks() {
++    //     return this.entityTickingChunks;
++    // }
++    // ShreddedPaper unused - unused
+ 
+     @Override
+     public final boolean moonrise$areChunksLoaded(final int fromX, final int fromZ, final int toX, final int toZ) {
