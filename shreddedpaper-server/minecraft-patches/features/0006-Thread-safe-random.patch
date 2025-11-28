@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 07:19:00 -0600
+Subject: [PATCH] Thread-safe-random
+
+
+diff --git a/net/minecraft/world/level/levelgen/LegacyRandomSource.java b/net/minecraft/world/level/levelgen/LegacyRandomSource.java
+index c67168517774a0ad9ca43422a79ef14a8ea0c2e8..53ad9071cd456251cf473de962571b0eed8e1f7a 100644
+--- a/net/minecraft/world/level/levelgen/LegacyRandomSource.java
++++ b/net/minecraft/world/level/levelgen/LegacyRandomSource.java
+@@ -30,6 +30,10 @@ public class LegacyRandomSource implements BitRandomSource {
+ 
+     @Override
+     public void setSeed(long seed) {
++        // ShreddedPaper start - thread safe - we don't really care about inconsistent randomness to vanilla as long as it's random
++        this.seed.set((seed ^ 25214903917L) & 281474976710655L);
++        if (true) return;
++        // ShreddedPaper end
+         if (!this.seed.compareAndSet(this.seed.get(), (seed ^ 25214903917L) & 281474976710655L)) {
+             throw ThreadingDetector.makeThreadingException("LegacyRandomSource", null);
+         } else {
+@@ -39,6 +43,14 @@ public class LegacyRandomSource implements BitRandomSource {
+ 
+     @Override
+     public int next(int size) {
++        // ShreddedPaper start - thread safe - we don't really care about inconsistent randomness to vanilla as long as it's random
++        long oldseed, nextseed;
++        do {
++            oldseed = this.seed.get();
++            nextseed = oldseed * 25214903917L + 11L & 281474976710655L;
++        } while (!this.seed.compareAndSet(oldseed, nextseed));
++        if (true) return (int)(nextseed >> 48 - bits);
++        // ShreddedPaper end
+         long l = this.seed.get();
+         long l1 = l * 25214903917L + 11L & 281474976710655L;
+         if (!this.seed.compareAndSet(l, l1)) {
