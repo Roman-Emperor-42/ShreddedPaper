@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 20:04:28 -0600
+Subject: [PATCH] entityMap-thread-safety
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index 1ce313571c54ea3adc47aec87926ab704239084c..f3f10ef60f8d8c190bea29b5166ed7dae2beb349 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -780,7 +780,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         Preconditions.checkArgument(player != null, "Player cannot be null");
+ 
+         ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
+-        ChunkMap.TrackedEntity entityTracker = this.getHandle().moonrise$getTrackedEntity(); // world.getChunkSource().chunkMap.entityMap.get(this.getEntityId()); // ShreddedPaper - don't use map
++        ChunkMap.TrackedEntity tracker = world == null ? null : this.getHandle().moonrise$getTrackedEntity(); // ShreddedPaper - don't use map
+         if (entityTracker == null) return false;
+ 
+         return entityTracker.seenBy.contains(((CraftPlayer) player).getHandle().connection);
+@@ -1260,7 +1260,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     @Override
+     public Set<org.bukkit.entity.Player> getTrackedPlayers() {
+         ServerLevel world = (net.minecraft.server.level.ServerLevel)this.entity.level();
+-        ChunkMap.TrackedEntity tracker = world == null ? null : world.getChunkSource().chunkMap.entityMap.get(this.entity.getId());
++        ChunkMap.TrackedEntity entityTracker = this.getHandle().moonrise$getTrackedEntity(); // ShreddedPaper - don't use map
+         if (tracker == null) {
+             return java.util.Collections.emptySet();
+         }

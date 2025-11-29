@@ -1,0 +1,227 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 19:06:10 -0600
+Subject: [PATCH] TrackedEntity
+
+
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+index cc248b69627dd6cd1fa3ca53d82e7dd4df94a28f..f4e090635be94b74da3c64e91b2b9e7b10ec6ebf 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+@@ -14,6 +14,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Set;
+ import java.util.concurrent.ConcurrentLinkedQueue;
+ import java.util.function.Consumer;
+ 
+@@ -22,6 +23,7 @@ public class LevelChunkRegion {
+     private final RegionPos regionPos;
+     private final List<LevelChunk> tickingChunks = new ArrayList<>(RegionPos.REGION_SIZE * RegionPos.REGION_SIZE);
+     private final IteratorSafeOrderedReferenceSet<Entity> tickingEntities = new IteratorSafeOrderedReferenceSet<>(); // Use IteratorSafeOrderedReferenceSet to maintain entity tick order
++    private final Set<Entity> trackedEntities = new ObjectOpenHashSet<>();
+     private final ConcurrentLinkedQueue<DelayedTask> scheduledTasks = new ConcurrentLinkedQueue<>(); // Writable tasks
+     private final PrioritisedThreadedTaskQueue internalTasks = new PrioritisedThreadedTaskQueue(); // Read-only tasks
+     private final ObjectOpenHashSet<ServerPlayer> players = new ObjectOpenHashSet<>();
+@@ -67,6 +69,22 @@ public class LevelChunkRegion {
+         }
+     }
+ 
++    public synchronized void addTrackedEntity(Entity entity) {
++        if (!this.trackedEntities.add(entity)) {
++            throw new IllegalStateException("Tried to add an entity that was already tracked: " + entity);
++        }
++    }
++
++    public synchronized void removeTrackedEntity(Entity entity) {
++        if (!this.trackedEntities.remove(entity)) {
++            throw new IllegalStateException("Tried to remove an entity that wasn't already tracked: " + entity);
++        }
++    }
++
++    public synchronized void forEachTrackedEntity(Consumer<Entity> action) {
++        this.trackedEntities.forEach(action);
++    }
++
+     public ServerLevel getLevel() {
+         return level;
+     }
+@@ -137,6 +155,7 @@ public class LevelChunkRegion {
+                 && unloadQueue.isEmpty()
+                 && tickingBlockEntities.isEmpty()
+                 && pendingBlockEntityTickers.isEmpty()
++                && trackedEntities.isEmpty()
+                 ;
+     }
+ }
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+index 642119ed3c15072b663e6de001236f0db9e9d33f..9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+@@ -88,6 +88,43 @@ public class LevelChunkRegionMap {
+             getOrCreate(toRegion).addTickingEntity(entity);
+         }
+     }
++
++    public void addTrackedEntity(Entity entity) {
++        if (entity.previousTrackedChunkPosRegion != null) {
++            throw new IllegalStateException("Entity is already tracked " + entity);
++        }
++
++        entity.previousTrackedChunkPosRegion = entity.chunkPosition();
++        getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addTrackedEntity(entity);
++    }
++
++    public void removeTrackedEntity(Entity entity) {
++        if (entity.previousTrackedChunkPosRegion == null) {
++            throw new IllegalStateException("Entity is not being tracked " + entity);
++        }
++
++        getOrCreate(RegionPos.forChunk(entity.previousTrackedChunkPosRegion)).removeTrackedEntity(entity);
++        entity.previousTrackedChunkPosRegion = null;
++    }
++
++    public void moveTrackedEntity(Entity entity) {
++        if (entity.previousTrackedChunkPosRegion == null) {
++            // Not tracked, ignore
++            return;
++        }
++
++        ChunkPos newChunkPos = entity.chunkPosition();
++        RegionPos fromRegion = RegionPos.forChunk(entity.previousTrackedChunkPosRegion);
++        RegionPos toRegion = RegionPos.forChunk(newChunkPos);
++
++        if (!fromRegion.equals(toRegion)) {
++            entity.previousTrackedChunkPosRegion = newChunkPos;
++            getOrCreate(fromRegion).removeTrackedEntity(entity);
++            getOrCreate(toRegion).addTrackedEntity(entity);
++        }
++    }
++
++
+     /**
+      * Schedule a task to run on the given region's thread at the beginning of the next tick
+      */
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+index b114dd49eea93bff9a179ff0dd3808f1b6762471..7471bb8bb40b21e9f87661ffd9b4053e155e6a3b 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -71,6 +71,8 @@ public class ShreddedPaperChunkTicker {
+ 
+             region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
+ 
++            region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
++
+             level.tickBlockEntities(region.tickingBlockEntities, region.pendingBlockEntityTickers);
+ 
+             region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
+index fe63d7a2b3a6cf02d565fea701f5ca4282632d14..1024bb18edf2368e71eecbc53c63d4628d735ed5 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
+@@ -1,9 +1,12 @@
+ package io.multipaper.shreddedpaper.threading;
+ 
+ import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ChunkMap;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.entity.Entity;
+-        +
++
++import java.util.Objects;
++
+ 
+ public class ShreddedPaperEntityTicker {
+     public static void tickEntity(Entity entity) {
+@@ -43,4 +46,10 @@ public class ShreddedPaperEntityTicker {
+             }
+         }
+     }
++
++    public static void processTrackQueue(Entity entity) {
++        ChunkMap.TrackedEntity tracker = Objects.requireNonNull(entity.moonrise$getTrackedEntity());
++        ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$tick(((ServerLevel) entity.level()).moonrise$getNearbyPlayers().getChunk(entity.chunkPosition())); // tracker.updatePlayers(entity.getPlayersInTrackRange());
++        tracker.serverEntity.sendChanges();
++    }
+ }
+\ No newline at end of file
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..2e28dab78b50ac6b712ce9cb2f320fd3a7949915 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -959,6 +959,8 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+                     throw (IllegalStateException)Util.pauseInIde(new IllegalStateException("Entity is already tracked!"));
+                 } else {
+                     ChunkMap.TrackedEntity trackedEntity = new ChunkMap.TrackedEntity(entity, i, updateInterval, type.trackDeltas());
++
++                    this.level.getChunkSource().tickingRegions.addTrackedEntity(entity); // ShreddedPaper
+                     this.entityMap.put(entity.getId(), trackedEntity);
+                     // Paper start - optimise entity tracker
+                     if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity() != null) {
+@@ -993,6 +995,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+ 
+         ChunkMap.TrackedEntity trackedEntity1 = this.entityMap.remove(entity.getId());
+         if (trackedEntity1 != null) {
++            this.level.getChunkSource().tickingRegions.removeTrackedEntity(entity); // ShreddedPaper - only remove if it actually existed
+             trackedEntity1.broadcastRemoved();
+         }
+         ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$setTrackedEntity(null); // Paper - optimise entity tracker
+@@ -1000,6 +1003,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+ 
+     // Paper start - optimise entity tracker
+     private void newTrackerTick() {
++        if (true) return; // Handled ourselves
+         final ca.spottedleaf.moonrise.patches.chunk_system.level.entity.server.ServerEntityLookup entityLookup = (ca.spottedleaf.moonrise.patches.chunk_system.level.entity.server.ServerEntityLookup)((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)this.level).moonrise$getEntityLookup();;
+ 
+         final ca.spottedleaf.moonrise.common.list.ReferenceList<net.minecraft.world.entity.Entity> trackerEntities = entityLookup.trackerEntities;
+@@ -1058,14 +1062,14 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+     }
+ 
+     public void broadcast(Entity entity, Packet<?> packet) {
+-        ChunkMap.TrackedEntity trackedEntity = this.entityMap.get(entity.getId());
++        ChunkMap.TrackedEntity playerchunkmap_entitytracker = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
+         if (trackedEntity != null) {
+             trackedEntity.broadcast(packet);
+         }
+     }
+ 
+     protected void broadcastAndSend(Entity entity, Packet<?> packet) {
+-        ChunkMap.TrackedEntity trackedEntity = this.entityMap.get(entity.getId());
++        ChunkMap.TrackedEntity playerchunkmap_entitytracker = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
+         if (trackedEntity != null) {
+             trackedEntity.broadcastAndSend(packet);
+         }
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 0f3d77efaf20807f563378a525eda4388d5f728b..3a58e78368969ce982da12e93618499184d3aae8 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -2886,6 +2886,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         public void onSectionChange(Entity entity) {
+             entity.updateDynamicGameEventListener(DynamicGameEventListener::move);
+             ServerLevel.this.chunkSource.tickingRegions.moveTickingEntity(entity); // ShreddedPaper - move ticking entity into the new region
++            ServerLevel.this.chunkSource.tickingRegions.moveTrackedEntity(entity); // ShreddedPaper - move tracked entity into the new region
+             if (entity instanceof ServerPlayer serverPlayer) ServerLevel.this.chunkSource.tickingRegions.movePlayer(serverPlayer); // ShreddedPaper - move player into the new region
+         }
+     }
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 438620c93e1db1440defdad3fc05bcdb518886d7..0afbbca15bf8939e528a63caba583e850da1b56a 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -121,7 +121,6 @@ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.border.WorldBorder;
+ import net.minecraft.world.level.entity.EntityAccess;
+ import net.minecraft.world.level.entity.EntityInLevelCallback;
+-import net.minecraft.world.level.entity.LevelCallback;
+ import net.minecraft.world.level.gameevent.DynamicGameEventListener;
+ import net.minecraft.world.level.gameevent.GameEvent;
+ import net.minecraft.world.level.levelgen.Heightmap;
+@@ -287,6 +286,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+     public double yOld;
+     public double zOld;
+     public @Nullable ChunkPos previousTickingChunkPosRegion; // ShreddedPaper
++    public @Nullable ChunkPos previousTrackedChunkPosRegion; // ShreddedPaper
+     public float maxUpStep; // Purpur - Add option to set armorstand step height
+     public boolean noPhysics;
+     public final RandomSource random; // Paper - Share random for entities to make them more random // Add toggle for RNG manipulation

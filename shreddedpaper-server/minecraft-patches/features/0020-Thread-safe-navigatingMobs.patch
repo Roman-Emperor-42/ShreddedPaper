@@ -1,0 +1,242 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 19:25:18 -0600
+Subject: [PATCH] Thread-safe-navigatingMobs
+
+
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1abbd9ade 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
+@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.level.block.entity.TickingBlockEntity;
++import net.minecraft.world.entity.Mob;
+ import net.minecraft.world.level.chunk.LevelChunk;
+ 
+ import java.util.ArrayList;
+@@ -30,6 +31,7 @@ public class LevelChunkRegion {
+     public final LongLinkedOpenHashSet unloadQueue = new LongLinkedOpenHashSet();
+     public final List<TickingBlockEntity> tickingBlockEntities = new ReferenceArrayList<>();
+     public final List<TickingBlockEntity> pendingBlockEntityTickers = new ReferenceArrayList<>();
++    private final ObjectOpenHashSet<Mob> navigatingMobs = new ObjectOpenHashSet<>();
+ 
+     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
+         this.level = level;
+@@ -113,8 +115,20 @@ public class LevelChunkRegion {
+         return this.players.isEmpty() ? List.of() : new ObjectArrayList<>(this.players);
+     }
+ 
++    public synchronized void addNavigationMob(Mob mob) {
++        navigatingMobs.add(mob);
++    }
++
++    public synchronized void removeNavigationMob(Mob mob) {
++        navigatingMobs.remove(mob);
++    }
++
++    public synchronized void collectNavigatingMobs(List<Mob> collection) {
++        collection.addAll(this.navigatingMobs);
++    }
++
+     public RegionPos getRegionPos() {
+-        return regionPos;
++        returCraftPlayer.javan regionPos;
+     }
+ 
+     public void forEachTickingChunk(Consumer<LevelChunk> consumer) {
+@@ -156,6 +170,7 @@ public class LevelChunkRegion {
+                 && tickingBlockEntities.isEmpty()
+                 && pendingBlockEntityTickers.isEmpty()
+                 && trackedEntities.isEmpty()
++                && navigatingMobs.isEmpty()
+                 ;
+     }
+ }
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f3ebbd249 100644
+--- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
++++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
+@@ -1,11 +1,14 @@
+ package io.multipaper.shreddedpaper.region;
+ 
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
++import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.Entity;
++import net.minecraft.world.entity.Mob;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.chunk.LevelChunk;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionLocker;
+ import io.multipaper.shreddedpaper.util.SimpleStampedLock;
+ 
+ import java.util.ArrayList;
+@@ -98,11 +101,19 @@ public class LevelChunkRegionMap {
+         getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addTrackedEntity(entity);
+     }
+ 
++    if (entity instanceof Mob mob) {
++        getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addNavigationMob(mob);
++    }
++
+     public void removeTrackedEntity(Entity entity) {
+         if (entity.previousTrackedChunkPosRegion == null) {
+             throw new IllegalStateException("Entity is not being tracked " + entity);
+         }
+ 
++        if (entity instanceof Mob mob) {
++            getOrCreate(RegionPos.forChunk(entity.chunkPosition())).removeNavigationMob(mob);
++        }
++
+         getOrCreate(RegionPos.forChunk(entity.previousTrackedChunkPosRegion)).removeTrackedEntity(entity);
+         entity.previousTrackedChunkPosRegion = null;
+     }
+@@ -117,6 +128,11 @@ public class LevelChunkRegionMap {
+         RegionPos fromRegion = RegionPos.forChunk(entity.previousTrackedChunkPosRegion);
+         RegionPos toRegion = RegionPos.forChunk(newChunkPos);
+ 
++        if (entity instanceof Mob mob) {
++            getOrCreate(fromRegion).removeNavigationMob(mob);
++            getOrCreate(toRegion).addNavigationMob(mob);
++        }
++
+         if (!fromRegion.equals(toRegion)) {
+             entity.previousTrackedChunkPosRegion = newChunkPos;
+             getOrCreate(fromRegion).removeTrackedEntity(entity);
+@@ -176,4 +192,28 @@ public class LevelChunkRegionMap {
+             getOrCreate(toRegion).addPlayer(player);
+         }
+     }
++    public List<Mob> collectRelevantNavigatingMobs(RegionPos regionPos) {
++        if (!level.chunkScheduler.getRegionLocker().hasLock(regionPos)) {
++            // We care about the navigating mobs in at least this region, ensure it's locked
++            throw new IllegalStateException("Collecting navigating mobs outside of region's thread");
++        }
++
++        ObjectArrayList<Mob> navigatingMobs = new ObjectArrayList<>();
++
++        for (int x = -ShreddedPaperRegionLocker.REGION_LOCK_RADIUS; x <= ShreddedPaperRegionLocker.REGION_LOCK_RADIUS; x++) {
++            for (int z = -ShreddedPaperRegionLocker.REGION_LOCK_RADIUS; z <= ShreddedPaperRegionLocker.REGION_LOCK_RADIUS; z++) {
++                RegionPos i = new RegionPos(regionPos.x + x, regionPos.z + z);
++
++                // Only collect mobs from regions that are locked - if it's not locked, it should be too far away to matter
++                if (!level.chunkScheduler.getRegionLocker().hasLock(i)) continue;
++
++                LevelChunkRegion region = get(i);
++                if (region == null) continue;
++
++                region.collectNavigatingMobs(navigatingMobs);
++            }
++        }
++
++        return navigatingMobs;
++    }
+ }
+\ No newline at end of file
+diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
+index 78769f94c25e986d79658738c9a0ab1a46be753a..fbc3c4f781a5bb8501c638423f5fa09aaa0a0d85 100644
+--- a/net/minecraft/server/level/ServerChunkCache.java
++++ b/net/minecraft/server/level/ServerChunkCache.java
+@@ -446,6 +446,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+     }
+ 
+     public boolean pollTask() {
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread()) return false; // ShreddedPaper - don't run main thread tasks on worker threads
+         return this.mainThreadProcessor.pollTask();
+     }
+ 
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -198,7 +198,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     public final LevelTicksRegionProxy<Fluid> fluidTicks; // ShreddedPaper
+     private final PathTypeCache pathTypesByPosCache = new PathTypeCache();
+     final Set<Mob> navigatingMobs = new ObjectOpenHashSet<>();
+-    volatile boolean isUpdatingNavigations;
++    final ThreadLocal<Boolean> isUpdatingNavigations = ThreadLocal.withInitial(() -> false); // ShreddedPaper - make thread local
+     protected final Raids raids;
+     private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>();
+     private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
+@@ -1840,7 +1840,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+     @Override
+     public void sendBlockUpdated(BlockPos pos, BlockState oldState, BlockState newState, int flags) {
+-        if (this.isUpdatingNavigations) {
++        if (this.isUpdatingNavigations.get()) { // ShreddedPaper - use thread local
+             String string = "recursive call to sendBlockUpdated";
+             Util.logAndPauseIfInIde("recursive call to sendBlockUpdated", new IllegalStateException("recursive call to sendBlockUpdated"));
+         }
+@@ -1871,13 +1871,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             // Paper end - catch CME see below why
+ 
+             try {
+-                this.isUpdatingNavigations = true;
++                this.isUpdatingNavigations.set(true); // ShreddedPaper - use thread local
+ 
+                 for (PathNavigation pathNavigation : list) {
+                     pathNavigation.recomputePath();
+                 }
+             } finally {
+-                this.isUpdatingNavigations = false;
++                this.isUpdatingNavigations.set(false); // ShreddedPaper - use thread local
+             }
+         }
+         } // Paper - option to disable pathfinding updates
+@@ -2766,8 +2766,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+         @Override
+         public void onTrackingStart(Entity entity) {
+-            org.spigotmc.AsyncCatcher.catchOp("entity register"); // Spigot
+-            // ServerLevel.this.getChunkSource().addEntity(entity); // Paper - ignore and warn about illegal addEntity calls instead of crashing server; moved down below valid=true
++            TickThread.ensureTickThread(entity, "entity register"); // org.spigotmc.AsyncCatcher.catchOp("entity register"); // Spigot // ShreddedPaper
++            ServerLevel.this.getChunkSource().addEntity(entity); // Paper - ignore and warn about illegal addEntity calls instead of crashing server; moved down below valid=true
+             if (entity instanceof ServerPlayer serverPlayer) {
+                 ServerLevel.this.players.add(serverPlayer);
+                 if (serverPlayer.isReceivingWaypoints()) {
+@@ -2782,14 +2782,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             }
+ 
+             if (entity instanceof Mob mob) {
+-                if (false && ServerLevel.this.isUpdatingNavigations) { // Paper - Remove unnecessary onTrackingStart during navigation warning
++                if (false && ServerLevel.this.isUpdatingNavigations.get()) { // Paper - Remove unnecessary onTrackingStart during navigation warning // ShreddedPaper - use thread local
+                     String string = "onTrackingStart called during navigation iteration";
+                     Util.logAndPauseIfInIde(
+                         "onTrackingStart called during navigation iteration", new IllegalStateException("onTrackingStart called during navigation iteration")
+                     );
+                 }
+ 
+-                ServerLevel.this.navigatingMobs.add(mob);
++                // ServerLevel.this.navigatingMobs.add(mob); // ShreddedPaper - handled ourselves
+             }
+ 
+             if (entity instanceof EnderDragon enderDragon) {
+@@ -2816,7 +2816,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+         @Override
+         public void onTrackingEnd(Entity entity) {
+-            org.spigotmc.AsyncCatcher.catchOp("entity unregister"); // Spigot
++            TickThread.ensureTickThread(entity, "entity unregister"); // org.spigotmc.AsyncCatcher.catchOp("entity unregister"); // Spigot // ShreddedPaper
+             // Spigot start // TODO I don't think this is needed anymore
+             if (entity instanceof Player player) {
+                 for (final ServerLevel level : ServerLevel.this.getServer().getAllLevels()) {
+@@ -2854,14 +2854,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             }
+ 
+             if (entity instanceof Mob mob) {
+-                if (false && ServerLevel.this.isUpdatingNavigations) { // Paper - Remove unnecessary onTrackingStart during navigation warning
++                if (false && ServerLevel.this.isUpdatingNavigations.get()) { // Paper - Remove unnecessary onTrackingStart during navigation warning // ShreddedPaper - use thread local
+                     String string = "onTrackingStart called during navigation iteration";
+                     Util.logAndPauseIfInIde(
+                         "onTrackingStart called during navigation iteration", new IllegalStateException("onTrackingStart called during navigation iteration")
+                     );
+                 }
+ 
+-                ServerLevel.this.navigatingMobs.remove(mob);
++                // ServerLevel.this.navigatingMobs.remove(entityinsentient); // ShreddedPaper - handled ourselves
+             }
+ 
+             if (entity instanceof EnderDragon enderDragon) {
