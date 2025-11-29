@@ -1,0 +1,118 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Fri, 28 Nov 2025 18:30:50 -0600
+Subject: [PATCH] Teleportation
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index 476eefebace887064b728f08af40c746b6f70787..52973ab15daeddab1b646965fa222ebbf053f048 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -16,6 +16,7 @@ import io.papermc.paper.entity.LookAnchor;
+ import java.util.concurrent.CompletableFuture;
+ import net.kyori.adventure.pointer.PointersSupplier;
+ import net.kyori.adventure.util.TriState;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.server.MinecraftServer;
+@@ -31,6 +32,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
+ import net.minecraft.world.entity.boss.EnderDragonPart;
+ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+ import net.minecraft.world.entity.projectile.AbstractArrow;
++import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.portal.TeleportTransition;
+ import net.minecraft.world.level.storage.TagValueOutput;
+ import net.minecraft.world.level.storage.ValueInput;
+@@ -76,6 +78,8 @@ import org.bukkit.util.NumberConversions;
+ import org.bukkit.util.Vector;
+ 
+ import net.md_5.bungee.api.chat.BaseComponent; // Spigot
++import io.multipaper.shreddedpaper.region.RegionPos;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionScheduler;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ import org.slf4j.Logger;
+@@ -1141,9 +1145,32 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         ServerLevel world = ((CraftWorld)locationClone.getWorld()).getHandle();
+         CompletableFuture<Boolean> ret = new java.util.concurrent.CompletableFuture<>();
+ 
++        // ShreddedPaper start - run sync if possible
++        ChunkPos fromChunkPos = this.getHandle().chunkPosition();
++        ChunkPos toChunkPos = CraftLocation.toChunkPosition(locationClone);
++        if (ShreddedPaper.isSync((ServerLevel) this.getHandle().level(), fromChunkPos)
++                && ShreddedPaper.isSync(world, toChunkPos)
++                && this.getHandle().level().hasChunk(fromChunkPos.x, fromChunkPos.z)
++                && world.hasChunk(toChunkPos.x, toChunkPos.z)) {
++            try {
++                ret.complete(CraftEntity.this.teleport(locationClone, cause, teleportFlags) ? Boolean.TRUE : Boolean.FALSE);
++            } catch (Throwable throwable) {
++                if (throwable instanceof ThreadDeath) {
++                    throw (ThreadDeath)throwable;
++                }
++                net.minecraft.server.MinecraftServer.LOGGER.error("Failed to teleport entity " + CraftEntity.this, throwable);
++                ret.completeExceptionally(throwable);
++            }
++            return ret;
++        }
++        // ShreddedPaper end
++
+         world.loadChunksForMoveAsync(this.getHandle().getBoundingBoxAt(locationClone.getX(), locationClone.getY(), locationClone.getZ()),
+             this instanceof CraftPlayer ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL, (list) -> {
+-                MinecraftServer.getServer().scheduleOnMain(() -> {
++                    ShreddedPaperRegionScheduler.scheduleAcrossLevels(
++                            (ServerLevel) CraftEntity.this.getHandle().level(), RegionPos.forChunk(CraftEntity.this.getHandle().chunkPosition()),
++                            world, RegionPos.forLocation(locationClone),
++                            () -> { // ShreddedPaper - Run teleports on the correct threads
+                     final ServerChunkCache chunkCache = world.getChunkSource();
+                     for (final net.minecraft.world.level.chunk.ChunkAccess chunk : list) {
+                         chunkCache.addTicketAtLevel(TicketType.POST_TELEPORT, chunk.getPos(), 33);
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 4e24a177aed7eda0899b4a1a1e308f02a16c5718..c1b3e3e9414cce29d341af06e7d148383d71e1c5 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -1534,7 +1534,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         } else {
+             entity.portalProcess = null; // SPIGOT-7785: there is no need to carry this over as it contains the old world/location and we might run into trouble if there is a portal in the same spot in both worlds
+             // The respawn reason should never be used if the passed location is non null.
+-            this.server.getHandle().respawn(entity, true, Entity.RemovalReason.CHANGED_DIMENSION, null, to);
++            if (!TickThread.isTickThreadFor(entity.serverLevel(), entity.position()) || !TickThread.isTickThreadFor(toWorld, CraftLocation.toBlockPosition(to))) throw new UnsupportedOperationException("Cannot respawn player asynchronously"); // ShreddedPaper - make sure following will be run on this thread
++            this.server.getHandle().respawnAsync(entity, true, Entity.RemovalReason.CHANGED_DIMENSION, null, to).join(); // Paper // ShreddedPaper - will be run on this thread
+         }
+         return true;
+     }
+@@ -3369,7 +3370,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         @Override
+         public void respawn() {
+             if (CraftPlayer.this.getHealth() <= 0 && CraftPlayer.this.isOnline()) {
+-                CraftPlayer.this.server.getServer().getPlayerList().respawn(CraftPlayer.this.getHandle(), false, Entity.RemovalReason.KILLED, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.PLUGIN);
++                CraftPlayer.this.server.getServer().getPlayerList().respawnAsync( CraftPlayer.this.getHandle(), false, Entity.RemovalReason.KILLED, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.PLUGIN ); // ShreddedPaper - async respawning
+             }
+         }
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/CraftLocation.java b/src/main/java/org/bukkit/craftbukkit/util/CraftLocation.java
+index 82feffa179a1e70b082479ff078ec99edf7e5016..4370d0ee9dd746744c0af88b571d77ab78967325 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/CraftLocation.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/CraftLocation.java
+@@ -1,6 +1,8 @@
+ package org.bukkit.craftbukkit.util;
+ 
+ import net.minecraft.core.BlockPos;
++import net.minecraft.core.SectionPos;
++import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.pathfinder.Node;
+ import net.minecraft.world.phys.Vec3;
+ import org.bukkit.Location;
+@@ -55,6 +57,12 @@ public final class CraftLocation {
+         return CraftLocation.toBukkit(globalPos.pos(), net.minecraft.server.MinecraftServer.getServer().getLevel(globalPos.dimension()));
+     }
+ 
++    // ShreddedPaper start
++    public static ChunkPos toChunkPosition(Location location) {
++        return new ChunkPos(SectionPos.blockToSectionCoord(location.getBlockX()), SectionPos.blockToSectionCoord(location.getBlockZ()));
++    }
++    // ShreddedPaper end
++
+     public static Vec3 toVec3(Location loc) {
+         return new Vec3(loc.getX(), loc.getY(), loc.getZ());
+     }
