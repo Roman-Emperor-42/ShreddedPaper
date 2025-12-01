@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Sun, 30 Nov 2025 22:35:44 -0600
+Subject: [PATCH] Misc-threadsafety
+
+
+diff --git a/src/main/java/org/purpurmc/purpur/task/BossBarTask.java b/src/main/java/org/purpurmc/purpur/task/BossBarTask.java
+index 3c3d4cd52db93b97a40321030a70ebc282c9636b..5002014b3492b8a8a139502b563d9a8ddcd8a23b 100644
+--- a/src/main/java/org/purpurmc/purpur/task/BossBarTask.java
++++ b/src/main/java/org/purpurmc/purpur/task/BossBarTask.java
+@@ -11,10 +11,11 @@ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.Map;
+ import java.util.UUID;
++import java.util.concurrent.ConcurrentHashMap;
+ import org.purpurmc.purpur.util.MinecraftInternalPlugin;
+ 
+ public abstract class BossBarTask extends BukkitRunnable {
+-    private final Map<UUID, BossBar> bossbars = new HashMap<>();
++    private final Map<UUID, BossBar> bossbars = new ConcurrentHashMap<>();
+     private boolean started;
+ 
+     abstract BossBar createBossBar();

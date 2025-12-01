@@ -1,0 +1,173 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Sun, 30 Nov 2025 22:35:44 -0600
+Subject: [PATCH] Misc-threadsafety
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index 6809f9dcf8510c714145d99d250eb69f98d9bf27..729b90d982fe5b487ed1d5552a15d3b7d5035a8a 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -559,8 +559,8 @@ public class CraftBlock implements Block {
+         world.captureTreeGeneration = false;
+ 
+         if (!world.capturedBlockStates.isEmpty()) {
+-            TreeType treeType = SaplingBlock.treeType;
+-            SaplingBlock.treeType = null;
++            TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - thread local for treeType
++            SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - thread local for treeType
+             List<BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
+             world.capturedBlockStates.clear();
+             StructureGrowEvent structureEvent = null;
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlockState.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlockState.java
+index 196835bdf95ba0e149b2977e9ef41698971f501f..150db9057f3428ee6199b67a09d9cd8d6c097fd1 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlockState.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlockState.java
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit.block;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import java.lang.ref.WeakReference;
+ import java.util.List;
+@@ -217,6 +218,7 @@ public class CraftBlockState implements BlockState {
+         }
+         LevelAccessor access = this.getWorldHandle();
+         CraftBlock block = this.getBlock();
++        TickThread.ensureTickThread(this.world.getHandle(), this.position, "BlockState update");
+ 
+         if (block.getType() != this.getType()) {
+             if (!force) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+index fc4fa99a993a017676da2be3cb254399d421bce1..602e22a604f5d57631041e9e76d9e4249d9158f3 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit.entity;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import com.google.common.collect.Sets;
+ import java.util.ArrayList;
+@@ -528,7 +529,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+ 
+     @Override
+     public boolean addPotionEffect(PotionEffect effect, boolean force) {
+-        org.spigotmc.AsyncCatcher.catchOp("effect add"); // Paper
++        TickThread.ensureTickThread(this.getHandle(), "effect add"); // Paper // ShreddedPaper
+         this.getHandle().addEffect(org.bukkit.craftbukkit.potion.CraftPotionUtil.fromBukkit(effect), EntityPotionEffectEvent.Cause.PLUGIN); // Paper - Don't ignore icon
+         return true;
+     }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 9f28251e0d9a5ed3e3679a3f000251c25c156434..efa2b08c16439fe141f63d4a5b6dd16f8a6d145b 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -3500,19 +3500,19 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+     // Paper start - Add chunk view API
+     @Override
+     public Set<java.lang.Long> getSentChunkKeys() {
+-        org.spigotmc.AsyncCatcher.catchOp("accessing sent chunks");
++        TickThread.ensureTickThread(this.getHandle(), "accessing sent chunks"); // ShreddedPaper
+         return FeatureHooks.getSentChunkKeys(this.getHandle());
+     }
+ 
+     @Override
+     public Set<org.bukkit.Chunk> getSentChunks() {
+-        org.spigotmc.AsyncCatcher.catchOp("accessing sent chunks");
++        TickThread.ensureTickThread(this.getHandle(), "accessing sent chunks"); // ShreddedPaper
+         return FeatureHooks.getSentChunks(this.getHandle());
+     }
+ 
+     @Override
+     public boolean isChunkSent(final long chunkKey) {
+-        org.spigotmc.AsyncCatcher.catchOp("accessing sent chunks");
++        TickThread.ensureTickThread(this.getHandle(), "accessing sent chunks"); // ShreddedPaper
+         return FeatureHooks.isChunkSent(this.getHandle(), chunkKey);
+     }
+     // Paper end
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index b4ee0f809c1524c74eca74ee6bc471a3051d92a6..f0b5ca380e3a17908a6d0518cec7e2252ad6750d 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -828,8 +828,7 @@ public class CraftEventFactory {
+         return false;
+     }
+ 
+-    public static BlockPos sourceBlockOverride = null; // SPIGOT-7068: Add source block override, not the most elegant way but better than passing down a BlockPos up to five methods deep.
+-
++    public static ThreadLocal<BlockPos> sourceBlockOverrideThreadLocal = ThreadLocal.withInitial(() -> null); // SPIGOT-7068: Add source block override, not the most elegant way but better than passing down a BlockPosition up to five methods deep. // ShreddedPaper - use thread local
+     public static boolean handleBlockSpreadEvent(LevelAccessor world, BlockPos source, BlockPos target, net.minecraft.world.level.block.state.BlockState state, int flags) {
+         return handleBlockSpreadEvent(world, source, target, state, flags, false);
+     }
+@@ -844,7 +843,7 @@ public class CraftEventFactory {
+         CraftBlockState snapshot = CraftBlockStates.getBlockState(world, target);
+         snapshot.setData(state);
+ 
+-        BlockSpreadEvent event = new BlockSpreadEvent(snapshot.getBlock(), CraftBlock.at(world, CraftEventFactory.sourceBlockOverride != null ? CraftEventFactory.sourceBlockOverride : source), snapshot);
++        BlockSpreadEvent event = new BlockSpreadEvent(state.getBlock(), CraftBlock.at(world, CraftEventFactory.sourceBlockOverrideThreadLocal.get() != null ? CraftEventFactory.sourceBlockOverrideThreadLocal.get() : source), state); // ShreddedPaper - use thread local
+         if (event.callEvent()) {
+             boolean result = snapshot.place(flags);
+             return !checkSetResult || result;
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryPlayer.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryPlayer.java
+index d8aae267a038446333abfffa6fa95a92644db546..c7f3dc61405222fad1509e28155d682a4e518c64 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryPlayer.java
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit.inventory;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import java.util.List;
+ import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
+@@ -76,6 +77,7 @@ public class CraftInventoryPlayer extends CraftInventory implements org.bukkit.i
+             throw new ArrayIndexOutOfBoundsException("Index must be between 0 and 42");
+         }
+         // Paper end - Validate setItem index
++        TickThread.ensureTickThread(getInventory().player, "Player inventory modification"); // ShreddedPaper
+         super.setItem(index, item);
+         if (this.getHolder() == null) return;
+ 
+diff --git a/src/main/java/org/spigotmc/WatchdogThread.java b/src/main/java/org/spigotmc/WatchdogThread.java
+index 5c6e37bd57c3e50e53b34f7c1c1510d5b14007e0..03674f06231fdaaa6bf76f6684463190e221f30e 100644
+--- a/src/main/java/org/spigotmc/WatchdogThread.java
++++ b/src/main/java/org/spigotmc/WatchdogThread.java
+@@ -5,8 +5,12 @@ import io.papermc.paper.configuration.GlobalConfiguration;
+ import java.lang.management.ManagementFactory;
+ import java.lang.management.MonitorInfo;
+ import java.lang.management.ThreadInfo;
++import java.util.Arrays;
++import java.util.List;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
++
++import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import net.minecraft.server.MinecraftServer;
+ import org.bukkit.Bukkit;
+ import org.bukkit.craftbukkit.CraftServer;
+@@ -106,6 +110,11 @@ public class WatchdogThread extends ca.spottedleaf.moonrise.common.util.TickThre
+                 logger.log(Level.SEVERE, "Server thread dump (Look for plugins here before reporting to Purpur!):"); // Paper // Purpur - Rebrand
+                 FeatureHooks.dumpAllChunkLoadInfo(MinecraftServer.getServer(), isLongTimeout); // Paper - log detailed tick information
+                 WatchdogThread.dumpThread(ManagementFactory.getThreadMXBean().getThreadInfo(MinecraftServer.getServer().serverThread.threadId(), Integer.MAX_VALUE), logger);
++                // ShreddedPaper start - Dump stuck worker threads
++                for (ThreadInfo worker : getStuckTickWorkerThreads()) {
++                    WatchdogThread.dumpThread( worker, log );
++                }
++                // ShreddedPaper end - Dump stuck worker threads
+                 logger.log(Level.SEVERE, "------------------------------");
+ 
+                 // Paper start - Only print full dump on long timeouts
+@@ -152,6 +161,14 @@ public class WatchdogThread extends ca.spottedleaf.moonrise.common.util.TickThre
+         }
+     }
+ 
++    private List<ThreadInfo> getStuckTickWorkerThreads() {
++        ThreadInfo[] threads = ManagementFactory.getThreadMXBean().dumpAllThreads( true, true );
++        return Arrays.stream(threads)
++                .filter(thread -> thread.getThreadName().startsWith("ShreddedPaperTickThread"))
++                .filter(thread -> Arrays.stream(thread.getStackTrace()).anyMatch(stack -> !stack.getClassName().startsWith("java") && !stack.getClassName().startsWith("jdk")))
++                .toList();
++    }
++
+     private static void dumpThread(ThreadInfo thread, Logger logger) {
+         logger.log(Level.SEVERE, "------------------------------");
+ 
