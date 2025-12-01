@@ -1,0 +1,390 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 10:40:40 -0600
+Subject: [PATCH] Add-task-scheduling-API
+
+
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
+index 6081defe767762b19a5b7deda65effe162c9b9d7..2d2531c1f75cdc23d4df027a40312f00b826c62f 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
+@@ -122,6 +122,13 @@ public final class ChunkHolderManager {
+     }
+ 
+     public boolean processTicketUpdates(final int chunkX, final int chunkZ) {
++        if (!TickThread.isTickThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.processTicketUpdates(posX, posZ),
++                    PrioritisedExecutor.Priority.HIGHEST
++            );
++            return false;
++        }
+         final int ticketShift = ThreadedTicketLevelPropagator.SECTION_SHIFT;
+         final int ticketMask = (1 << ticketShift) - 1;
+         final List<ChunkProgressionTask> scheduledTasks = new ArrayList<>();
+@@ -574,12 +581,34 @@ public final class ChunkHolderManager {
+ 
+     public <T> boolean addTicketAtLevel(final TicketType type, final ChunkPos chunkPos, final int level,
+                                         final T identifier) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.addTicketAtLevel(type, chunkPos, level, identifier), PrioritisedExecutor.Priority.NORMAL);
++            return false;
++        }
+         return this.addTicketAtLevel(type, CoordinateUtils.getChunkKey(chunkPos), level, identifier);
+     }
+ 
+-    public <T> boolean addTicketAtLevel(final TicketType type, final int chunkX, final int chunkZ, final int level,
+-                                        final T identifier) {
+-        return this.addTicketAtLevel(type, CoordinateUtils.getChunkKey(chunkX, chunkZ), level, identifier);
++    public <T> void addTicketAtLevel(final net.minecraft.server.level.TicketType<T> type, final int chunkX, final int chunkZ,
++                                     final int level, final T identifier) {
++        // If we are NOT on the server main thread, enqueue onto the main executor
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.addTicketAtLevel(type, chunkX, chunkZ, level, identifier),
++                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.NORMAL
++            );
++            return;
++        }
++        final long key = ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkKey(chunkX, chunkZ);
++        this.addTicketAtLevel(type, key, level, identifier); // call the long-key overload
++    }
++
++    private boolean ensureMainThreadOrEnqueue(final Runnable r) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(r, PrioritisedExecutor.Priority.NORMAL);
++            return false;
++        }
++        return true;
+     }
+ 
+     private void addExpireCount(final int chunkX, final int chunkZ) {
+@@ -619,6 +648,13 @@ public final class ChunkHolderManager {
+     // supposed to return true if the ticket was added and did not replace another
+     // but, we always return false if the ticket cannot be added
+     public <T> boolean addTicketAtLevel(final TicketType type, final long chunk, final int level, final T identifier) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.addTicketAtLevel(type, chunk, level, identifier),
++                    PrioritisedExecutor.Priority.NORMAL
++            );
++            return false;
++        }
+         return this.addTicketAtLevel(type, chunk, level, identifier, true);
+     }
+ 
+@@ -721,17 +757,40 @@ public final class ChunkHolderManager {
+     }
+ 
+     public <T> boolean removeTicketAtLevel(final TicketType type, final ChunkPos chunkPos, final int level, final T identifier) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.removeTicketAtLevel(type, chunkPos, level, identifier),
++                    PrioritisedExecutor.Priority.NORMAL
++            );
++            return false;
++        }
+         return this.removeTicketAtLevel(type, CoordinateUtils.getChunkKey(chunkPos), level, identifier);
+     }
+ 
+-    public <T> boolean removeTicketAtLevel(final TicketType type, final int chunkX, final int chunkZ, final int level, final T identifier) {
+-        return this.removeTicketAtLevel(type, CoordinateUtils.getChunkKey(chunkX, chunkZ), level, identifier);
+-    }
+ 
+     public <T> boolean removeTicketAtLevel(final TicketType type, final long chunk, final int level, final T identifier) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.removeTicketAtLevel(type, chunk, level, identifier),
++                    PrioritisedExecutor.Priority.NORMAL
++            );
++            return false;
++        }
+         return this.removeTicketAtLevel(type, chunk, level, identifier, true);
+     }
+ 
++    public <T> void removeTicketAtLevel(final net.minecraft.server.level.TicketType<T> type, final int chunkX, final int chunkZ, final int level, final T identifier) {
++        if (!this.world.getServer().isSameThread()) {
++            this.taskScheduler.scheduleChunkTask(
++                    () -> this.removeTicketAtLevel(type, chunkX, chunkZ, level, identifier),
++                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.NORMAL
++            );
++            return;
++        }
++        final long key = ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkKey(chunkX, chunkZ);
++        this.removeTicketAtLevel(type, key, level, identifier); // call the long-key overload
++    }
++
+     <T> boolean removeTicketAtLevel(final TicketType type, final long chunk, final int level, final T identifier, final boolean lock) {
+         if (level > MAX_TICKET_LEVEL) {
+             return false;
+@@ -797,6 +856,9 @@ public final class ChunkHolderManager {
+     // atomic with respect to all add/remove/addandremove ticket calls for the given chunk
+     public <T, V> boolean addIfRemovedTicket(final long chunk, final TicketType addType, final int addLevel, final T addIdentifier,
+                                              final TicketType removeType, final int removeLevel, final V removeIdentifier) {
++        if (!ensureMainThreadOrEnqueue(() -> this.addIfRemovedTicket(chunk, addType, addLevel, addIdentifier, removeType, removeLevel, removeIdentifier))) {
++            return false;
++        }
+         final ReentrantAreaLock.Node ticketLock = this.ticketLockArea.lock(CoordinateUtils.getChunkX(chunk), CoordinateUtils.getChunkZ(chunk));
+         try {
+             if (this.removeTicketAtLevel(removeType, chunk, removeLevel, removeIdentifier, false)) {
+@@ -810,7 +872,8 @@ public final class ChunkHolderManager {
+     }
+ 
+     public <T> void removeAllTicketsFor(final TicketType ticketType, final int ticketLevel, final T ticketIdentifier) {
+-        if (ticketLevel > MAX_TICKET_LEVEL) {
++        if (ticketLevel > MAX_TICKET_LEVEL) return;
++        if (!ensureMainThreadOrEnqueue(() -> this.removeAllTicketsFor(ticketType, ticketLevel, ticketIdentifier))) {
+             return;
+         }
+ 
+@@ -1459,9 +1522,8 @@ public final class ChunkHolderManager {
+     }
+ 
+     public void performTicketUpdates(final Collection<TicketOperation<?, ?>> operations) {
+-        for (final TicketOperation<?, ?> operation : operations) {
+-            this.processTicketOp(operation);
+-        }
++        if (!ensureMainThreadOrEnqueue(() -> this.performTicketUpdates(operations))) return;
++        for (final TicketOperation<?, ?> op : operations) this.processTicketOp(op);
+     }
+ 
+     private final ThreadLocal<Boolean> BLOCK_TICKET_UPDATES = ThreadLocal.withInitial(() -> {
+@@ -1479,6 +1541,10 @@ public final class ChunkHolderManager {
+     }
+ 
+     public boolean processTicketUpdates() {
++        if (!this.world.getServer().isSameThread()) {
++            // Only the main/server thread is allowed to drain/advance the ticket propagator
++            return false;
++        }
+         if (BLOCK_TICKET_UPDATES.get() == Boolean.TRUE) {
+             throw new IllegalStateException("Cannot update ticket level while unloading chunks or updating entity manager");
+         }
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
+index 2336f2211b2bfb09d25b08eb3cdf498acff4d00a..9a9eb5456e2c68b873e56cbc6cd49232d8f80909 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
+@@ -855,9 +855,17 @@ public final class ChunkTaskScheduler {
+ 
+     public PrioritisedExecutor.PrioritisedTask createChunkTask(final int chunkX, final int chunkZ, final Runnable run,
+                                                                final Priority priority) {
+-        return world.chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().createTask(run, priority); // ShreddedPaper
+-        // return this.mainThreadExecutor.createTask(run, priority); // ShreddedPaper
++        final RegionPos regionPos = RegionPos.forChunk(new ChunkPos(chunkX, chunkZ));
++        final LevelChunkRegion existing = world.chunkSource.tickingRegions.get(regionPos);
++        if (existing != null) {
++            return existing.getInternalTaskQueue().createTask(run, priority);
+         }
++        // Create the region, then enqueue onto the region queue
++        return this.mainThreadExecutor.createTask(() -> {
++            final LevelChunkRegion created = world.chunkSource.tickingRegions.getOrCreate(regionPos);
++            created.getInternalTaskQueue().queueRunnable(run, priority);
++            }, priority);
++    }
+ 
+     public PrioritisedExecutor.PrioritisedTask scheduleChunkTask(final int chunkX, final int chunkZ, final Runnable run) {
+         return this.scheduleChunkTask(chunkX, chunkZ, run, Priority.NORMAL);
+@@ -865,8 +873,16 @@ public final class ChunkTaskScheduler {
+ 
+     public PrioritisedExecutor.PrioritisedTask scheduleChunkTask(final int chunkX, final int chunkZ, final Runnable run,
+                                                                  final Priority priority) {
+-        return world.chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().queueRunnable(run, priority); // ShreddedPaper
+-        // return this.mainThreadExecutor.queueRunnable(run, priority); // ShreddedPaper
++        final RegionPos regionPos = RegionPos.forChunk(new ChunkPos(chunkX, chunkZ));
++        final LevelChunkRegion existing = world.chunkSource.tickingRegions.get(regionPos);
++        if (existing != null) {
++            return existing.getInternalTaskQueue().queueRunnable(run, priority);
++        }
++        // Create the region, then enqueue onto the region queue
++        return this.mainThreadExecutor.queueRunnable(() -> {
++            final LevelChunkRegion created = world.chunkSource.tickingRegions.getOrCreate(regionPos);
++            created.getInternalTaskQueue().queueRunnable(run, priority);
++            }, priority);
+     }
+ 
+     public boolean halt(final boolean sync, final long maxWaitNS) {
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkChangesBroadcaster.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkChangesBroadcaster.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..b63f2eac2f83a0f06657e6814af4c738309bcf87
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkChangesBroadcaster.java
+@@ -0,0 +1,63 @@
++package io.multipaper.shreddedpaper.threading;
++
++import ca.spottedleaf.moonrise.common.util.TickThread;
++import com.mojang.logging.LogUtils;
++import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
++import net.minecraft.server.level.ServerChunkCache;
++import net.minecraft.world.level.chunk.LevelChunk;
++import org.slf4j.Logger;
++
++import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
++
++public class ShreddedPaperChunkChangesBroadcaster {
++
++    private static final Logger LOGGER = LogUtils.getLogger();
++
++    private static final Set<LevelChunk> globalToBroadcast = ConcurrentHashMap.newKeySet();
++    private static final ThreadLocal<Set<LevelChunk>> thisThreadToBroadcast = ThreadLocal.withInitial(null);
++
++    public static void setNeedsBroadcast(LevelChunk chunk) {
++        if (thisThreadToBroadcast.get() != null && TickThread.isTickThreadFor(chunk.getLevel(), chunk.getPos())) {
++            thisThreadToBroadcast.get().add(chunk);
++        } else {
++            globalToBroadcast.add(chunk);
++        }
++    }
++
++    public static void openThisThread() {
++        thisThreadToBroadcast.set(new ReferenceOpenHashSet<>());
++    }
++
++    public static void flushAndCloseThisThread() {
++        Set<LevelChunk> toBroadcast = thisThreadToBroadcast.get();
++
++        if (toBroadcast != null) {
++            broadcast(toBroadcast);
++
++            if (!toBroadcast.isEmpty()) {
++                LOGGER.warn("Could not broadcast all chunk changes for this thread, sending to global broadcast: {}", toBroadcast);
++                globalToBroadcast.addAll(toBroadcast);
++            }
++        }
++
++        thisThreadToBroadcast.remove();
++    }
++
++    public static void flushGlobal() {
++        if (!globalToBroadcast.isEmpty()) {
++            broadcast(globalToBroadcast);
++        }
++    }
++
++    private static void broadcast(Set<LevelChunk> toBroadcast) {
++        toBroadcast.removeIf(chunk -> {
++            ServerChunkCache.ChunkAndHolder holder = chunk.moonrise$getChunkAndHolder();
++            holder.holder().broadcastChanges(holder.chunk());
++
++            return !holder.holder().hasChangedSections;
++        });
++    }
++
++
++}
+\ No newline at end of file
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+index 72e0ca437f3ef8740332792d2838f8dfd8697df4..b1e43d47400a90699a3096bd8c822cf6ec3a6b22 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -91,17 +91,22 @@ public class ShreddedPaperChunkTicker {
+ 
+             region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
+ 
++            ShreddedPaperChunkChangesBroadcaster.openThisThread();
++
+             while (region.getInternalTaskQueue().executeTask());
+ 
+             if (region.isEmpty()) {
+                 level.chunkSource.tickingRegions.remove(region.getRegionPos());
+             }
+         } finally {
++            ShreddedPaperChunkChangesBroadcaster.flushAndCloseThisThread();
+             currentlyTickingRegion.remove();
+         }
+     }
+ 
+     private static void _tickChunk(ServerLevel level, LevelChunk chunk1, NaturalSpawner.SpawnState spawnercreature_d) {
++        if (chunk1.moonrise$getChunkAndHolder().holder().hasChangedSections) ShreddedPaperChunkChangesBroadcaster.setNeedsBroadcast(chunk1); // ShreddedPaper - ensure queued for broadcasting changes
++
+         // Start - Import the same variables as the original chunk ticking method to make copying new changes easier
+         int j = 1; // Inhabited time increment in ticks
+         boolean flag = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !level.players().isEmpty(); // Should run mob spawning code
+diff --git a/net/minecraft/server/level/ChunkHolder.java b/net/minecraft/server/level/ChunkHolder.java
+index f39768869086a7ace940c4d064c3f95cefe51333..8b93dd5b5daf49c9df3c287b2e89ac3cca005fa2 100644
+--- a/net/minecraft/server/level/ChunkHolder.java
++++ b/net/minecraft/server/level/ChunkHolder.java
+@@ -2,6 +2,7 @@ package net.minecraft.server.level;
+ 
+ import ca.spottedleaf.moonrise.common.util.TickThread;
+ import io.multipaper.shreddedpaper.region.RegionPos;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkChangesBroadcaster;
+ import it.unimi.dsi.fastutil.shorts.ShortOpenHashSet;
+ import it.unimi.dsi.fastutil.shorts.ShortSet;
+ import java.util.BitSet;
+@@ -243,6 +244,7 @@ public class ChunkHolder extends GenerationChunkHolder implements ca.spottedleaf
+             int sectionIndex = this.levelHeightAccessor.getSectionIndex(pos.getY());
+             if (sectionIndex < 0 || sectionIndex >= this.changedBlocksPerSection.length) return false; // CraftBukkit - SPIGOT-6086, SPIGOT-6296
+             if (this.changedBlocksPerSection[sectionIndex] == null) {
++                if (!this.hasChangedSections) ShreddedPaperChunkChangesBroadcaster.setNeedsBroadcast(chunk); // ShreddedPaper
+                 this.hasChangedSections = true;
+                 this.changedBlocksPerSection[sectionIndex] = new ShortOpenHashSet();
+             }
+diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
+index fbc3c4f781a5bb8501c638423f5fa09aaa0a0d85..b6e4f341fd63ed9b7448395014077e6f02cb045e 100644
+--- a/net/minecraft/server/level/ServerChunkCache.java
++++ b/net/minecraft/server/level/ServerChunkCache.java
+@@ -22,6 +22,7 @@ import javax.annotation.Nullable;
+ import net.minecraft.FileUtil;
+ import io.multipaper.shreddedpaper.region.LevelChunkRegionMap;
+ import io.multipaper.shreddedpaper.region.RegionPos;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkChangesBroadcaster;
+ import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkTicker;
+ import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import net.minecraft.Util;
+@@ -169,24 +170,26 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+ 
+         // TODO check on update: impl of forEachBlockTickingChunk will only iterate ENTITY ticking chunks!
+         // TODO check on update: consumer just runs tickChunk
+-        final ca.spottedleaf.moonrise.common.list.ReferenceList<net.minecraft.world.level.chunk.LevelChunk> entityTickingChunks = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)world).moonrise$getEntityTickingChunks();
++        // ShreddedPaper start - handle broadcasting chunk changes ourselves
++        ShreddedPaperChunkChangesBroadcaster.flushGlobal();
++        // final ca.spottedleaf.moonrise.common.list.ReferenceList<net.minecraft.world.level.chunk.LevelChunk> entityTickingChunks = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)world).moonrise$getEntityTickingChunks();
+ 
+         // note: we can use the backing array here because:
+         // 1. we do not care about new additions
+         // 2. _removes_ are impossible at this stage in the tick
+-        final LevelChunk[] raw = entityTickingChunks.getRawDataUnchecked();
+-        final int size = entityTickingChunks.size();
++        // final LevelChunk[] raw = entityTickingChunks.getRawDataUnchecked();
++        // final int size = entityTickingChunks.size();
+ 
+-        java.util.Objects.checkFromToIndex(0, size, raw.length);
+-        for (int i = 0; i < size; ++i) {
+-            world.tickChunk(raw[i], randomTickSpeed);
++        // java.util.Objects.checkFromToIndex(0, size, raw.length);
++        // for (int i = 0; i < size; ++i) {
++        //     world.tickChunk(raw[i], randomTickSpeed);
+ 
+             // call mid-tick tasks for chunk system
+-            if ((i & 7) == 0) {
+-                ((ca.spottedleaf.moonrise.patches.chunk_system.server.ChunkSystemMinecraftServer)this.level.getServer()).moonrise$executeMidTickTasks();
+-                continue;
+-            }
+-        }
++            // if ((i & 7) == 0) {
++            //    ((ca.spottedleaf.moonrise.patches.chunk_system.server.ChunkSystemMinecraftServer)this.level.getServer()).moonrise$executeMidTickTasks();
++            //    continue;
++            //}
++        //}
+     }
+     // Paper end - chunk tick iteration optimisations
+ 
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index 39765562872e712a86edc194fd286a18418f5930..afcc39bfc95dfa864df88e4593ca01c6c7abf11e 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -88,6 +88,12 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+     private final LevelChunkTicks<Block> blockTicks;
+     private final LevelChunkTicks<Fluid> fluidTicks;
+     private LevelChunk.UnsavedListener unsavedListener = chunkPos -> {};
++    // ShreddedPaper start - toString
++    @Override
++    public String toString() {
++        return this.getClass().getSimpleName() + "{level=" + this.level.convertable.getLevelId() + ",pos=" + this.getPos() + "}";
++    }
++    // ShreddedPaper end - toString
+     // CraftBukkit start
+     public boolean mustNotSave;
+     public boolean needsDecoration;

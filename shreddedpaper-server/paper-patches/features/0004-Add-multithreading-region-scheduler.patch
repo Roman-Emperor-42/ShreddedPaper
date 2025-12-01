@@ -5,10 +5,10 @@ Subject: [PATCH] Add multithreading region scheduler
 
 
 diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
-index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c9218023bf6f 100644
+index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..ebccb79ad627f55ba81ed323d3dc91927725661f 100644
 --- a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
 +++ b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
-@@ -1,13 +1,22 @@
+@@ -1,6 +1,9 @@
  package ca.spottedleaf.moonrise.common.util;
  
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
@@ -18,9 +18,8 @@ index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c921
  import net.minecraft.world.entity.Entity;
  import net.minecraft.world.level.ChunkPos;
  import net.minecraft.world.level.Level;
- import net.minecraft.world.phys.AABB;
+@@ -8,6 +11,11 @@ import net.minecraft.world.phys.AABB;
  import net.minecraft.world.phys.Vec3;
-+import org.bukkit.Bukkit;
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
 +import io.multipaper.shreddedpaper.region.RegionPos;
@@ -31,7 +30,7 @@ index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c921
  
  import java.util.concurrent.atomic.AtomicInteger;
  
-@@ -19,77 +28,104 @@ public class TickThread extends Thread {
+@@ -19,77 +27,104 @@ public class TickThread extends Thread {
          return "thread=" + Thread.currentThread().getName();
      }
  
@@ -55,7 +54,7 @@ index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c921
 +        for (ServerLevel level : MinecraftServer.getServer().getAllLevels()) {
 +            Set<RegionPos> regions = level.chunkScheduler.getRegionLocker().getLockedRegions();
 +            if (!regions.isEmpty()) {
-+                strings.add(level.dimension() + "=" + regions.stream().map(region -> "[" + region.x + "," + region.z + "]").toList());
++                strings.add(level.convertable.getLevelId() + "=" + regions.stream().map(region -> "[" + region.x + "," + region.z + "]").toList());
 +            }
 +        }
 +
@@ -152,7 +151,7 @@ index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c921
          }
      }
  
-@@ -115,19 +151,19 @@ public class TickThread extends Thread {
+@@ -115,19 +150,19 @@ public class TickThread extends Thread {
      }
  
      public static TickThread getCurrentTickThread() {
@@ -176,7 +175,7 @@ index 69cdd304d255d52c9b7dc9b6a33ffdb630b79abe..3ee9432cb03a1df2b05540ebb876c921
      }
  
      public static boolean isTickThreadFor(final Level world, final BlockPos pos, final int blockRadius) {
-@@ -135,38 +171,72 @@ public class TickThread extends Thread {
+@@ -135,38 +170,72 @@ public class TickThread extends Thread {
      }
  
      public static boolean isTickThreadFor(final Level world, final ChunkPos pos) {
