@@ -4,6 +4,24 @@ Date: Mon, 1 Dec 2025 01:42:07 -0600
 Subject: [PATCH] Bukkit-API-thread-checks
 
 
+diff --git a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java b/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
+index a127e982e6ee1bf035ce343a6751c8894d4d93c9..5cea6007ce2e0957be60723eb83140432da23f9c 100644
+--- a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
++++ b/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
+@@ -138,10 +138,11 @@ public class BukkitCommandNode extends LiteralCommandNode<CommandSourceStack> {
+             if (sender instanceof final Player player) {
+                 TabCompleteEvent tabEvent = new org.bukkit.event.server.TabCompleteEvent(player, builder.getInput(), results.value() != null ? results.value() : new ArrayList<>(), true, pos); // Paper - AsyncTabCompleteEvent // ShreddedPaper
+                     results.value(null); // ShreddedPaper
+-                } else {
+-                    results.value(tabEvent.getCompletions()); // ShreddedPaper
+                 }
++            else {
++                    results.value(tabEvent.getCompletions()); // ShreddedPaper
+             }
++
+             // Paper end
+             if (results.value() == null) { // ShreddedPaper
+                 return builder.buildFuture();
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d12172855611 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
@@ -33,7 +51,7 @@ index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d121
          net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
          if (full != null) {
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 79fd0508b6a5b19c0f01dc821a747495dd08daec..f07255477a7ea2c33a20b253d0cea2b43eed3706 100644
+index 79fd0508b6a5b19c0f01dc821a747495dd08daec..0a093ca9dd93937c59db6bee53b039a041b6e1c1 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 @@ -8,6 +8,7 @@ import com.google.common.base.Predicates;
@@ -52,6 +70,45 @@ index 79fd0508b6a5b19c0f01dc821a747495dd08daec..f07255477a7ea2c33a20b253d0cea2b4
          warnUnsafeChunk("getting a faraway chunk", x, z); // Paper
          net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(x, z, ChunkStatus.FULL, true);
          return new CraftChunk(chunk);
+@@ -435,6 +437,9 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         }).join();
+         // Paper end - Fix this method
+     }
++        }
++
++
+ 
+     @Override
+     public Chunk[] getLoadedChunks() {
+@@ -2494,17 +2499,19 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+     @Override
+     public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
+         warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper
+-            java.util.concurrent.CompletableFuture<Chunk> ret = new java.util.concurrent.CompletableFuture<>();  // ShreddedPaper - synchronous plugin execution
+-            Plugin plugin = SynchronousPluginExecution.getCurrentPlugin(); // ShreddedPaper - synchronous plugin execution
+-            ShreddedPaper.ensureSync(this.getHandle(), c.getPos(), () -> { // ShreddedPaper - ensure on correct thread
++        Plugin plugin = SynchronousPluginExecution.getCurrentPlugin(); // ShreddedPaper - synchronous plugin execution
++
++        ca.spottedleaf.moonrise.common.util.ChunkSystem.scheduleChunkLoad(
+                 this.getHandle(), x, z, gen, ChunkStatus.FULL, true,
+-                        urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                        (ChunkAccess chunk) -> {
+-                            SynchronousPluginExecution.executeNoException(plugin, () -> ret.complete(chunk == null ? null : new CraftChunk(chunk))); // ShreddedPaper - synchronous plugin execution
+-                        }
+-            }
++                urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
++                (ChunkAccess c) -> {
++                    ShreddedPaper.ensureSync(this.getHandle(), c.getPos(), () -> { // ShreddedPaper - ensure on correct thread
++                        net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) c;
++                        if (chunk != null) this.addTicket(x, z); // Paper
++                        SynchronousPluginExecution.executeNoException(plugin, () -> cb.accept(chunk == null ? null : new CraftChunk(chunk))); // ShreddedPaper - synchronous plugin execution
++                    });
++                }
+         );
+-
+     }
+ 
+     @Override
 diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
 index 52d0a20e5a591d9aa6d86af41cf40143f695d9da..a7ea588053747c13e6fbd36cde05032ebbb13a18 100644
 --- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
