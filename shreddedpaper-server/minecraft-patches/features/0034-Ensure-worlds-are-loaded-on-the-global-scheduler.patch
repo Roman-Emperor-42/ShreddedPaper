@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:14:29 -0600
+Subject: [PATCH] Ensure-worlds-are-loaded-on-the-global-scheduler
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index a0e962f1dadc6cef913c7be025b1f874d70efb95..f07d59fa033c3ab19bffd9a260797d6364c02a21 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -872,6 +872,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ 
+     // CraftBukkit start
+     public void prepareLevels(ChunkProgressListener listener, ServerLevel serverLevel) {
++        if (!TickThread.isTickThread()) throw new IllegalStateException("Cannot load worlds async!!"); // ShreddedPaper
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread()) throw new IllegalStateException("Must load worlds from the global scheduler!"); // ShreddedPaper
+         this.forceTicks = true;
+         // CraftBukkit end
+         LOGGER.info("Preparing start region for dimension {}", serverLevel.dimension().location());

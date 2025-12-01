@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 00:51:14 -0600
+Subject: [PATCH] allow-unsupported-plugins-to-modify-chunks-via-globa
+
+
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
+index 3ee9432cb03a1df2b05540ebb876c9218023bf6f..62d39b094d42fb23cfdd201786d25cb2e3c5eeea 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
+@@ -1,5 +1,8 @@
+ package ca.spottedleaf.moonrise.common.util;
+ 
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperChunkTicker;
++import io.multipaper.shreddedpaper.threading.SynchronousPluginExecution;
+ import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.MinecraftServer;
+@@ -56,6 +59,16 @@ public class TickThread extends Thread {
+     }
+     // ShreddedPaper end
+ 
++    // ShreddedPaper start
++    public static boolean canBypassTickThreadCheck() {
++        return
++                ShreddedPaperConfiguration.get().multithreading.allowUnsupportedPluginsToModifyChunksViaGlobalScheduler &&
++                        SynchronousPluginExecution.getCurrentPlugin() != null &&
++                        Thread.currentThread() == MinecraftServer.getServer().getRunningThread() &&
++                        !ShreddedPaperChunkTicker.tickingChunks;
++    }
++    // ShreddedPaper end
++
+     /**
+      * @deprecated
+      */

@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:32:20 -0600
+Subject: [PATCH] Synchronize-playersSentChunkTo
+
+
+diff --git a/net/minecraft/server/level/ChunkHolder.java b/net/minecraft/server/level/ChunkHolder.java
+index b8efdfa6c3d711f8d5be0c220f0fe6ff562a4f47..f39768869086a7ace940c4d064c3f95cefe51333 100644
+--- a/net/minecraft/server/level/ChunkHolder.java
++++ b/net/minecraft/server/level/ChunkHolder.java
+@@ -67,21 +67,27 @@ public class ChunkHolder extends GenerationChunkHolder implements ca.spottedleaf
+ 
+     @Override
+     public final void moonrise$addReceivedChunk(final ServerPlayer player) {
+-        if (!this.playersSentChunkTo.add(player)) {
+-            throw new IllegalStateException("Already sent chunk " + this.pos + " in world '" + ca.spottedleaf.moonrise.common.util.WorldUtil.getWorldName(this.getChunkMap().level) + "' to player " + player);
+-        }
++        synchronized (playersSentChunkTo) { // ShreddedPaper
++            if (!this.playersSentChunkTo.add(player)) {
++                throw new IllegalStateException("Already sent chunk " + this.pos + " in world '" + ca.spottedleaf.moonrise.common.util.WorldUtil.getWorldName(this.getChunkMap().level) + "' to player " + player);
++            }
++        } // ShreddedPaper
+     }
+ 
+     @Override
+     public final void moonrise$removeReceivedChunk(final ServerPlayer player) {
+-        if (!this.playersSentChunkTo.remove(player)) {
+-            throw new IllegalStateException("Already sent chunk " + this.pos + " in world '" + ca.spottedleaf.moonrise.common.util.WorldUtil.getWorldName(this.getChunkMap().level) + "' to player " + player);
+-        }
++        synchronized (playersSentChunkTo) { // ShreddedPaper
++            if (!this.playersSentChunkTo.remove(player)) {
++                throw new IllegalStateException("Already sent chunk " + this.pos + " in world '" + ca.spottedleaf.moonrise.common.util.WorldUtil.getWorldName(this.getChunkMap().level) + "' to player " + player);
++            }
++        } // ShreddedPaper
+     }
+ 
+     @Override
+     public final boolean moonrise$hasChunkBeenSent() {
+-        return this.playersSentChunkTo.size() != 0;
++        synchronized (playersSentChunkTo) { // ShreddedPaper
++            return this.playersSentChunkTo.size() != 0;
++        } // ShreddedPaper
+     }
+ 
+     @Override
+@@ -95,6 +101,7 @@ public class ChunkHolder extends GenerationChunkHolder implements ca.spottedleaf
+         final ServerPlayer[] raw = this.playersSentChunkTo.getRawDataUnchecked();
+         for (int i = 0, len = this.playersSentChunkTo.size(); i < len; ++i) {
+             final ServerPlayer player = raw[i];
++            if (player == null) continue; // ShreddedPaper
+             if (onlyOnWatchDistanceEdge && !((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)this.getChunkMap().level).moonrise$getPlayerChunkLoader().isChunkSent(player, this.pos.x, this.pos.z, onlyOnWatchDistanceEdge)) {
+                 continue;
+             }

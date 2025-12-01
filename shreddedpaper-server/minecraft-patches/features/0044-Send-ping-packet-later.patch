@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:47:19 -0600
+Subject: [PATCH] Send-ping-packet-later
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index f07d59fa033c3ab19bffd9a260797d6364c02a21..a7b3ce551a9e7199b136103595840542653a06f2 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1826,6 +1826,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ 
+         for (ServerPlayer serverPlayer : this.playerList.getPlayers()) {
+             serverPlayer.connection.chunkSender.sendNextChunks(serverPlayer);
++            serverPlayer.connection.keepConnectionAlive(); // ShreddedPaper - send the ping packet right before flushing
+             serverPlayer.connection.resumeFlushing();
+         }
+ 
+diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+index a167771494f4115db017de4d7ea1a5af21a21f8c..feb6501be09f27e7d2d97f217bb01d741f977906 100644
+--- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+@@ -286,7 +286,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         this.disconnect(DISCONNECT_UNEXPECTED_QUERY, io.papermc.paper.connection.DisconnectionReason.INVALID_COOKIE); // Paper - kick event cause
+     }
+ 
+-    protected void keepConnectionAlive() {
++    public void keepConnectionAlive() {
+         Profiler.get().push("keepAlive");
+         long millis = Util.getMillis();
+         // Paper start - improve keepalives
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index d8d3a858f299828659ed4b4538e5127b790892ca..d968a253e70a6dfe176f1aec54ea243c1823795b 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -403,7 +403,7 @@ public class ServerGamePacketListenerImpl
+             this.aboveGroundVehicleTickCount = 0;
+         }
+ 
+-        this.keepConnectionAlive();
++        // this.keepConnectionAlive(); // ShreddedPaper - called elsewhere
+         this.chatSpamThrottler.tick();
+         this.dropSpamThrottler.tick();
+         this.tabSpamThrottler.tick(); // Paper - configurable tab spam limits

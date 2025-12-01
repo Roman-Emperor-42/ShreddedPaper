@@ -1,0 +1,97 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:42:07 -0600
+Subject: [PATCH] Bukkit-API-thread-checks
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
+index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d12172855611 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Predicates;
+ import com.mojang.serialization.Codec;
+@@ -9,6 +10,8 @@ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.function.Predicate;
++
++import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.Registry;
+@@ -77,6 +80,7 @@ public class CraftChunk implements Chunk {
+     }
+ 
+     public ChunkAccess getHandle(ChunkStatus chunkStatus) {
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.worldServer, this.x, this.z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.worldServer.convertable.getLevelId() + ", chunkpos=[" + this.x + "," + this.z + "]"); // ShreddedPaper - regions
+         // Paper start - chunk system
+         net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
+         if (full != null) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index 79fd0508b6a5b19c0f01dc821a747495dd08daec..f07255477a7ea2c33a20b253d0cea2b43eed3706 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -8,6 +8,7 @@ import com.google.common.base.Predicates;
+ import com.mojang.datafixers.util.Pair;
+ import io.multipaper.shreddedpaper.ShreddedPaper;
+ import io.multipaper.shreddedpaper.region.RegionPos;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import io.multipaper.shreddedpaper.threading.SynchronousPluginExecution;
+ import io.papermc.paper.FeatureHooks;
+ import io.papermc.paper.raytracing.RayTraceTarget;
+@@ -382,6 +383,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+ 
+     @Override
+     public Chunk getChunkAt(int x, int z) {
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.world, x, z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.world.convertable.getLevelId() + ", chunkpos=[" + x + "," + z + "]"); // ShreddedPaper - regions
+         warnUnsafeChunk("getting a faraway chunk", x, z); // Paper
+         net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(x, z, ChunkStatus.FULL, true);
+         return new CraftChunk(chunk);
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index 52d0a20e5a591d9aa6d86af41cf40143f695d9da..a7ea588053747c13e6fbd36cde05032ebbb13a18 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit.block;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Preconditions;
+ import java.util.ArrayList;
+ import java.util.Collection;
+@@ -75,6 +76,7 @@ public class CraftBlock implements Block {
+     }
+ 
+     public net.minecraft.world.level.block.state.BlockState getNMS() {
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         return this.world.getBlockState(this.position);
+     }
+ 
+@@ -160,6 +162,7 @@ public class CraftBlock implements Block {
+ 
+     @Override
+     public byte getData() {
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         net.minecraft.world.level.block.state.BlockState state = this.world.getBlockState(this.position);
+         return CraftMagicNumbers.toLegacyData(state);
+     }
+@@ -192,6 +195,7 @@ public class CraftBlock implements Block {
+     }
+ 
+     boolean setBlockState(final net.minecraft.world.level.block.state.BlockState state, final boolean applyPhysics) {
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot set block asynchronously!");
+         return CraftBlock.setBlockState(this.world, this.position, this.getNMS(), state, applyPhysics);
+     }
+ 
+@@ -227,6 +231,7 @@ public class CraftBlock implements Block {
+ 
+     @Override
+     public Material getType() {
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         return this.world.getBlockState(this.position).getBukkitMaterial(); // Paper - optimise getType calls
+     }
+ 

@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:45:19 -0600
+Subject: [PATCH] clear-command
+
+
+diff --git a/net/minecraft/server/commands/ClearInventoryCommands.java b/net/minecraft/server/commands/ClearInventoryCommands.java
+index b1866fdf0bacee9ce7ef1fcad4484df5c0d4c640..b152c6efb4ffad4b91754ed97af2016c058b90cd 100644
+--- a/net/minecraft/server/commands/ClearInventoryCommands.java
++++ b/net/minecraft/server/commands/ClearInventoryCommands.java
+@@ -6,7 +6,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
+ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+ import java.util.Collection;
+ import java.util.Collections;
++import java.util.concurrent.CompletableFuture;
+ import java.util.function.Predicate;
++
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.commands.CommandBuildContext;
+ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.Commands;
+@@ -73,9 +76,16 @@ public class ClearInventoryCommands {
+         int i = 0;
+ 
+         for (ServerPlayer serverPlayer : targetPlayers) {
+-            i += serverPlayer.getInventory().clearOrCountMatchingItems(itemPredicate, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
+-            serverPlayer.containerMenu.broadcastChanges();
+-            serverPlayer.inventoryMenu.slotsChanged(serverPlayer.getInventory());
++            // ShreddedPaper start - run on correct thread
++            CompletableFuture<Integer> future = new CompletableFuture<>();
++            ShreddedPaper.ensureSync(serverPlayer, () -> {
++                int j = serverPlayer.getInventory().clearOrCountMatchingItems(item, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
++                serverPlayer.containerMenu.broadcastChanges();
++                serverPlayer.inventoryMenu.slotsChanged(serverPlayer.getInventory());
++                future.complete(j);
++            });
++            i += future.getNow(1); // ShreddedPaper - default to 1 if player in on a different thread
++            // ShreddedPaper end - run on correct thread
+         }
+ 
+         if (i == 0) {

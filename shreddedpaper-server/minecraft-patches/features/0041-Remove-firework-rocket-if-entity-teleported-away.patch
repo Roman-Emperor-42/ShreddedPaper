@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:36:56 -0600
+Subject: [PATCH] Remove-firework-rocket-if-entity-teleported-away
+
+
+diff --git a/net/minecraft/world/entity/projectile/FireworkRocketEntity.java b/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
+index d8dc196ef92e97f831cf97cd1536a46f81f9d5d1..b99d305df9055e2791b6c6f0bee9f909848b441a 100644
+--- a/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
++++ b/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.world.entity.projectile;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import it.unimi.dsi.fastutil.doubles.DoubleDoubleImmutablePair;
+ import java.util.List;
+ import java.util.OptionalInt;
+@@ -11,6 +12,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
+ import net.minecraft.network.syncher.EntityDataSerializers;
+ import net.minecraft.network.syncher.SynchedEntityData;
+ import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.sounds.SoundEvents;
+ import net.minecraft.sounds.SoundSource;
+ import net.minecraft.world.damagesource.DamageSource;
+@@ -161,6 +163,12 @@ public class FireworkRocketEntity extends Projectile implements ItemSupplier {
+                     this.attachedToEntity.getY() + handHoldingItemAngle.y,
+                     this.attachedToEntity.getZ() + handHoldingItemAngle.z
+                 );
++                // ShreddedPaper start - remove firework rocket if entity teleported away
++                if (!TickThread.isTickThreadFor((ServerLevel) this.level(), new Vec3(this.attachedToEntity.getX() + vec3d.x, this.attachedToEntity.getY() + vec3d.y, this.attachedToEntity.getZ() + vec3d.z))) {
++                    this.discard();
++                    return;
++                }
++                // ShreddedPaper end - remove firework rocket if entity teleported away
+                 this.setDeltaMovement(this.attachedToEntity.getDeltaMovement());
+             }
+ 

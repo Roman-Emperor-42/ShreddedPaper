@@ -1,0 +1,63 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 00:51:14 -0600
+Subject: [PATCH] allow-unsupported-plugins-to-modify-chunks-via-globa
+
+
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+index 1f15b249ec7990d8ea2b63b1a18ecc9782a71a55..a65b83f5f5296a947891070b13d098215d1a39aa 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
+@@ -16,8 +16,14 @@ import java.util.List;
+ import java.util.concurrent.CompletableFuture;
+ 
+ public class ShreddedPaperChunkTicker {
++
++    public static boolean tickingChunks = false;
++
+     public static void tickChunks(ServerLevel level, NaturalSpawner.SpawnState spawnercreature_d) {
+         List<CompletableFuture<Void>> futures = new ArrayList<>();
++
++        tickingChunks = true;
++
+         level.chunkSource.tickingRegions.forEach(
+                 region -> futures.add(tickRegion(level, region, spawnercreature_d))
+         );
+@@ -26,6 +32,8 @@ public class ShreddedPaperChunkTicker {
+                 level.getChunkSource().mainThreadProcessor.managedBlock(future::isDone);
+             }
+         }
++
++        tickingChunks = false;
+     }
+ 
+     public static CompletableFuture<Void> tickRegion(ServerLevel level, LevelChunkRegion region, NaturalSpawner.SpawnState spawnercreature_d) {
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperRegionLocker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperRegionLocker.java
+index e327a5b54d46890bed95809e4d3e9f4025605836..b0b04b2b2dad5f826360e5feef43496a0c397244 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperRegionLocker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperRegionLocker.java
+@@ -1,5 +1,6 @@
+ package io.multipaper.shreddedpaper.threading;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+ import io.multipaper.shreddedpaper.region.RegionPos;
+ 
+@@ -38,7 +39,7 @@ public class ShreddedPaperRegionLocker {
+      * Checks if the current thread holds a read lock for the given region
+      */
+     public boolean hasLock(RegionPos regionPos) {
+-        return localLocks.get().contains(regionPos);
++        return localLocks.get().contains(regionPos) || TickThread.canBypassTickThreadCheck();
+     }
+ 
+     /**
+@@ -47,7 +48,7 @@ public class ShreddedPaperRegionLocker {
+      * syncing conflicts with other servers.
+      */
+     public boolean hasWriteLock(RegionPos regionPos) {
+-        return writeLocks.get().contains(regionPos);
++        return writeLocks.get().contains(regionPos) || TickThread.canBypassTickThreadCheck();
+     }
+ 
+     /**

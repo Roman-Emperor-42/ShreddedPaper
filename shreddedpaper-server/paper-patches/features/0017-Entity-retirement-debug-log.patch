@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 00:54:11 -0600
+Subject: [PATCH] Entity-retirement-debug-log
+
+
+diff --git a/src/main/java/io/papermc/paper/threadedregions/EntityScheduler.java b/src/main/java/io/papermc/paper/threadedregions/EntityScheduler.java
+index 12a135ff0a339273fc6fe9fc632ec49bc82f39f3..d3a7d7ebcfbe0e217edc098d0c7b59e9d8e27d9f 100644
+--- a/src/main/java/io/papermc/paper/threadedregions/EntityScheduler.java
++++ b/src/main/java/io/papermc/paper/threadedregions/EntityScheduler.java
+@@ -3,6 +3,7 @@ package io.papermc.paper.threadedregions;
+ import ca.spottedleaf.concurrentutil.util.Validate;
+ import ca.spottedleaf.moonrise.common.list.ReferenceList;
+ import ca.spottedleaf.moonrise.common.util.TickThread;
++import com.mojang.logging.LogUtils;
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+ import net.minecraft.world.entity.Entity;
+ import org.bukkit.craftbukkit.entity.CraftEntity;
+@@ -43,6 +44,7 @@ public final class EntityScheduler {
+     private static final record ScheduledTask(Consumer<? extends Entity> run, Consumer<? extends Entity> retired) {}
+ 
+     private long tickCount = 0L;
++    private Exception retiredReason; // ShreddedPaper
+     private static final long RETIRED_TICK_COUNT = -1L;
+     private final Object stateLock = new Object();
+     private final Long2ObjectOpenHashMap<List<ScheduledTask>> oneTimeDelayed = new Long2ObjectOpenHashMap<>();
+@@ -116,6 +118,7 @@ public final class EntityScheduler {
+                 throw new IllegalStateException("Already retired");
+             }
+             this.tickCount = RETIRED_TICK_COUNT;
++            this.retiredReason = new Exception("Retired"); // ShreddedPaper
+             this.registerTo(null);
+         }
+ 
+@@ -200,6 +203,7 @@ public final class EntityScheduler {
+         final List<ScheduledTask> toRun;
+         synchronized (this.stateLock) {
+             if (this.tickCount == RETIRED_TICK_COUNT) {
++                LogUtils.getClassLogger().error("Tried to execute tick on entity, but was retired here: {}", this.entity.getHandle(), retiredReason); // ShreddedPaper
+                 throw new IllegalStateException("Ticking retired scheduler");
+             }
+             ++this.tickCount;

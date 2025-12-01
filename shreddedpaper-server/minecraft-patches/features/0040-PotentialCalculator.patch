@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:34:13 -0600
+Subject: [PATCH] PotentialCalculator
+
+
+diff --git a/net/minecraft/world/level/PotentialCalculator.java b/net/minecraft/world/level/PotentialCalculator.java
+index c9ff08679ba711bb86477ad39526cf9a41f5f315..676a5456f215e66d08140d9084646fe61503a6e1 100644
+--- a/net/minecraft/world/level/PotentialCalculator.java
++++ b/net/minecraft/world/level/PotentialCalculator.java
+@@ -9,7 +9,7 @@ public class PotentialCalculator {
+ 
+     public void addCharge(BlockPos pos, double charge) {
+         if (charge != 0.0) {
+-            this.charges.add(new PotentialCalculator.PointCharge(pos, charge));
++            this.charges.add(new PotentialCalculator.PointCharge(pos, mass)); // ShreddedPaper - doesn't need a lock, if a value isn't added it's not a big deal
+         }
+     }
+ 
+@@ -19,7 +19,8 @@ public class PotentialCalculator {
+         } else {
+             double d = 0.0;
+ 
+-            for (PotentialCalculator.PointCharge pointCharge : this.charges) {
++            for (int i = 0; i < this.charges.size(); i++) { // ShreddedPaper - prevent CME - list is only ever added to
++                PotentialCalculator.PointCharge pointCharge = this.charges.get(i); // ShreddedPaper - prevent CME - list is only ever added to
+                 d += pointCharge.getPotentialChange(pos);
+             }
+ 

@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:15:34 -0600
+Subject: [PATCH] Plugin-not-folia-supported-warning
+
+
+diff --git a/io/multipaper/shreddedpaper/threading/SynchronousPluginExecution.java b/io/multipaper/shreddedpaper/threading/SynchronousPluginExecution.java
+index 64fec427f984b439e96923b64f38a09b2d2e8c63..fd81480b6ef39f9c09c9a6464a57f522c1602196 100644
+--- a/io/multipaper/shreddedpaper/threading/SynchronousPluginExecution.java
++++ b/io/multipaper/shreddedpaper/threading/SynchronousPluginExecution.java
+@@ -51,6 +51,8 @@ public class SynchronousPluginExecution {
+             pluginsToLock = cachedDependencyLists.computeIfAbsent(plugin.getName(), (name) -> {
+                 TreeSet<String> dependencyList = new TreeSet<>(Comparator.naturalOrder());
+                 fillPluginsToLock(plugin, dependencyList);
++                LOGGER.info("Plugin {} does not support Folia! Initializing synchronous execution. This may cause a performance degradation.", plugin.getName());
++                LOGGER.info("Dependency list calculated for {}: {}", plugin.getName(), dependencyList);
+                 return new ArrayList<>(dependencyList);
+             });
+         }

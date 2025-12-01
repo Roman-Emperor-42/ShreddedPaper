@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 00:27:37 -0600
+Subject: [PATCH] Ender-dragon-fight
+
+
+diff --git a/net/minecraft/world/level/dimension/end/EndDragonFight.java b/net/minecraft/world/level/dimension/end/EndDragonFight.java
+index 7f9bd256da15da915db1c45099572d9eb3286166..76e8d9d2e15b2bf2db3e081661c22bccec94440d 100644
+--- a/net/minecraft/world/level/dimension/end/EndDragonFight.java
++++ b/net/minecraft/world/level/dimension/end/EndDragonFight.java
+@@ -9,6 +9,7 @@ import com.google.common.collect.Sets;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+ import java.util.List;
+ import java.util.Optional;
+@@ -160,6 +161,7 @@ public class EndDragonFight {
+         }
+ 
+         if (!this.dragonEvent.getPlayers().isEmpty()) {
++            Runnable r = () -> { // ShreddedPaper - run on end island thread
+             this.level.getChunkSource().addTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);
+             boolean isArenaLoaded = this.isArenaLoaded();
+             if (this.needsStateScanning && isArenaLoaded) {
+@@ -186,6 +188,13 @@ public class EndDragonFight {
+                     this.updateCrystalCount();
+                     this.ticksSinceCrystalsScanned = 0;
+                 }
++                // ShreddedPaper start - run on end island thread
++            };
++            while (!this.level.chunkScheduler.getRegionLocker().tryLockNow(RegionPos.forChunk(0, 0), r)) {
++                long startBlockingTime = System.nanoTime();
++                this.level.chunkSource.mainThreadProcessor.managedBlock(() -> System.nanoTime() - startBlockingTime < 1_000_000); // Wait for 1ms
++            }
++            // ShreddedPaper end - run on end island thread
+             }
+         } else {
+             this.level.getChunkSource().removeTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);

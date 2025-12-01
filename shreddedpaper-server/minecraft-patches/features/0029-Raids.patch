@@ -1,0 +1,86 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:01:12 -0600
+Subject: [PATCH] Raids
+
+
+diff --git a/net/minecraft/world/entity/raid/Raid.java b/net/minecraft/world/entity/raid/Raid.java
+index b3a29ce523fb5de71589c7c17598bba17622f988..00fd65a68a866dae07edf00a735809f19b7b05fb 100644
+--- a/net/minecraft/world/entity/raid/Raid.java
++++ b/net/minecraft/world/entity/raid/Raid.java
+@@ -24,6 +24,7 @@ import net.minecraft.core.UUIDUtil;
+ import net.minecraft.core.component.DataComponents;
+ import net.minecraft.core.registries.Registries;
+ import net.minecraft.network.chat.Component;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+ import net.minecraft.server.level.ServerBossEvent;
+ import net.minecraft.server.level.ServerLevel;
+@@ -397,12 +398,15 @@ public class Raid {
+                         for (UUID uuid : this.heroesOfTheVillage) {
+                             Entity entity = level.getEntity(uuid);
+                             if (entity instanceof LivingEntity livingEntity && !entity.isSpectator()) {
++                                ShreddedPaper.ensureSync(entity, () -> { // ShreddedPaper - run on right thread
+                                 livingEntity.addEffect(new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 48000, this.raidOmenLevel - 1, false, false, true));
+                                 if (livingEntity instanceof ServerPlayer serverPlayer) {
+                                     serverPlayer.awardStat(Stats.RAID_WIN);
+                                     CriteriaTriggers.RAID_WIN.trigger(serverPlayer);
+-                                    winners.add(serverPlayer.getBukkitEntity()); // CraftBukkit
++                                    // winners.add(entityplayer.getBukkitEntity()); // CraftBukkit // ShreddedPaper - don't run on right thread
+                                 }
++                                }); // ShreddedPaper - run on right thread
++                                if (entityliving instanceof ServerPlayer entityplayer) winners.add(entityplayer.getBukkitEntity()); // ShreddedPaper - this doesn't need to be run on right thread
+                             }
+                         }
+                         org.bukkit.craftbukkit.event.CraftEventFactory.callRaidFinishEvent(level, this, winners); // CraftBukkit
+diff --git a/net/minecraft/world/entity/raid/Raids.java b/net/minecraft/world/entity/raid/Raids.java
+index fc5c1acec3cc2afed40589be6f8e159c3426c08e..af86631ed722610112ee18cf9fae16be556033cb 100644
+--- a/net/minecraft/world/entity/raid/Raids.java
++++ b/net/minecraft/world/entity/raid/Raids.java
+@@ -9,6 +9,8 @@ import java.util.Iterator;
+ import java.util.List;
+ import java.util.OptionalInt;
+ import javax.annotation.Nullable;
++
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.nbt.CompoundTag;
+@@ -29,7 +31,7 @@ import net.minecraft.world.phys.Vec3;
+ 
+ public class Raids extends SavedData {
+     private static final String RAID_FILE_ID = "raids";
+-    public final java.util.Map<java.util.UUID, Integer> playerCooldowns = com.google.common.collect.Maps.newHashMap(); // Purpur - Raid cooldown setting
++    public final java.util.Map<java.util.UUID, Integer> playerCooldowns = com.google.common.collect.Maps.newConcurrentMap(); // Purpur - Raid cooldown setting // ShreddedPaper - concurrent map
+     public static final Codec<Raids> CODEC = RecordCodecBuilder.create(
+         instance -> instance.group(
+                 Raids.RaidWithId.CODEC
+@@ -97,16 +99,19 @@ public class Raids extends SavedData {
+ 
+         while (iterator.hasNext()) {
+             Raid raid = iterator.next();
+-            if (level.getGameRules().getBoolean(GameRules.RULE_DISABLE_RAIDS)) {
+-                raid.stop();
+-            }
+ 
+-            if (raid.isStopped()) {
+-                iterator.remove();
+-                this.setDirty();
+-            } else {
+-                raid.tick(level);
+-            }
++            ShreddedPaper.runSync((ServerLevel) raid.getLevel(), raid.getCenter(), () -> { // ShreddedPaper - run on right thread
++                if (level.getGameRules().getBoolean(GameRules.RULE_DISABLE_RAIDS)) {
++                    raid.stop();
++                }
++
++                if (raid.isStopped()) {
++                    this.raidMap.remove(raid.getId(), raid); // iterator.remove(); // ShreddedPaper - run on right thread
++                    this.setDirty();
++                } else {
++                    raid.tick(level);
++                }
++            }); // ShreddedPaper - run on right thread
+         }
+ 
+         if (this.tick % 200 == 0) {

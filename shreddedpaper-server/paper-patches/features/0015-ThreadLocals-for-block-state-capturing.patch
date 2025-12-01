@@ -1,0 +1,70 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 00:24:37 -0600
+Subject: [PATCH] ThreadLocals-for-block-state-capturing
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index 55603f6b8a7130ac7b6113590e0709984eb629e4..79fd0508b6a5b19c0f01dc821a747495dd08daec 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -781,13 +781,16 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+ 
+     @Override
+     public boolean generateTree(Location loc, TreeType type, BlockChangeDelegate delegate) {
+-        this.world.captureTreeGeneration = true;
+-        this.world.captureBlockStates = true;
++
++        this.world.captureTreeGeneration.set(true); // ShreddedPaper - thread local
++        this.world.captureBlockStates.set(true); // ShreddedPaper - thread local
++        world.capturedTileEntities.get().clear(); // ShreddedPaper - clear beforehand
++        world.capturedBlockStates.get().clear(); // ShreddedPaper - clear beforehand
+         boolean grownTree = this.generateTree(loc, type);
+-        this.world.captureBlockStates = false;
+-        this.world.captureTreeGeneration = false;
++        this.world.captureBlockStates.set(false); // ShreddedPaper - thread local
++        this.world.captureTreeGeneration.set(false); // ShreddedPaper - thread local
+         if (grownTree) { // Copy block data to delegate
+-            for (BlockState blockstate : this.world.capturedBlockStates.values()) {
++            for (BlockState blockstate : this.world.capturedBlockStates.get().values()) { // ShreddedPaper - thread local
+                 BlockPos position = ((CraftBlockState) blockstate).getPosition();
+                 net.minecraft.world.level.block.state.BlockState oldBlock = this.world.getBlockState(position);
+                 int flags = ((CraftBlockState) blockstate).getFlags();
+@@ -795,10 +798,10 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+                 net.minecraft.world.level.block.state.BlockState newBlock = this.world.getBlockState(position);
+                 this.world.notifyAndUpdatePhysics(position, null, oldBlock, newBlock, newBlock, flags, net.minecraft.world.level.block.Block.UPDATE_LIMIT);
+             }
+-            this.world.capturedBlockStates.clear();
++            this.world.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
+             return true;
+         } else {
+-            this.world.capturedBlockStates.clear();
++            this.world.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
+             return false;
+         }
+     }
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index 729b90d982fe5b487ed1d5552a15d3b7d5035a8a..52d0a20e5a591d9aa6d86af41cf40143f695d9da 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -554,15 +554,15 @@ public class CraftBlock implements Block {
+         UseOnContext context = new UseOnContext(world, null, InteractionHand.MAIN_HAND, Items.BONE_MEAL.getDefaultInstance(), new BlockHitResult(Vec3.ZERO, direction, this.getPosition(), false));
+ 
+         // SPIGOT-6895: Call StructureGrowEvent and BlockFertilizeEvent
+-        world.captureTreeGeneration = true;
++        world.captureTreeGeneration.set(true); // ShreddedPaper - thread local
+         InteractionResult result = BoneMealItem.applyBonemeal(context);
+-        world.captureTreeGeneration = false;
++        world.captureTreeGeneration.set(false); // ShreddedPaper - thread local
+ 
+-        if (!world.capturedBlockStates.isEmpty()) {
++        if (world.capturedBlockStates.get().size() > 0) { // ShreddedPaper - thread local
+             TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - thread local for treeType
+             SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - thread local for treeType
+-            List<BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
+-            world.capturedBlockStates.clear();
++            List<BlockState> blocks = new ArrayList<>(world.capturedBlockStates.get().values()); // ShreddedPaper - thread local
++            world.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
+             StructureGrowEvent structureEvent = null;
+ 
+             if (treeType != null) {

@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:03:03 -0600
+Subject: [PATCH] Thread-safe-alternate-redstone-handler
+
+
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index a29f298d2ef75caee897b6574cd31926b46d2e21..d5519ad0fb5827dadcaf5d601d3bd5abea0df03a 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -220,7 +220,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     public final java.util.UUID uuid;
+     public boolean hasPhysicsEvent = true; // Paper - BlockPhysicsEvent
+     public boolean hasEntityMoveEvent; // Paper - Add EntityMoveEvent
+-    private final alternate.current.wire.WireHandler wireHandler = new alternate.current.wire.WireHandler(this); // Paper - optimize redstone (Alternate Current)
++    private final ThreadLocal<alternate.current.wire.WireHandler> wireHandler = ThreadLocal.withInitial(() -> new alternate.current.wire.WireHandler(this)); // Paper - optimize redstone (Alternate Current)
+     public boolean hasRidableMoveEvent = false; // Purpur - Ridables
+ 
+     @Override
+@@ -2735,7 +2735,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     // Paper start - optimize redstone (Alternate Current)
+     @Override
+     public alternate.current.wire.WireHandler getWireHandler() {
+-        return wireHandler;
++        return wireHandler.get();
+     }
+     // Paper end - optimize redstone (Alternate Current)
+ 

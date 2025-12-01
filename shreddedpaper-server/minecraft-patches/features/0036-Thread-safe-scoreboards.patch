@@ -1,0 +1,98 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: caleb <graham.caleb.m@gmail.com>
+Date: Mon, 1 Dec 2025 01:21:39 -0600
+Subject: [PATCH] Thread-safe-scoreboards
+
+
+diff --git a/net/minecraft/server/ServerScoreboard.java b/net/minecraft/server/ServerScoreboard.java
+index fc1c377ad05edcefacd407671801ae605f3fc31a..c413c62393b470291e2bda2df10eb3d0be49a76e 100644
+--- a/net/minecraft/server/ServerScoreboard.java
++++ b/net/minecraft/server/ServerScoreboard.java
+@@ -6,6 +6,8 @@ import java.util.List;
+ import java.util.Objects;
+ import java.util.Optional;
+ import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.CopyOnWriteArrayList;
+ import javax.annotation.Nullable;
+ import net.minecraft.network.protocol.Packet;
+ import net.minecraft.network.protocol.game.ClientboundResetScorePacket;
+@@ -34,8 +36,8 @@ public class ServerScoreboard extends Scoreboard {
+         }, DataFixTypes.SAVED_DATA_SCOREBOARD
+     );
+     private final MinecraftServer server;
+-    private final Set<Objective> trackedObjectives = Sets.newHashSet();
+-    private final List<Runnable> dirtyListeners = Lists.newArrayList();
++    private final Set<Objective> trackedObjectives = ConcurrentHashMap.newKeySet(); // ShreddedPaper
++    private final List<Runnable> dirtyListeners = new CopyOnWriteArrayList<>(); // ShreddedPaper - rarely modified, thus CopyOnWriteArrayList suffices
+ 
+     public ServerScoreboard(MinecraftServer server) {
+         this.server = server;
+diff --git a/net/minecraft/world/scores/PlayerTeam.java b/net/minecraft/world/scores/PlayerTeam.java
+index 4398151f8daff7617111cf5361e9df4111d4aca4..0358741ab0ba67b2ba6d5a96b88ec53568f6836f 100644
+--- a/net/minecraft/world/scores/PlayerTeam.java
++++ b/net/minecraft/world/scores/PlayerTeam.java
+@@ -7,6 +7,7 @@ import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
+ import javax.annotation.Nullable;
+ import net.minecraft.ChatFormatting;
+ import net.minecraft.network.chat.CommonComponents;
+@@ -22,7 +23,7 @@ public class PlayerTeam extends Team {
+     private static final int BIT_SEE_INVISIBLES = 1;
+     private final Scoreboard scoreboard;
+     private final String name;
+-    private final Set<String> players = Sets.newHashSet();
++    private final Set<String> players = ConcurrentHashMap.newKeySet(); // ShreddedPaper
+     private Component displayName;
+     private Component playerPrefix = CommonComponents.EMPTY;
+     private Component playerSuffix = CommonComponents.EMPTY;
+diff --git a/net/minecraft/world/scores/Scoreboard.java b/net/minecraft/world/scores/Scoreboard.java
+index 04c48a95634dd3f0f9aeb0e6235c5ce780fe39dd..ce7655791785d1707dc0cd2bab5a9aa5095cfe12 100644
+--- a/net/minecraft/world/scores/Scoreboard.java
++++ b/net/minecraft/world/scores/Scoreboard.java
+@@ -17,6 +17,7 @@ import java.util.EnumMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Objects;
++import java.util.concurrent.ConcurrentHashMap;
+ import java.util.function.Consumer;
+ import javax.annotation.Nullable;
+ import net.minecraft.network.chat.Component;
+@@ -30,12 +31,12 @@ import org.slf4j.Logger;
+ public class Scoreboard {
+     public static final String HIDDEN_SCORE_PREFIX = "#";
+     private static final Logger LOGGER = LogUtils.getLogger();
+-    private final Object2ObjectMap<String, Objective> objectivesByName = new Object2ObjectOpenHashMap<>(16, 0.5F);
+-    private final Reference2ObjectMap<ObjectiveCriteria, List<Objective>> objectivesByCriteria = new Reference2ObjectOpenHashMap<>();
+-    private final Map<String, PlayerScores> playerScores = new Object2ObjectOpenHashMap<>(16, 0.5F);
++    private final Map<String, Objective> objectivesByName = new ConcurrentHashMap<>(); // ShreddedPaper
++    private final Map<ObjectiveCriteria, List<Objective>> objectivesByCriteria = new ConcurrentHashMap<>(); // ShreddedPaper
++    private final Map<String, PlayerScores> playerScores = new ConcurrentHashMap<>(); // ShreddedPaper
+     private final Map<DisplaySlot, Objective> displayObjectives = new EnumMap<>(DisplaySlot.class);
+-    private final Object2ObjectMap<String, PlayerTeam> teamsByName = new Object2ObjectOpenHashMap<>();
+-    private final Object2ObjectMap<String, PlayerTeam> teamsByPlayer = new Object2ObjectOpenHashMap<>();
++    private final Map<String, PlayerTeam> teamsByName = new ConcurrentHashMap<>(); // ShreddedPaper
++    private final Map<String, PlayerTeam> teamsByPlayer = new ConcurrentHashMap<>(); // ShreddedPaper
+ 
+     @Nullable
+     public Objective getObjective(@Nullable String name) {
+@@ -239,7 +240,7 @@ public class Scoreboard {
+         this.onObjectiveRemoved(objective);
+     }
+ 
+-    public void setDisplayObjective(DisplaySlot slot, @Nullable Objective objective) {
++    public synchronized void setDisplayObjective(DisplaySlot slot, @Nullable Objective objective) { // ShreddedPaper
+         this.displayObjectives.put(slot, objective);
+     }
+ 
+@@ -250,6 +251,7 @@ public class Scoreboard {
+ 
+     @Nullable
+     public PlayerTeam getPlayerTeam(String teamName) {
++        if (name == null) return null; // ShreddedPaper
+         return this.teamsByName.get(teamName);
+     }
+ 
