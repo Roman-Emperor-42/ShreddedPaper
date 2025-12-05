@@ -5,7 +5,7 @@ Subject: [PATCH] Optimization-entity-activation-check-frequency.
 
 
 diff --git a/io/papermc/paper/entity/activation/ActivationRange.java b/io/papermc/paper/entity/activation/ActivationRange.java
-index ca21597263cb430e2a5ae07e8cecfb0d53a270d2..ec0ebdf41a5bbc5ad16df9664a961aa80732d635 100644
+index ca21597263cb430e2a5ae07e8cecfb0d53a270d2..0ee1617bb95aabb3056ad287017aede43497376f 100644
 --- a/io/papermc/paper/entity/activation/ActivationRange.java
 +++ b/io/papermc/paper/entity/activation/ActivationRange.java
 @@ -1,5 +1,6 @@
@@ -30,7 +30,7 @@ index ca21597263cb430e2a5ae07e8cecfb0d53a270d2..ec0ebdf41a5bbc5ad16df9664a961aa8
       */
      private static void activateEntity(final Entity entity) {
 -        if (MinecraftServer.currentTick > entity.activatedTick) {
-+        if ( MinecraftServer.currentTick + Math.max(0, ShreddedPaperConfiguration.get().optimizations.entityActivationCheckFrequency) > entity.activatedTick ) // ShreddedPaper - Configurable entity activation check frequency
++        if ( MinecraftServer.currentTick + Math.max(0, ShreddedPaperConfiguration.get().optimizations.entityActivationCheckFrequency) > entity.activatedTick ) { // ShreddedPaper - Configurable entity activation check frequency
              if (entity.defaultActivationState) {
 -                entity.activatedTick = MinecraftServer.currentTick;
 +                entity.activatedTick = MinecraftServer.currentTick + Math.max(0, ShreddedPaperConfiguration.get().optimizations.entityActivationCheckFrequency); // ShreddedPaper - Configurable entity activation check frequency
