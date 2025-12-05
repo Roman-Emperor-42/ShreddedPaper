@@ -56,10 +56,10 @@ index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f3ebbd249 100644
+index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..9972ee9d5d429b03821959c43d4dd917f9d9e250 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-@@ -1,11 +1,14 @@
+@@ -1,12 +1,17 @@
  package io.multipaper.shreddedpaper.region;
  
  import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -68,22 +68,27 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f
  import net.minecraft.server.level.ServerPlayer;
  import net.minecraft.world.entity.Entity;
 +import net.minecraft.world.entity.Mob;
++import net.minecraft.world.level.BlockEventData;
  import net.minecraft.world.level.ChunkPos;
  import net.minecraft.world.level.chunk.LevelChunk;
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionLocker;
  import io.multipaper.shreddedpaper.util.SimpleStampedLock;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
  
  import java.util.ArrayList;
-@@ -98,11 +101,19 @@ public class LevelChunkRegionMap {
+ import java.util.List;
+@@ -96,6 +101,10 @@ public class LevelChunkRegionMap {
+ 
+         entity.previousTrackedChunkPosRegion = entity.chunkPosition();
          getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addTrackedEntity(entity);
++
++        if (entity instanceof Mob mob) {
++            getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addNavigationMob(mob);
++        }
      }
  
-+    if (entity instanceof Mob mob) {
-+        getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addNavigationMob(mob);
-+    }
-+
      public void removeTrackedEntity(Entity entity) {
-         if (entity.previousTrackedChunkPosRegion == null) {
+@@ -103,6 +112,10 @@ public class LevelChunkRegionMap {
              throw new IllegalStateException("Entity is not being tracked " + entity);
          }
  
@@ -94,7 +99,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f
          getOrCreate(RegionPos.forChunk(entity.previousTrackedChunkPosRegion)).removeTrackedEntity(entity);
          entity.previousTrackedChunkPosRegion = null;
      }
-@@ -117,6 +128,11 @@ public class LevelChunkRegionMap {
+@@ -117,6 +130,11 @@ public class LevelChunkRegionMap {
          RegionPos fromRegion = RegionPos.forChunk(entity.previousTrackedChunkPosRegion);
          RegionPos toRegion = RegionPos.forChunk(newChunkPos);
  
@@ -106,10 +111,29 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f
          if (!fromRegion.equals(toRegion)) {
              entity.previousTrackedChunkPosRegion = newChunkPos;
              getOrCreate(fromRegion).removeTrackedEntity(entity);
-@@ -176,4 +192,28 @@ public class LevelChunkRegionMap {
+@@ -176,4 +194,47 @@ public class LevelChunkRegionMap {
              getOrCreate(toRegion).addPlayer(player);
          }
      }
++
++    public void addBlockEvent(BlockEventData blockEvent) {
++        getOrCreate(RegionPos.forBlockPos(blockEvent.pos())).addBlockEvent(blockEvent);
++    }
++
++    public void forEachRegionInBoundingBox(BoundingBox box, Consumer<LevelChunkRegion> consumer) {
++        RegionPos minPos = RegionPos.forBlockPos(box.minX(), box.minZ(), box.minZ());
++        RegionPos maxPos = RegionPos.forBlockPos(box.maxX(), box.maxZ(), box.maxZ());
++
++        for (int x = minPos.x; x <= maxPos.x; x++) {
++            for (int z = minPos.z; z <= maxPos.z; z++) {
++                LevelChunkRegion region = get(new RegionPos(x, z));
++                if (region != null) {
++                    consumer.accept(region);
++                }
++            }
++        }
++    }
++
 +    public List<Mob> collectRelevantNavigatingMobs(RegionPos regionPos) {
 +        if (!level.chunkScheduler.getRegionLocker().hasLock(regionPos)) {
 +            // We care about the navigating mobs in at least this region, ensure it's locked
