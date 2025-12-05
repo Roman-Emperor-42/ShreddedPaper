@@ -56,7 +56,7 @@ index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f3ebbd249 100644
+index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a24fa0c776 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 @@ -1,11 +1,14 @@
@@ -74,16 +74,18 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..23d35b4f763f09369bad225e86505e8f
  import io.multipaper.shreddedpaper.util.SimpleStampedLock;
  
  import java.util.ArrayList;
-@@ -98,11 +101,19 @@ public class LevelChunkRegionMap {
+@@ -94,6 +97,10 @@ public class LevelChunkRegionMap {
+             throw new IllegalStateException("Entity is already tracked " + entity);
+         }
+ 
++        if (entity instanceof Mob mob) {
++            getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addNavigationMob(mob);
++        }
++
+         entity.previousTrackedChunkPosRegion = entity.chunkPosition();
          getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addTrackedEntity(entity);
      }
- 
-+    if (entity instanceof Mob mob) {
-+        getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addNavigationMob(mob);
-+    }
-+
-     public void removeTrackedEntity(Entity entity) {
-         if (entity.previousTrackedChunkPosRegion == null) {
+@@ -103,6 +110,10 @@ public class LevelChunkRegionMap {
              throw new IllegalStateException("Entity is not being tracked " + entity);
          }
  
