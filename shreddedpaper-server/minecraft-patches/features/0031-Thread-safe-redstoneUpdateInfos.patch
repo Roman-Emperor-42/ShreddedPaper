@@ -43,7 +43,7 @@ index ef969ed330483736b1bcc1ddedf17e51ad1dba37..c8ae18e441181fae081a0d8d0a7904a4
      // Purpur start - Add adjustable breeding cooldown to config
      private com.google.common.cache.Cache<BreedingCooldownPair, Object> playerBreedingCooldowns;
 diff --git a/net/minecraft/world/level/block/RedstoneTorchBlock.java b/net/minecraft/world/level/block/RedstoneTorchBlock.java
-index 33e2f2de19208b7af6551132887e310744b4b702..f865c9ce2c9fc4956162524d6aec3aa1adcd2c8f 100644
+index 33e2f2de19208b7af6551132887e310744b4b702..88f17cf53ab67e6fce4577b9c218c3d0b97d2582 100644
 --- a/net/minecraft/world/level/block/RedstoneTorchBlock.java
 +++ b/net/minecraft/world/level/block/RedstoneTorchBlock.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.MapCodec;
@@ -54,15 +54,6 @@ index 33e2f2de19208b7af6551132887e310744b4b702..f865c9ce2c9fc4956162524d6aec3aa1
  import javax.annotation.Nullable;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
-@@ -58,7 +59,7 @@ public class RedstoneTorchBlock extends BaseTorchBlock {
-         if (!movedByPiston) {
-             this.notifyNeighbors(level, pos, state);
-         }
--    }
-+    }we
- 
-     @Override
-     protected int getSignal(BlockState blockState, BlockGetter blockAccess, BlockPos pos, Direction side) {
 @@ -73,7 +74,7 @@ public class RedstoneTorchBlock extends BaseTorchBlock {
      protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
          boolean hasNeighborSignal = this.hasNeighborSignal(level, pos, state);
