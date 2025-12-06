@@ -723,7 +723,7 @@ index d306f5f524dc64618df94c9783c2168dc561a5e3..80b5d591a10c2c576da4a452e4fec142
                  return true;
              } else {
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..9002b5333bbb8aef30a109d927ffff7102a0db46 100644
+index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..f4016e2780b3ba1963f89566efb5a39fda5d4ac6 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
 @@ -65,7 +65,7 @@ public class RedStoneWireBlock extends Block {
@@ -731,7 +731,7 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..9002b5333bbb8aef30a109d927ffff71
      private final BlockState crossState;
      private final RedstoneWireEvaluator evaluator = new DefaultRedstoneWireEvaluator(this);
 -    public boolean shouldSignal = true;
-++    public final ThreadLocal<Boolean> shouldSignalThreadLocal = ThreadLocal.withInitial(() -> true); // ShreddedPaper - use thread local for shouldSignal
++    public final ThreadLocal<Boolean> shouldSignalThreadLocal = ThreadLocal.withInitial(() -> true); // ShreddedPaper - use thread local for shouldSignal
  
      @Override
      public MapCodec<RedStoneWireBlock> codec() {
