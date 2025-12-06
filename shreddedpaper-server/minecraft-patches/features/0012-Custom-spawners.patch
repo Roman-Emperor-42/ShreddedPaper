@@ -188,7 +188,7 @@ index fd3633716f574a0580744cfa5809290ecf7f6451..7eb6f80df002c9b636aaa6597961524e
 +}
 \ No newline at end of file
 diff --git a/net/minecraft/world/level/levelgen/PatrolSpawner.java b/net/minecraft/world/level/levelgen/PatrolSpawner.java
-index c2e37714bae008087b0b5086e51d675beb672ca4..ee932d203f20d7ce75137eac511fb6d234866dea 100644
+index c2e37714bae008087b0b5086e51d675beb672ca4..d66107719ec7bb9abab2fe9f27c26778fcf849ab 100644
 --- a/net/minecraft/world/level/levelgen/PatrolSpawner.java
 +++ b/net/minecraft/world/level/levelgen/PatrolSpawner.java
 @@ -45,49 +45,51 @@ public class PatrolSpawner implements CustomSpawner {
@@ -246,11 +246,11 @@ index c2e37714bae008087b0b5086e51d675beb672ca4..ee932d203f20d7ce75137eac511fb6d2
 +                                            BlockPos.MutableBlockPos mutableBlockPos = player.blockPosition().mutable().move(i, 0, i1);
 +                                            int i2 = 10;
 +                                            if (level.hasChunksAt(
-+                                                mutableBlockPos.getX() - 10, mutableBlockPos.getZ() - 10, mutableBlockPos.getX() + 10, mutableBlockPos.getZ() + 10
++                                                    mutableBlockPos.getX() - 10, mutableBlockPos.getZ() - 10, mutableBlockPos.getX() + 10, mutableBlockPos.getZ() + 10
 +                                            )) {
 +                                                Holder<Biome> biome = level.getBiome(mutableBlockPos);
 +                                                if (!biome.is(BiomeTags.WITHOUT_PATROL_SPAWNS)) {
-+                                                    int i3 = (int)Math.ceil(level.getCurrentDifficultyAt(mutableBlockPos).getEffectiveDifficulty()) + 1;
++                                                    int i3 = (int) Math.ceil(level.getCurrentDifficultyAt(mutableBlockPos).getEffectiveDifficulty()) + 1;
  
 -                                                for (int i4 = 0; i4 < i3; i4++) {
 -                                                    mutableBlockPos.setY(
@@ -261,7 +261,7 @@ index c2e37714bae008087b0b5086e51d675beb672ca4..ee932d203f20d7ce75137eac511fb6d2
 -                                                            break;
 +                                                    for (int i4 = 0; i4 < i3; i4++) {
 +                                                        mutableBlockPos.setY(
-+                                                            level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, mutableBlockPos).getY()
++                                                                level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, mutableBlockPos).getY()
 +                                                        );
 +                                                        if (i4 == 0) {
 +                                                            if (!this.spawnPatrolMember(level, mutableBlockPos, randomSource, true)) {
@@ -282,16 +282,16 @@ index c2e37714bae008087b0b5086e51d675beb672ca4..ee932d203f20d7ce75137eac511fb6d2
                                                  }
                                              }
                                          }
-@@ -96,7 +98,8 @@ public class PatrolSpawner implements CustomSpawner {
+@@ -95,7 +97,8 @@ public class PatrolSpawner implements CustomSpawner {
+                                 }
                              }
                          }
-                     }
--                }
-+                }), e -> {}, 1); // ShreddedPaper - run on entity's thread
-+                return 1; // ShreddedPaper - return value is unused, let's just say 1
+-                    }
++                    }), e -> {}, 1); // ShreddedPaper - run on entity's thread
++                    return 1; // ShreddedPaper - return value is unused, let's just say 1
+                 }
              }
          }
-     }
 diff --git a/net/minecraft/world/level/levelgen/PhantomSpawner.java b/net/minecraft/world/level/levelgen/PhantomSpawner.java
 index d99bda335e7d3b49919fd6732b0052a9da70df70..b8137ef4086e11a4d9e0bae1a4dcd185169d0c10 100644
 --- a/net/minecraft/world/level/levelgen/PhantomSpawner.java
