@@ -723,7 +723,7 @@ index d306f5f524dc64618df94c9783c2168dc561a5e3..80b5d591a10c2c576da4a452e4fec142
                  return true;
              } else {
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..f4016e2780b3ba1963f89566efb5a39fda5d4ac6 100644
+index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..3df96cfe9f066b6ccf756cff2159fe7b488495c2 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
 @@ -65,7 +65,7 @@ public class RedStoneWireBlock extends Block {
@@ -740,7 +740,7 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..f4016e2780b3ba1963f89566efb5a39f
      // Paper start - Optimize redstone (Eigencraft)
      // The bulk of the new functionality is found in RedstoneWireTurbo.java
 -    io.papermc.paper.redstone.RedstoneWireTurbo turbo = new io.papermc.paper.redstone.RedstoneWireTurbo(this);
-+    final ThreadLocal<com.destroystokyo.paper.util.RedstoneWireTurbo> turboThreadLocal = ThreadLocal.withInitial(() -> new com.destroystokyo.paper.util.RedstoneWireTurbo(this)); // ShreddedPaper - thread local for turbo
++    final ThreadLocal<io.papermc.paper.redstone.RedstoneWireTurbo> turboThreadLocal = ThreadLocal.withInitial(() -> new io.papermc.paper.redstone.RedstoneWireTurbo(this)); // ShreddedPaper - thread local for turbo
  
      /*
       * Modified version of pre-existing updateSurroundingRedstone, which is called from
@@ -758,7 +758,7 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..f4016e2780b3ba1963f89566efb5a39f
                  // bypass the new neighbor update stack.
                  if (level.setBlock(pos, state, Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS)) {
 -                    turbo.updateNeighborShapes(level, pos, state);
-+                    turboThreadLocal.get().updateNeighborShapes(worldIn, pos1, state); // ShreddedPaper - thread local for turbo
++                    turboThreadLocal.get().updateNeighborShapes(level, pos, state); // ShreddedPaper - thread local for turbo
                  }
              }
          }
@@ -779,13 +779,13 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..f4016e2780b3ba1963f89566efb5a39f
      @Override
      protected int getDirectSignal(BlockState blockState, BlockGetter blockAccess, BlockPos pos, Direction side) {
 -        return !this.shouldSignal ? 0 : blockState.getSignal(blockAccess, pos, side);
-+        return !this.shouldSignalThreadLocal.get() ? 0 : state.getSignal(world, pos, direction); // ShreddedPaper - use thread local for shouldSignal
++        return !this.shouldSignalThreadLocal.get() ? 0 : blockState.getSignal(blockAccess, pos, side); // ShreddedPaper - use thread local for shouldSignal
      }
  
      @Override
      protected int getSignal(BlockState blockState, BlockGetter blockAccess, BlockPos pos, Direction side) {
 -        if (this.shouldSignal && side != Direction.DOWN) {
-+        if (this.shouldSignalThreadLocal.get() && direction != Direction.DOWN) { // ShreddedPaper - use thread local for shouldSignal
++        if (this.shouldSignalThreadLocal.get() && side != Direction.DOWN) { // ShreddedPaper - use thread local for shouldSignal
              int powerValue = blockState.getValue(POWER);
              if (powerValue == 0) {
                  return 0;
