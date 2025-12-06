@@ -348,7 +348,7 @@ index 64cbdc4cf7ce6b32523e8651b363e6e93dfadb9a..a215f094c11056a3a594506383f7182e
  import net.minecraft.network.protocol.Packet;
  import net.minecraft.network.protocol.game.ClientGamePacketListener;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index f0b67a63d509aefc516724aa632d48ea27b0af19..271d5816505e7f7b3c0f76b4c39c6f592cf1771a 100644
+index 3aadb54385a3e194042ac30acd21b15b8a315145..1964db60389d802aac5541c63f164f98753d3a5a 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -909,8 +909,10 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -396,7 +396,7 @@ index e6d7815eb647cb24f621f2c34bf6af806fdd83a7..4d26a83ecd29487b3c3b051de583bbf1
  
          if (vehicle != null) {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 37ed11d6e9822e82ba15e9378ed9f14f39e14d83..d8d3a858f299828659ed4b4538e5127b790892ca 100644
+index 37ed11d6e9822e82ba15e9378ed9f14f39e14d83..ec41f3615aab794055866576d00488a1160808e9 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -8,6 +8,7 @@ import com.mojang.brigadier.ParseResults;
@@ -407,12 +407,14 @@ index 37ed11d6e9822e82ba15e9378ed9f14f39e14d83..d8d3a858f299828659ed4b4538e5127b
  import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
  import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-@@ -3506,7 +3507,7 @@ public class ServerGamePacketListenerImpl
+@@ -3506,7 +3507,9 @@ public class ServerGamePacketListenerImpl
          }
          List<String> list = Stream.of(lines).map(ChatFormatting::stripFormatting).collect(Collectors.toList());
          // Paper end - Limit client sign length
 -        this.filterTextPacket(list).thenAcceptAsync(texts -> this.updateSignText(packet, (List<FilteredText>)texts), this.server);
-+        this.filterTextPacket(list).thenAcceptAsync(texts -> this.updateSignText(packet, (List<FilteredText>)texts), }, r -> ShreddedPaper.runSync(this.player, r)); // ShreddedPaper - run on region thread
++        this.filterTextPacket(list).thenAcceptAsync(texts -> {
++            this.updateSignText(packet, (List<FilteredText>)texts);
++        }, r -> ShreddedPaper.runSync(this.player, r)); // ShreddedPaper - run on region thread
      }
  
      private void updateSignText(ServerboundSignUpdatePacket packet, List<FilteredText> filteredText) {
