@@ -53,7 +53,7 @@ index c11db9c38e8ca30e57533e13a5de4685dd4e1322..b114dd49eea93bff9a179ff0dd3808f1
  
              while (region.getInternalTaskQueue().executeTask());
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index b158f31a0464f5487ad24fde86355103e4be501b..d8dbc32234aa8a2aed95820ae79d0f792d446233 100644
+index e6ae6fd09647095a5f21dbe988172030a613b3af..65e02292c786a950e26a36a6faddb0e12f9f9d02 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -846,8 +846,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -106,7 +106,7 @@ index b158f31a0464f5487ad24fde86355103e4be501b..d8dbc32234aa8a2aed95820ae79d0f79
 +                "" /*ServerLevel.getTypeCount(this.blockEntityTickers, TickingBlockEntity::getType)*/,  // ShreddedPaper - removed blockEntityTickers
 +                this.getBlockTicks().count(),
 +                this.getFluidTicks().count(),
-+                this.gatherChunkSourceStats());
++                this.gatherChunkSourceStats()
          );
      }
  
