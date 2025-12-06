@@ -5,10 +5,10 @@ Subject: [PATCH] Thread-safe-alternate-redstone-handler
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 4a73008ac80e3be5349b285438df7602ac19210b..182ec4b3ffaffea3f8e6dc13789e71d8a6c8eeaf 100644
+index d2af8f63b4f4bd92b00b595e6ad1416f1890ddc5..211c0eabb4457cab0e41c4bd9de5f6175fe4f6aa 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -218,7 +218,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -217,7 +217,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      public final java.util.UUID uuid;
      public boolean hasPhysicsEvent = true; // Paper - BlockPhysicsEvent
      public boolean hasEntityMoveEvent; // Paper - Add EntityMoveEvent

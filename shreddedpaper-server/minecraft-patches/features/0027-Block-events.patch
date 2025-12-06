@@ -137,7 +137,7 @@ index 7471bb8bb40b21e9f87661ffd9b4053e155e6a3b..1f15b249ec7990d8ea2b63b1a18ecc97
  
              region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a..4a73008ac80e3be5349b285438df7602ac19210b 100644
+index c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a..d2af8f63b4f4bd92b00b595e6ad1416f1890ddc5 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -6,12 +6,12 @@ import com.google.common.collect.Lists;
@@ -180,14 +180,14 @@ index c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a..4a73008ac80e3be5349b285438df7602
      private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
      private boolean handlingTick;
      private final List<CustomSpawner> customSpawners;
-@@ -212,6 +211,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
-     private boolean forceTime; // Purpur - Configurable daylight cycle
-     private final RandomSequences randomSequences;
-     public final ShreddedPaperRegionScheduler chunkScheduler = new ShreddedPaperRegionScheduler(); // ShreddedPaper
-+    this.blockEventsToRescheduleThreadLocal = ThreadLocal.withInitial(() -> new ArrayList(64)); // ShreddedPaper
- 
-     // CraftBukkit start
-     public final LevelStorageSource.LevelStorageAccess levelStorageAccess;
+@@ -599,6 +598,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         // CraftBukkit end
+         this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
+         this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
++        this.blockEventsToRescheduleThreadLocal = ThreadLocal.withInitial(() -> new ArrayList(64)); // ShreddedPaper
+         this.tickTime = tickTime;
+         this.server = server;
+         // Purpur start - Allow toggling special MobSpawners per world
 @@ -799,7 +799,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          this.getChunkSource().tick(hasTimeLeft, true);
          profilerFiller.popPush("blockEvents");
