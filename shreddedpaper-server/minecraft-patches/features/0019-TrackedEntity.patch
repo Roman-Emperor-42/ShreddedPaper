@@ -194,10 +194,10 @@ index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..2e28dab78b50ac6b712ce9cb2f320fd3
              trackedEntity.broadcastAndSend(packet);
          }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 0f3d77efaf20807f563378a525eda4388d5f728b..3a58e78368969ce982da12e93618499184d3aae8 100644
+index d8dbc32234aa8a2aed95820ae79d0f792d446233..90642366ba1d252c217ddfc4fab83761883cc396 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -2886,6 +2886,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2887,6 +2887,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          public void onSectionChange(Entity entity) {
              entity.updateDynamicGameEventListener(DynamicGameEventListener::move);
              ServerLevel.this.chunkSource.tickingRegions.moveTickingEntity(entity); // ShreddedPaper - move ticking entity into the new region

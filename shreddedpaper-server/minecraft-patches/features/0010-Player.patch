@@ -374,7 +374,7 @@ index 2ed71de827b5c02155e46475c30e753448488c46..a0e962f1dadc6cef913c7be025b1f874
          for (ServerLevel serverLevel : this.getAllLevels()) {
              serverLevel.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 07314e48c991cf84969e8b1a8cc7b64722705925..d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3 100644
+index 07314e48c991cf84969e8b1a8cc7b64722705925..5b32749d88f07e4c5113bbb4599bddfe86ffb865 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -25,6 +25,7 @@ import java.util.Locale;
@@ -390,11 +390,19 @@ index 07314e48c991cf84969e8b1a8cc7b64722705925..d4b0b37cbd7b71d7aa78b4d3b7c861b0
      private static final int EMPTY_TIME_NO_TICK = 300;
      private static final int MAX_SCHEDULED_TICKS_PER_TICK = 65536;
 -    final List<ServerPlayer> players = Lists.newArrayList();
-+    this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
++    final List<ServerPlayer> players;
      public final ServerChunkCache chunkSource;
      private final MinecraftServer server;
      public final net.minecraft.world.level.storage.PrimaryLevelData serverLevelData; // CraftBukkit - type
-@@ -2764,7 +2765,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -592,6 +593,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         this.pvpMode = server.isPvpAllowed();
+         this.levelStorageAccess = levelStorageAccess;
+         this.uuid = org.bukkit.craftbukkit.util.WorldUUID.getOrCreate(levelStorageAccess.levelDirectory.path().toFile());
++        this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
+         // CraftBukkit end
+         this.tickTime = tickTime;
+         this.server = server;
+@@ -2764,7 +2766,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                  if (serverPlayer.isReceivingWaypoints()) {
                      ServerLevel.this.getWaypointManager().addPlayer(serverPlayer);
                  }
@@ -403,7 +411,7 @@ index 07314e48c991cf84969e8b1a8cc7b64722705925..d4b0b37cbd7b71d7aa78b4d3b7c861b0
                  ServerLevel.this.updateSleepingPlayerList();
              }
  
-@@ -2840,6 +2841,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2840,6 +2842,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              if (entity instanceof ServerPlayer serverPlayer) {
                  ServerLevel.this.players.remove(serverPlayer);
                  ServerLevel.this.getWaypointManager().removePlayer(serverPlayer);
@@ -411,7 +419,7 @@ index 07314e48c991cf84969e8b1a8cc7b64722705925..d4b0b37cbd7b71d7aa78b4d3b7c861b0
                  ServerLevel.this.updateSleepingPlayerList();
              }
  
-@@ -2876,6 +2878,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2876,6 +2879,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          public void onSectionChange(Entity entity) {
              entity.updateDynamicGameEventListener(DynamicGameEventListener::move);
              ServerLevel.this.chunkSource.tickingRegions.moveTickingEntity(entity); // ShreddedPaper - move ticking entity into the new region

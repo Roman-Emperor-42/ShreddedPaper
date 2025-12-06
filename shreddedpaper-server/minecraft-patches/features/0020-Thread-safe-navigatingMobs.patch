@@ -151,10 +151,10 @@ index 78769f94c25e986d79658738c9a0ab1a46be753a..fbc3c4f781a5bb8501c638423f5fa09a
      }
  
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d 100644
+index 90642366ba1d252c217ddfc4fab83761883cc396..f0b67a63d509aefc516724aa632d48ea27b0af19 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -198,7 +198,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -196,7 +196,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      public final LevelTicksRegionProxy<Fluid> fluidTicks; // ShreddedPaper
      private final PathTypeCache pathTypesByPosCache = new PathTypeCache();
      final Set<Mob> navigatingMobs = new ObjectOpenHashSet<>();
@@ -163,7 +163,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
      protected final Raids raids;
      private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>();
      private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
-@@ -1840,7 +1840,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1841,7 +1841,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      @Override
      public void sendBlockUpdated(BlockPos pos, BlockState oldState, BlockState newState, int flags) {
@@ -172,7 +172,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
              String string = "recursive call to sendBlockUpdated";
              Util.logAndPauseIfInIde("recursive call to sendBlockUpdated", new IllegalStateException("recursive call to sendBlockUpdated"));
          }
-@@ -1871,13 +1871,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1872,13 +1872,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              // Paper end - catch CME see below why
  
              try {
@@ -188,7 +188,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
              }
          }
          } // Paper - option to disable pathfinding updates
-@@ -2766,8 +2766,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2767,8 +2767,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
          @Override
          public void onTrackingStart(Entity entity) {
@@ -199,7 +199,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
              if (entity instanceof ServerPlayer serverPlayer) {
                  ServerLevel.this.players.add(serverPlayer);
                  if (serverPlayer.isReceivingWaypoints()) {
-@@ -2782,14 +2782,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2783,14 +2783,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              }
  
              if (entity instanceof Mob mob) {
@@ -216,7 +216,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
              }
  
              if (entity instanceof EnderDragon enderDragon) {
-@@ -2816,7 +2816,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2817,7 +2817,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
          @Override
          public void onTrackingEnd(Entity entity) {
@@ -225,7 +225,7 @@ index 3a58e78368969ce982da12e93618499184d3aae8..a1bbbc4ff469d5f9269bc12a344fdf9f
              // Spigot start // TODO I don't think this is needed anymore
              if (entity instanceof Player player) {
                  for (final ServerLevel level : ServerLevel.this.getServer().getAllLevels()) {
-@@ -2854,14 +2854,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2855,14 +2855,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              }
  
              if (entity instanceof Mob mob) {

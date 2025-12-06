@@ -348,10 +348,10 @@ index 64cbdc4cf7ce6b32523e8651b363e6e93dfadb9a..a215f094c11056a3a594506383f7182e
  import net.minecraft.network.protocol.Packet;
  import net.minecraft.network.protocol.game.ClientGamePacketListener;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d..e3b3365de0bc59fa356f062f5146c5d2c50e8aff 100644
+index f0b67a63d509aefc516724aa632d48ea27b0af19..271d5816505e7f7b3c0f76b4c39c6f592cf1771a 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -908,8 +908,10 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -909,8 +909,10 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      private void wakeUpAllPlayers() {
          this.sleepStatus.removeAllSleepers();
@@ -364,7 +364,7 @@ index a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d..e3b3365de0bc59fa356f062f5146c5d2
  
      // Paper start - optimise random ticking
      private final ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom simpleRandom = new ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom(net.minecraft.world.level.levelgen.RandomSupport.generateUniqueSeed());
-@@ -1886,7 +1888,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1887,7 +1889,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      @Override
      public void updateNeighborsAt(BlockPos pos, Block block) {
          // CraftBukkit start
@@ -373,7 +373,7 @@ index a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d..e3b3365de0bc59fa356f062f5146c5d2
              return;
          }
          // CraftBukkit end
-@@ -2256,7 +2258,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2257,7 +2259,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              final MapItemSavedData mapData = storage.get(MapItemSavedData.type(mapId)); // get populates the cache
              if (mapData != null) { // map was read, init it and return
                  mapData.id = mapId;
@@ -383,7 +383,7 @@ index a1bbbc4ff469d5f9269bc12a344fdf9fa4fb9f0d..e3b3365de0bc59fa356f062f5146c5d2
              }
  
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 5f14afc8ef0f8ebe9a0a4d5ee4a0d86a477b594f..9eeb7d8240225d634fcbdf58c695030245c28a91 100644
+index e6d7815eb647cb24f621f2c34bf6af806fdd83a7..4d26a83ecd29487b3c3b051de583bbf192548840 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -2897,6 +2897,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc

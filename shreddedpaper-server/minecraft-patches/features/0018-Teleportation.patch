@@ -144,7 +144,7 @@ index e96d4dee14c05f2fa329bfb1588ec795d4e3d730..64cbdc4cf7ce6b32523e8651b363e6e9
          }
  
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index ee3731bcca110ceb185d4fe28f9f84a294a87133..5f14afc8ef0f8ebe9a0a4d5ee4a0d86a477b594f 100644
+index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af806fdd83a7 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -19,6 +19,7 @@ import java.util.Optional;
@@ -224,7 +224,7 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..5f14afc8ef0f8ebe9a0a4d5ee4a0d86a
 +                    teleportTransition.pos(),
 +                    teleportTransition.newLevel().getWorld(),
 +                    teleportTransition.yRot(),
-+                    teleportTransition.xRot());
++                    teleportTransition.xRot()
 +            );
  
 -        // Paper start - respawn flags

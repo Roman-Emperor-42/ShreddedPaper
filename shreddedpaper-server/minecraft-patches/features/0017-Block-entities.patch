@@ -53,10 +53,10 @@ index c11db9c38e8ca30e57533e13a5de4685dd4e1322..b114dd49eea93bff9a179ff0dd3808f1
  
              while (region.getInternalTaskQueue().executeTask());
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index b88364e9a0d652d881ee389a7fa7f2039b42499b..0f3d77efaf20807f563378a525eda4388d5f728b 100644
+index b158f31a0464f5487ad24fde86355103e4be501b..d8dbc32234aa8a2aed95820ae79d0f792d446233 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -845,8 +845,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -846,8 +846,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                  //    }
                  //);
              // ShreddedPaper start - handled ourselves
@@ -67,7 +67,7 @@ index b88364e9a0d652d881ee389a7fa7f2039b42499b..0f3d77efaf20807f563378a525eda438
          }
  
          profilerFiller.push("entityManagement");
-@@ -2405,7 +2405,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2406,7 +2406,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              }
  
              bufferedWriter.write(String.format(Locale.ROOT, "entities: %s\n", this.moonrise$getEntityLookup().getDebugInfo()));  // Paper - rewrite chunk system
@@ -76,7 +76,7 @@ index b88364e9a0d652d881ee389a7fa7f2039b42499b..0f3d77efaf20807f563378a525eda438
              bufferedWriter.write(String.format(Locale.ROOT, "block_ticks: %d\n", this.getBlockTicks().count()));
              bufferedWriter.write(String.format(Locale.ROOT, "fluid_ticks: %d\n", this.getFluidTicks().count()));
              bufferedWriter.write("distance_manager: " + chunkMap.getDistanceManager().getDebugStatus() + "\n");
-@@ -2475,10 +2475,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2476,10 +2476,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      private void dumpBlockEntityTickers(Writer output) throws IOException {
          CsvOutput csvOutput = CsvOutput.builder().addColumn("x").addColumn("y").addColumn("z").addColumn("type").build(output);
  
@@ -93,7 +93,7 @@ index b88364e9a0d652d881ee389a7fa7f2039b42499b..0f3d77efaf20807f563378a525eda438
      }
  
      @VisibleForTesting
-@@ -2527,11 +2529,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2528,11 +2530,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              this.players.size(),
              this.moonrise$getEntityLookup().getDebugInfo(), // Paper - rewrite chunk system
              getTypeCount(this.moonrise$getEntityLookup().getAll(), entity -> BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()), // Paper - rewrite chunk system

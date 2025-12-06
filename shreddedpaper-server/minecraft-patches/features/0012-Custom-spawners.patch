@@ -5,10 +5,10 @@ Subject: [PATCH] Custom-spawners
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index e5464824046c7390cc5b8e65dc848a11492e913f..b88364e9a0d652d881ee389a7fa7f2039b42499b 100644
+index cdbbd49d9dc8b23c9fe5128bc55a80acd71aa1d7..b158f31a0464f5487ad24fde86355103e4be501b 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -902,7 +902,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -903,7 +903,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      public void tickCustomSpawners(boolean spawnEnemies, boolean spawnFriendlies) {
          for (CustomSpawner customSpawner : this.customSpawners) {

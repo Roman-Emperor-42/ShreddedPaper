@@ -138,7 +138,7 @@ index 2a1eb3d01ef53c552b748e6d2b9b1b1d407c1b7c..beb4c7d37fee33b2670efb6715aae5b6
  
              region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3..e5464824046c7390cc5b8e65dc848a11492e913f 100644
+index 5b32749d88f07e4c5113bbb4599bddfe86ffb865..cdbbd49d9dc8b23c9fe5128bc55a80acd71aa1d7 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1,5 +1,6 @@
@@ -156,16 +156,7 @@ index d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3..e5464824046c7390cc5b8e65dc848a11
  import io.multipaper.shreddedpaper.region.RegionPos;
  import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionScheduler;
  
-@@ -178,6 +180,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
-     private static final int EMPTY_TIME_NO_TICK = 300;
-     private static final int MAX_SCHEDULED_TICKS_PER_TICK = 65536;
-     this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
-+    this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
-+    this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
-     public final ServerChunkCache chunkSource;
-     private final MinecraftServer server;
-     public final net.minecraft.world.level.storage.PrimaryLevelData serverLevelData; // CraftBukkit - type
-@@ -190,8 +194,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -190,8 +192,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      private final SleepStatus sleepStatus;
      private int emptyTime;
      private final PortalForcer portalForcer;
@@ -176,7 +167,16 @@ index d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3..e5464824046c7390cc5b8e65dc848a11
      private final PathTypeCache pathTypesByPosCache = new PathTypeCache();
      final Set<Mob> navigatingMobs = new ObjectOpenHashSet<>();
      volatile boolean isUpdatingNavigations;
-@@ -1320,7 +1324,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -595,6 +597,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         this.uuid = org.bukkit.craftbukkit.util.WorldUUID.getOrCreate(levelStorageAccess.levelDirectory.path().toFile());
+         this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
+         // CraftBukkit end
++        this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
++        this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
+         this.tickTime = tickTime;
+         this.server = server;
+         // Purpur start - Allow toggling special MobSpawners per world
+@@ -1321,7 +1325,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          this.emptyTime = 0;
      }
  
@@ -186,7 +186,7 @@ index d4b0b37cbd7b71d7aa78b4d3b7c861b07d1822d3..e5464824046c7390cc5b8e65dc848a11
          BlockState blockState = this.getBlockState(pos);
          FluidState fluidState = blockState.getFluidState();
          if (fluidState.is(fluid)) {
-@@ -1328,20 +1333,21 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1329,20 +1334,21 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          }
          // Paper start - rewrite chunk system
          if ((++this.tickedBlocksOrFluids & 7L) != 0L) {

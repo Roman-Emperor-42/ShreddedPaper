@@ -34,10 +34,10 @@ index 9d29912c82d2031122987b2c76c7d1a0b19b168f..b942dc0cee13040dd09739ee5112af48
                      if (treeType != null) {
                          structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, states);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index e3b3365de0bc59fa356f062f5146c5d2c50e8aff..82b65d44211bcdcf41d60cd953abda4c99161030 100644
+index 271d5816505e7f7b3c0f76b4c39c6f592cf1771a..c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1650,8 +1650,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1651,8 +1651,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          } else {
              if (entity instanceof net.minecraft.world.entity.item.ItemEntity itemEntity && itemEntity.getItem().isEmpty()) return false; // Paper - Prevent empty items from being added
              // Paper start - capture all item additions to the world
@@ -48,7 +48,7 @@ index e3b3365de0bc59fa356f062f5146c5d2c50e8aff..82b65d44211bcdcf41d60cd953abda4c
                  return true;
              }
              // Paper end - capture all item additions to the world
-@@ -1892,13 +1892,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1893,13 +1893,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              return;
          }
          // CraftBukkit end

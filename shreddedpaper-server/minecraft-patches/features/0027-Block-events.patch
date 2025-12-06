@@ -81,7 +81,7 @@ index fa02e308510823ba68457b6a00a770a1abbd9ade..5178554afff846be5876fc276ecc4747
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 23d35b4f763f09369bad225e86505e8f3ebbd249..7ee857e6b28055bffcf580c9776346f4a552a9ea 100644
+index 6203c83adc4e99896780387da3d9d2a24fa0c776..46016eff3481f60f06ed99033472994160edddff 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 @@ -6,10 +6,12 @@ import net.minecraft.server.level.ServerLevel;
@@ -137,7 +137,7 @@ index 7471bb8bb40b21e9f87661ffd9b4053e155e6a3b..1f15b249ec7990d8ea2b63b1a18ecc97
  
              region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926b46d2e21 100644
+index c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a..4a73008ac80e3be5349b285438df7602ac19210b 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -6,12 +6,12 @@ import com.google.common.collect.Lists;
@@ -170,7 +170,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
  import net.minecraft.world.level.entity.EntityTypeTest;
  import net.minecraft.world.level.entity.LevelCallback;
  import net.minecraft.world.level.entity.LevelEntityGetter;
-@@ -200,7 +198,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -198,7 +196,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      final Set<Mob> navigatingMobs = new ObjectOpenHashSet<>();
      final ThreadLocal<Boolean> isUpdatingNavigations = ThreadLocal.withInitial(() -> false); // ShreddedPaper - make thread local
      protected final Raids raids;
@@ -180,7 +180,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
      private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
      private boolean handlingTick;
      private final List<CustomSpawner> customSpawners;
-@@ -214,6 +213,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -212,6 +211,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      private boolean forceTime; // Purpur - Configurable daylight cycle
      private final RandomSequences randomSequences;
      public final ShreddedPaperRegionScheduler chunkScheduler = new ShreddedPaperRegionScheduler(); // ShreddedPaper
@@ -188,7 +188,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
  
      // CraftBukkit start
      public final LevelStorageSource.LevelStorageAccess levelStorageAccess;
-@@ -798,7 +798,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -799,7 +799,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          this.getChunkSource().tick(hasTimeLeft, true);
          profilerFiller.popPush("blockEvents");
          if (runsNormally) {
@@ -197,7 +197,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
          }
  
          this.handlingTick = false;
-@@ -2020,14 +2020,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2021,14 +2021,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      @Override
      public void blockEvent(BlockPos pos, Block block, int eventID, int eventParam) {
@@ -218,7 +218,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
              if (this.shouldTickBlocksAt(blockEventData.pos())) {
                  if (this.doBlockEvent(blockEventData)) {
                      this.server
-@@ -2043,11 +2044,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2044,11 +2045,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                          );
                  }
              } else {
@@ -232,7 +232,7 @@ index 82b65d44211bcdcf41d60cd953abda4c99161030..a29f298d2ef75caee897b6574cd31926
      }
  
      private boolean doBlockEvent(BlockEventData event) {
-@@ -2487,7 +2488,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2488,7 +2489,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      @VisibleForTesting
      public void clearBlockEvents(BoundingBox boundingBox) {
