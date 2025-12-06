@@ -144,7 +144,7 @@ index e96d4dee14c05f2fa329bfb1588ec795d4e3d730..64cbdc4cf7ce6b32523e8651b363e6e9
          }
  
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af806fdd83a7 100644
+index ee3731bcca110ceb185d4fe28f9f84a294a87133..df00c7b2aee8603312b185dacb30915e900a2c11 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -19,6 +19,7 @@ import java.util.Optional;
@@ -155,7 +155,17 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
  import java.util.stream.Collectors;
  import javax.annotation.Nullable;
  import java.util.UUID;
-@@ -1287,80 +1288,85 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -194,6 +195,9 @@ import net.minecraft.world.scores.ScoreAccess;
+ import net.minecraft.world.scores.ScoreHolder;
+ import net.minecraft.world.scores.Team;
+ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
++import org.bukkit.Location;
++import org.bukkit.craftbukkit.util.CraftLocation;
++import org.bukkit.event.player.PlayerRespawnEvent;
+ import org.slf4j.Logger;
+ import io.multipaper.shreddedpaper.ShreddedPaper;
+ 
+@@ -1287,80 +1291,85 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      // CraftBukkit start
@@ -163,8 +173,8 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
 -        TeleportTransition teleportTransition;
 -        boolean isBedSpawn = false;
 -        boolean isAnchorSpawn = false;
-+    public CompletableFuture<teleportTransition> findRespawnPositionAndUseSpawnBlockAsync(boolean flag, teleportTransition.PostTeleportTransition teleportTransition_a, PlayerRespawnEvent.RespawnReason reason) { // ShreddedPaper - async
-+        CompletableFuture<teleportTransition> teleportTransitionFuture;
++    public CompletableFuture<TeleportTransition> findRespawnPositionAndUseSpawnBlockAsync(boolean flag, TeleportTransition.PostTeleportTransition teleportTransition_a, PlayerRespawnEvent.RespawnReason reason) { // ShreddedPaper - async
++        CompletableFuture<TeleportTransition> teleportTransitionFuture;
 +        AtomicBoolean isBedSpawn = new AtomicBoolean(false); // ShreddedPaper
 +        AtomicBoolean isAnchorSpawn = new AtomicBoolean(false); // ShreddedPaper
          Runnable consumeAnchorCharge = null;
@@ -185,8 +195,8 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
 -                teleportTransition = TeleportTransition.missingRespawnBlock(this.server.overworld(), this, postTeleportTransition); // CraftBukkit
 -            }
 +            teleportTransitionFuture = new CompletableFuture<>(); // ShreddedPaper
-+            ShreddedPaper.ensureSync(worldserver, blockposition, () -> { // ShreddedPaper
-+                Optional<ServerPlayer.RespawnPosAngle> optional = ServerPlayer.findRespawnAndUseSpawnBlock(worldserver, blockposition, f, flag1, flag);
++            ShreddedPaper.ensureSync(level, blockposition, () -> { // ShreddedPaper
++                Optional<ServerPlayer.RespawnPosAngle> optional = ServerPlayer.findRespawnAndUseSpawnBlock(level, blockposition, f, flag1, flag);
 +
 +                if (optional.isPresent()) {
 +                    ServerPlayer.RespawnPosAngle entityplayer_respawnposangle = (ServerPlayer.RespawnPosAngle) optional.get();
@@ -194,21 +204,33 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
 +                    // CraftBukkit start
 +                    isBedSpawn.set(entityplayer_respawnposangle.isBedSpawn()); // ShreddedPaper
 +                    isAnchorSpawn.set(entityplayer_respawnposangle.isAnchorSpawn()); // ShreddedPaper
-+                    teleportTransitionFuture.complete(new teleportTransition(worldserver, entityplayer_respawnposangle.position(), Vec3.ZERO, entityplayer_respawnposangle.yaw(), 0.0F, teleportTransition_a)); // ShreddedPaper
++                    teleportTransitionFuture.complete(new TeleportTransition(level, entityplayer_respawnposangle.position(), Vec3.ZERO, entityplayer_respawnposangle.yaw(), 0.0F, teleportTransition_a)); // ShreddedPaper
 +                    // CraftBukkit end
 +                } else {
-+                    teleportTransition.missingRespawnBlock(this.server.overworld(), ServerPlayer.this, teleportTransition_a).thenAccept(teleportTransitionFuture::complete); // CraftBukkit // ShreddedPaper
++                    TeleportTransition.missingRespawnBlock(this.server.overworld(), ServerPlayer.this, teleportTransition_a).thenAccept(teleportTransitionFuture::complete); // CraftBukkit // ShreddedPaper
 +                }
 +            }); // ShreddedPaper
          } else {
 -            teleportTransition = new TeleportTransition(this.server.overworld(), this, postTeleportTransition); // CraftBukkit
-+            teleportTransitionFuture = teleportTransition.ofSharedSpawnPos(this.server.overworld(), this, teleportTransition_a); // CraftBukkit // ShreddedPaper
++            teleportTransitionFuture = TeleportTransition.ofSharedSpawnPos(this.server.overworld(), this, teleportTransition_a); // CraftBukkit // ShreddedPaper
          }
          // CraftBukkit start
-         if (respawnReason == null) {
+-        if (respawnReason == null) {
 -            return teleportTransition;
+-        }
++        if (reason == null) {
 +            return teleportTransitionFuture; // Shreddedpaper
-         }
++        }
++
++        return teleportTransitionFuture.thenApply(dimensionTransition -> { // ShreddedPaper
++            Player respawnPlayer = this.getBukkitEntity();
++        //org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(
++            Location location = CraftLocation.toBukkit(
++                    TeleportTransition.pos(),
++                    TeleportTransition.newLevel().getWorld(),
++                    TeleportTransition.yRot(),
++                    TeleportTransition.xRot()
++            );
  
 -        org.bukkit.entity.Player respawnPlayer = this.getBukkitEntity();
 -        org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(
@@ -217,15 +239,19 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
 -            teleportTransition.yRot(),
 -            teleportTransition.xRot()
 -        );
-+        return dimensionTransitionFuture.thenApply(dimensionTransition -> { // ShreddedPaper
-+            Player respawnPlayer = this.getBukkitEntity();
-+        //org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(
-+            Location location = CraftLocation.toBukkit(
-+                    teleportTransition.pos(),
-+                    teleportTransition.newLevel().getWorld(),
-+                    teleportTransition.yRot(),
-+                    teleportTransition.xRot()
-+            );
++            // Paper start - respawn flags
++            com.google.common.collect.ImmutableSet.Builder<org.bukkit.event.player.PlayerRespawnEvent.RespawnFlag> builder = com.google.common.collect.ImmutableSet.builder();
++            if (reason == org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL) {
++                builder.add(org.bukkit.event.player.PlayerRespawnEvent.RespawnFlag.END_PORTAL);
++            }
++            PlayerRespawnEvent respawnEvent = new PlayerRespawnEvent(respawnPlayer, location, isBedSpawn.get(), isAnchorSpawn.get(), reason, builder); // ShreddedPaper
++            // Paper end - respawn flags
++            this.level().getCraftServer().getPluginManager().callEvent(respawnEvent);
++            // Spigot Start
++            if (this.connection.isDisconnected()) {
++                return null;
++            }
++            // Spigot End
  
 -        // Paper start - respawn flags
 -        org.bukkit.event.player.PlayerRespawnEvent respawnEvent = new org.bukkit.event.player.PlayerRespawnEvent(
@@ -264,20 +290,6 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
 -            teleportTransition.cause()
 -        );
 -        // CraftBukkit end
-+            // Paper start - respawn flags
-+            com.google.common.collect.ImmutableSet.Builder<org.bukkit.event.player.PlayerRespawnEvent.RespawnFlag> builder = com.google.common.collect.ImmutableSet.builder();
-+            if (reason == org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL) {
-+                builder.add(org.bukkit.event.player.PlayerRespawnEvent.RespawnFlag.END_PORTAL);
-+            }
-+            PlayerRespawnEvent respawnEvent = new PlayerRespawnEvent(respawnPlayer, location, isBedSpawn.get(), isAnchorSpawn.get(), reason, builder); // ShreddedPaper
-+            // Paper end - respawn flags
-+            this.level().getCraftServer().getPluginManager().callEvent(respawnEvent);
-+            // Spigot Start
-+            if (this.connection.isDisconnected()) {
-+                return null;
-+            }
-+            // Spigot End
-+
 +
 +            // Paper start - consume anchor charge if location hasn't changed
 +            if (location.equals(respawnEvent.getRespawnLocation()) && consumeAnchorCharge != null) {
@@ -303,7 +315,7 @@ index ee3731bcca110ceb185d4fe28f9f84a294a87133..e6d7815eb647cb24f621f2c34bf6af80
      }
  
      public boolean isReceivingWaypoints() {
-@@ -2218,6 +2224,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -2218,6 +2227,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
  
      @Override
      public boolean teleportTo(ServerLevel level, double x, double y, double z, Set<Relative> relativeMovements, float yaw, float pitch, boolean setCamera, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause) { // CraftBukkit
@@ -510,7 +522,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
          // serverPlayer.initInventoryMenu();
          serverPlayer.setHealth(serverPlayer.getHealth());
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index faf34fc3e8632adb5910f6c2d324fea2700283bf..438620c93e1db1440defdad3fc05bcdb518886d7 100644
+index bae842012b02634e6f51f5df2b55c293e54f9e9f..cc7336f6af8b6fcc08e00d8a35534bbe2109e296 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -1,5 +1,6 @@
