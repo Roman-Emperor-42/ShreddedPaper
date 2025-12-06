@@ -5,7 +5,7 @@ Subject: [PATCH] teleportIfOutsideBorder-use-teleportAsync
 
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index a3b985cc454b2c62e7642f7eb05de590ecde9272..623a0e9568c18dc184b1c620c1f770d8cca4e57b 100644
+index a3b985cc454b2c62e7642f7eb05de590ecde9272..e669f2c0ccc0e2368a8eb6bb8ec858e34d31f376 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
 @@ -451,7 +451,7 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
@@ -17,3 +17,11 @@ index a3b985cc454b2c62e7642f7eb05de590ecde9272..623a0e9568c18dc184b1c620c1f770d8
                              return;
                          }
                          // Purpur end - Add option to teleport to spawn if outside world border
+@@ -488,7 +488,6 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+                 this.lastPos = blockPos;
+                 this.onChangedBlock(serverLevel1, blockPos);
+             }
+-        }
+ 
+         if (this.hurtTime > 0) {
+             this.hurtTime--;
