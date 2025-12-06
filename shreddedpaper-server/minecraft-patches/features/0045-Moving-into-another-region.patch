@@ -26,10 +26,18 @@ index 84c2896aa3511ca1497cd980b9a6d273d5c0751a..96232026dc5f9682ab7cc0aa351cab27
  
      public final int x;
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index b247b0e29616b1205c9b0a0dc55196ebb7c037cd..52d5ce2dfb276653e433f5bd36433ba1b3b61432 100644
+index 8baed10858e725f44b65d6dc2d204ff5a3352d93..4d50aafe1a123c8f367df09192c9b1a4d4ff6670 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -1133,7 +1133,11 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+@@ -7,6 +7,7 @@ import com.google.common.collect.Sets;
+ import com.google.common.collect.ImmutableList.Builder;
+ import com.mojang.logging.LogUtils;
+ import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.region.RegionPos;
+ import com.mojang.serialization.Codec;
+ import it.unimi.dsi.fastutil.floats.FloatArraySet;
+ import it.unimi.dsi.fastutil.floats.FloatArrays;
+@@ -1133,7 +1134,11 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
      public void move(MoverType type, Vec3 movement) {
          final Vec3 originalMovement = movement; // Paper - Expose pre-collision velocity
          // Paper start - detailed watchdog information
@@ -42,7 +50,7 @@ index b247b0e29616b1205c9b0a0dc55196ebb7c037cd..52d5ce2dfb276653e433f5bd36433ba1
          synchronized (this.posLock) {
              this.moveStartX = this.getX();
              this.moveStartY = this.getY();
-@@ -2315,7 +2319,13 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+@@ -2315,7 +2320,13 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
              }
              delta = event.getKnockback();
          }
@@ -57,7 +65,7 @@ index b247b0e29616b1205c9b0a0dc55196ebb7c037cd..52d5ce2dfb276653e433f5bd36433ba1
          // Paper end - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
          this.hasImpulse = true;
      }
-@@ -4955,6 +4965,11 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+@@ -4955,6 +4966,11 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
      }
  
      public void setDeltaMovement(Vec3 deltaMovement) {

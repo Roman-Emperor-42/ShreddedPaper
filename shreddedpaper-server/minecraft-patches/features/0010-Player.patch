@@ -975,7 +975,7 @@ index db56578bff06574337463c2421537f43d1a19189..ae363aee6ddf9619c31fd28b9ecd28c9
  
      public void updateEntireScoreboard(ServerScoreboard scoreboard, ServerPlayer player) {
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 5963c3a43f973ec68c6e8324a5d10ea85666c9e4..faf34fc3e8632adb5910f6c2d324fea2700283bf 100644
+index 5963c3a43f973ec68c6e8324a5d10ea85666c9e4..bae842012b02634e6f51f5df2b55c293e54f9e9f 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
@@ -1006,10 +1006,10 @@ index 5963c3a43f973ec68c6e8324a5d10ea85666c9e4..faf34fc3e8632adb5910f6c2d324fea2
 -        int i = level.getChunkAt(sharedSpawnPos).getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, sharedSpawnPos.getX(), sharedSpawnPos.getZ()) + 1;
 -        return BlockPos.containing(center.x, i, center.z);
 +        return CompletableFuture.supplyAsync(() -> {
-+            Vec3 vec3d = blockposition1.getCenter();
-+            int i = world.getChunkAt(blockposition1).getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockposition1.getX(), blockposition1.getZ()) + 1;
++            Vec3 vec3d = sharedSpawnPos.getCenter();
++            int i = world.getChunkAt(sharedSpawnPos).getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, sharedSpawnPos.getX(), sharedSpawnPos.getZ()) + 1;
 +            return BlockPos.containing(vec3d.x, (double) i, vec3d.z);
-+        }, r -> ShreddedPaper.ensureSync(world, blockposition1, r));
++        }, r -> ShreddedPaper.ensureSync(world, sharedSpawnPos, r));
      }
 +    // ShreddedPaper end - return a future
  
