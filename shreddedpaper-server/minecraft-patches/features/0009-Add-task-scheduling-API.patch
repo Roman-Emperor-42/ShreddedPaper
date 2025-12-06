@@ -645,6 +645,461 @@ index c0faf5647eb6d548d9fc62ba09f565052d7ec38e..e327a5b54d46890bed95809e4d3e9f40
      /**
       * Returns an unmodifiable view of all locked regions across all threads.
       */
+diff --git a/io/multipaper/shreddedpaper/util/PrioritisedThreadedTaskQueue.java b/io/multipaper/shreddedpaper/util/PrioritisedThreadedTaskQueue.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..fa09dade86541a1321ac5848560c9c1383d2f6b4
+--- /dev/null
++++ b/io/multipaper/shreddedpaper/util/PrioritisedThreadedTaskQueue.java
+@@ -0,0 +1,449 @@
++package io.multipaper.shreddedpaper.util;
++
++import ca.spottedleaf.concurrentutil.executor.PrioritisedExecutor;
++import ca.spottedleaf.concurrentutil.util.Priority;
++
++import java.util.ArrayDeque;
++import java.util.concurrent.atomic.AtomicLong;
++
++/*
++    // ShreddedPaper - This is directly lifted from the 1.21.1 implimintation, I'm sure there's a better way or this is unneeded, but this is the best I can do at the moment
++ */
++
++public class PrioritisedThreadedTaskQueue implements PrioritisedExecutor {
++
++    protected final ArrayDeque<PrioritisedTask>[] queues = new ArrayDeque[Priority.TOTAL_SCHEDULABLE_PRIORITIES]; {
++        for (int i = 0; i < Priority.TOTAL_SCHEDULABLE_PRIORITIES; ++i) {
++            this.queues[i] = new ArrayDeque<>();
++        }
++    }
++
++    // Use AtomicLong to separate from the queue field, we don't want false sharing here.
++    protected final AtomicLong totalScheduledTasks = new AtomicLong();
++    protected final AtomicLong totalCompletedTasks = new AtomicLong();
++
++    // this is here to prevent failures to queue stalling flush() calls (as the schedule calls would increment totalScheduledTasks without this check)
++    protected volatile boolean hasShutdown;
++
++    protected long taskIdGenerator = 0;
++
++    public PrioritisedExecutor.PrioritisedTask queueRunnable(final Runnable task, final Priority priority) throws IllegalStateException, IllegalArgumentException {
++        if (!Priority.isValidPriority(priority)) {
++            throw new IllegalArgumentException("Priority " + priority + " is invalid");
++        }
++        if (task == null) {
++            throw new NullPointerException("Task cannot be null");
++        }
++
++        if (this.hasShutdown) {
++            // prevent us from stalling flush() calls by incrementing scheduled tasks when we really didn't schedule something
++            throw new IllegalStateException("Queue has shutdown");
++        }
++
++        final PrioritisedTask ret;
++
++        synchronized (this.queues) {
++            if (this.hasShutdown) {
++                throw new IllegalStateException("Queue has shutdown");
++            }
++            this.getAndAddTotalScheduledTasksVolatile(1L);
++
++            ret = new PrioritisedTask(this.taskIdGenerator++, task, priority, this);
++
++            this.queues[ret.priority.priority].add(ret);
++
++            // call priority change callback (note: only after we successfully queue!)
++            this.priorityChange(ret, null, priority);
++        }
++
++        return ret;
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask createTask(final Runnable task, final Priority priority) {
++        if (!Priority.isValidPriority(priority)) {
++            throw new IllegalArgumentException("Priority " + priority + " is invalid");
++        }
++        if (task == null) {
++            throw new NullPointerException("Task cannot be null");
++        }
++
++        return new PrioritisedTask(task, priority, this);
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask createTask(Runnable task, Priority priority, long subOrder) {
++        return null;
++    }
++
++    @Override
++    public long getTotalTasksScheduled() {
++        return this.totalScheduledTasks.get();
++    }
++
++    @Override
++    public long getTotalTasksExecuted() {
++        return this.totalCompletedTasks.get();
++    }
++
++    @Override
++    public long generateNextSubOrder() {
++        return 0;
++    }
++
++    // callback method for subclasses to override
++    // from is null when a task is immediately created
++    protected void priorityChange(final PrioritisedTask task, final Priority from, final Priority to) {}
++
++    /**
++     * Polls the highest priority task currently available. {@code null} if none. This will mark the
++     * returned task as completed.
++     */
++    protected PrioritisedTask poll() {
++        return this.poll(Priority.IDLE);
++    }
++
++    protected PrioritisedTask poll(final Priority minPriority) {
++        final ArrayDeque<PrioritisedTask>[] queues = this.queues;
++        synchronized (queues) {
++            final int max = minPriority.priority;
++            for (int i = 0; i <= max; ++i) {
++                final ArrayDeque<PrioritisedTask> queue = queues[i];
++                PrioritisedTask task;
++                while ((task = queue.pollFirst()) != null) {
++                    if (task.trySetCompleting(i)) {
++                        return task;
++                    }
++                }
++            }
++        }
++
++        return null;
++    }
++
++    /**
++     * Polls and executes the highest priority task currently available. Exceptions thrown during task execution will
++     * be rethrown.
++     * @return {@code true} if a task was executed, {@code false} otherwise.
++     */
++    @Override
++    public boolean executeTask() {
++        final PrioritisedTask task = this.poll();
++
++        if (task != null) {
++            task.executeInternal();
++            return true;
++        }
++
++        return false;
++    }
++
++    @Override
++    public boolean shutdown() {
++        synchronized (this.queues) {
++            if (this.hasShutdown) {
++                return false;
++            }
++            this.hasShutdown = true;
++        }
++        return true;
++    }
++
++    @Override
++    public boolean isShutdown() {
++        return this.hasShutdown;
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask queueTask(Runnable task) {
++        return null;
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask queueTask(Runnable task, Priority priority) {
++        return null;
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask queueTask(Runnable task, Priority priority, long subOrder) {
++        return null;
++    }
++
++    @Override
++    public PrioritisedExecutor.PrioritisedTask createTask(Runnable task) {
++        return null;
++    }
++
++    /* totalScheduledTasks */
++
++    protected final long getTotalScheduledTasksVolatile() {
++        return this.totalScheduledTasks.get();
++    }
++
++    protected final long getAndAddTotalScheduledTasksVolatile(final long value) {
++        return this.totalScheduledTasks.getAndAdd(value);
++    }
++
++    /* totalCompletedTasks */
++
++    protected final long getTotalCompletedTasksVolatile() {
++        return this.totalCompletedTasks.get();
++    }
++
++    protected final long getAndAddTotalCompletedTasksVolatile(final long value) {
++        return this.totalCompletedTasks.getAndAdd(value);
++    }
++
++    protected static final class PrioritisedTask implements PrioritisedExecutor.PrioritisedTask {
++        protected final PrioritisedThreadedTaskQueue queue;
++        protected long id;
++        protected static final long NOT_SCHEDULED_ID = -1L;
++
++        protected Runnable runnable;
++        protected volatile Priority priority;
++
++        protected PrioritisedTask(final long id, final Runnable runnable, final Priority priority, final PrioritisedThreadedTaskQueue queue) {
++            if (!Priority.isValidPriority(priority)) {
++                throw new IllegalArgumentException("Invalid priority " + priority);
++            }
++
++            this.priority = priority;
++            this.runnable = runnable;
++            this.queue = queue;
++            this.id = id;
++        }
++
++        protected PrioritisedTask(final Runnable runnable, final Priority priority, final PrioritisedThreadedTaskQueue queue) {
++            if (!Priority.isValidPriority(priority)) {
++                throw new IllegalArgumentException("Invalid priority " + priority);
++            }
++
++            this.priority = priority;
++            this.runnable = runnable;
++            this.queue = queue;
++            this.id = NOT_SCHEDULED_ID;
++        }
++
++        @Override
++        public PrioritisedExecutor getExecutor() {
++            return null;
++        }
++
++        @Override
++        public boolean queue() {
++            if (this.queue.hasShutdown) {
++                throw new IllegalStateException("Queue has shutdown");
++            }
++
++            synchronized (this.queue.queues) {
++                if (this.queue.hasShutdown) {
++                    throw new IllegalStateException("Queue has shutdown");
++                }
++
++                final Priority priority = this.priority;
++                if (priority == Priority.COMPLETING) {
++                    return false;
++                }
++
++                if (this.id != NOT_SCHEDULED_ID) {
++                    return false;
++                }
++
++                this.queue.getAndAddTotalScheduledTasksVolatile(1L);
++                this.id = this.queue.taskIdGenerator++;
++                this.queue.queues[priority.priority].add(this);
++
++                this.queue.priorityChange(this, null, priority);
++
++                return true;
++            }
++        }
++
++        @Override
++        public boolean isQueued() {
++            return false;
++        }
++
++        protected boolean trySetCompleting(final int minPriority) {
++            final Priority oldPriority = this.priority;
++            if (oldPriority != Priority.COMPLETING && oldPriority.isHigherOrEqualPriority(minPriority)) {
++                this.priority = Priority.COMPLETING;
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.priorityChange(this, oldPriority, Priority.COMPLETING);
++                }
++                return true;
++            }
++
++            return false;
++        }
++
++        @Override
++        public Priority getPriority() {
++            return this.priority;
++        }
++
++        @Override
++        public boolean setPriority(final Priority priority) {
++            if (!Priority.isValidPriority(priority)) {
++                throw new IllegalArgumentException("Invalid priority " + priority);
++            }
++            synchronized (this.queue.queues) {
++                final Priority curr = this.priority;
++
++                if (curr == Priority.COMPLETING) {
++                    return false;
++                }
++
++                if (curr == priority) {
++                    return true;
++                }
++
++                this.priority = priority;
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.queues[priority.priority].add(this);
++
++                    // call priority change callback
++                    this.queue.priorityChange(this, curr, priority);
++                }
++            }
++
++            return true;
++        }
++
++        @Override
++        public boolean raisePriority(final Priority priority) {
++            if (!Priority.isValidPriority(priority)) {
++                throw new IllegalArgumentException("Invalid priority " + priority);
++            }
++
++            synchronized (this.queue.queues) {
++                final Priority curr = this.priority;
++
++                if (curr == Priority.COMPLETING) {
++                    return false;
++                }
++
++                if (curr.isHigherOrEqualPriority(priority)) {
++                    return true;
++                }
++
++                this.priority = priority;
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.queues[priority.priority].add(this);
++
++                    // call priority change callback
++                    this.queue.priorityChange(this, curr, priority);
++                }
++            }
++
++            return true;
++        }
++
++        @Override
++        public boolean lowerPriority(final Priority priority) {
++            if (!Priority.isValidPriority(priority)) {
++                throw new IllegalArgumentException("Invalid priority " + priority);
++            }
++
++            synchronized (this.queue.queues) {
++                final Priority curr = this.priority;
++
++                if (curr == Priority.COMPLETING) {
++                    return false;
++                }
++
++                if (curr.isLowerOrEqualPriority(priority)) {
++                    return true;
++                }
++
++                this.priority = priority;
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.queues[priority.priority].add(this);
++
++                    // call priority change callback
++                    this.queue.priorityChange(this, curr, priority);
++                }
++            }
++
++            return true;
++        }
++
++        @Override
++        public long getSubOrder() {
++            return 0;
++        }
++
++        @Override
++        public boolean setSubOrder(long subOrder) {
++            return false;
++        }
++
++        @Override
++        public boolean raiseSubOrder(long subOrder) {
++            return false;
++        }
++
++        @Override
++        public boolean lowerSubOrder(long subOrder) {
++            return false;
++        }
++
++        @Override
++        public boolean setPriorityAndSubOrder(Priority priority, long subOrder) {
++            return false;
++        }
++
++        @Override
++        public boolean cancel() {
++            final long id;
++            synchronized (this.queue.queues) {
++                final Priority oldPriority = this.priority;
++                if (oldPriority == Priority.COMPLETING) {
++                    return false;
++                }
++
++                this.priority = Priority.COMPLETING;
++                // call priority change callback
++                if ((id = this.id) != NOT_SCHEDULED_ID) {
++                    this.queue.priorityChange(this, oldPriority, Priority.COMPLETING);
++                }
++            }
++            this.runnable = null;
++            if (id != NOT_SCHEDULED_ID) {
++                this.queue.getAndAddTotalCompletedTasksVolatile(1L);
++            }
++            return true;
++        }
++
++        protected void executeInternal() {
++            try {
++                final Runnable execute = this.runnable;
++                this.runnable = null;
++                execute.run();
++            } finally {
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.getAndAddTotalCompletedTasksVolatile(1L);
++                }
++            }
++        }
++
++        @Override
++        public boolean execute() {
++            synchronized (this.queue.queues) {
++                final Priority oldPriority = this.priority;
++                if (oldPriority == Priority.COMPLETING) {
++                    return false;
++                }
++
++                this.priority = Priority.COMPLETING;
++                // call priority change callback
++                if (this.id != NOT_SCHEDULED_ID) {
++                    this.queue.priorityChange(this, oldPriority, Priority.COMPLETING);
++                }
++            }
++
++            this.executeInternal();
++            return true;
++        }
++    }
++}
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
 index 688abb1b597e9515a109675f1363518391ea6f73..2ed71de827b5c02155e46475c30e753448488c46 100644
 --- a/net/minecraft/server/MinecraftServer.java
@@ -796,7 +1251,7 @@ index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc67
              // Paper end - rewrite chunk system
          }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 1fc302c8734d31ebe854906f33723f4e80f41746..07314e48c991cf84969e8b1a8cc7b64722705925 100644
+index 4fe515c47634d62009d5f9fe5063e53b02187cad..58971c05eafd165b3d923bcf0f61f1c62f05cacc 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -164,6 +164,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
