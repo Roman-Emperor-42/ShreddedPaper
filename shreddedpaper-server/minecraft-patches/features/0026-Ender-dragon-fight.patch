@@ -5,7 +5,7 @@ Subject: [PATCH] Ender-dragon-fight
 
 
 diff --git a/net/minecraft/world/level/dimension/end/EndDragonFight.java b/net/minecraft/world/level/dimension/end/EndDragonFight.java
-index 7f9bd256da15da915db1c45099572d9eb3286166..76e8d9d2e15b2bf2db3e081661c22bccec94440d 100644
+index 7f9bd256da15da915db1c45099572d9eb3286166..4909fe4e852fde9412efb7a92c9c12b297e60d60 100644
 --- a/net/minecraft/world/level/dimension/end/EndDragonFight.java
 +++ b/net/minecraft/world/level/dimension/end/EndDragonFight.java
 @@ -9,6 +9,7 @@ import com.google.common.collect.Sets;
@@ -24,10 +24,10 @@ index 7f9bd256da15da915db1c45099572d9eb3286166..76e8d9d2e15b2bf2db3e081661c22bcc
              this.level.getChunkSource().addTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);
              boolean isArenaLoaded = this.isArenaLoaded();
              if (this.needsStateScanning && isArenaLoaded) {
-@@ -186,6 +188,13 @@ public class EndDragonFight {
-                     this.updateCrystalCount();
+@@ -187,6 +189,13 @@ public class EndDragonFight {
                      this.ticksSinceCrystalsScanned = 0;
                  }
+             }
 +                // ShreddedPaper start - run on end island thread
 +            };
 +            while (!this.level.chunkScheduler.getRegionLocker().tryLockNow(RegionPos.forChunk(0, 0), r)) {
@@ -35,6 +35,6 @@ index 7f9bd256da15da915db1c45099572d9eb3286166..76e8d9d2e15b2bf2db3e081661c22bcc
 +                this.level.chunkSource.mainThreadProcessor.managedBlock(() -> System.nanoTime() - startBlockingTime < 1_000_000); // Wait for 1ms
 +            }
 +            // ShreddedPaper end - run on end island thread
-             }
          } else {
              this.level.getChunkSource().removeTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);
+         }
