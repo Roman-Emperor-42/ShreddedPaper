@@ -1114,7 +1114,7 @@ index 7bbeed6c998c91e68376d3f17a510d68e3cd0b27..0c896b7dbac35363a4e4c05db79e0db6
      public final List<MapItemSavedData.HoldingPlayer> carriedBy = Lists.newArrayList();
      public final Map<Player, MapItemSavedData.HoldingPlayer> carriedByPlayers = Maps.newHashMap();
 diff --git a/net/minecraft/world/level/storage/DimensionDataStorage.java b/net/minecraft/world/level/storage/DimensionDataStorage.java
-index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..a2154e8dd4de384368776328c52aded2389c156a 100644
+index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..d9908142bd1951d1cf0eab53a00b7ffe31991fff 100644
 --- a/net/minecraft/world/level/storage/DimensionDataStorage.java
 +++ b/net/minecraft/world/level/storage/DimensionDataStorage.java
 @@ -39,7 +39,7 @@ import org.slf4j.Logger;
@@ -1126,7 +1126,7 @@ index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..a2154e8dd4de384368776328c52aded2
      private final DataFixer fixerUpper;
      private final HolderLookup.Provider registries;
      private final Path dataFolder;
-@@ -57,25 +57,48 @@ public class DimensionDataStorage implements AutoCloseable {
+@@ -57,25 +57,28 @@ public class DimensionDataStorage implements AutoCloseable {
      }
  
      public <T extends SavedData> T computeIfAbsent(SavedDataType<T> type) {
@@ -1158,33 +1158,14 @@ index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..a2154e8dd4de384368776328c52aded2
 -            optional = Optional.ofNullable(this.readSavedData(type));
 -            this.cache.put(type, optional);
 -        }
+-
+-        return (T)optional.orElse(null);
 +        // ShreddedPaper start - thread-safe
 +        Optional<SavedData> optional = this.cache.computeIfAbsent(type, t -> {
 +            SavedData data = this.readSavedData(t);
 +            return Optional.ofNullable(data);
 +        });
 +        return (T) optional.orElse(null);
-+        // ShreddedPaper end
-+    }
-+
-+    public <T extends SavedData> T computeIfAbsent(SavedData.Factory<T> type, String id) {
-+        // ShreddedPaper start - thread-safe
-+        return (T) this.cache.compute(id, (key, savedData) -> {
-+            if (savedData == null) {
-+                return type.constructor().get();
-+            }
-+            return savedData;
-+        });
-+        // ShreddedPaper end
-+    }
- 
--        return (T)optional.orElse(null);
-+    @Nullable
-+    public <T extends SavedData> T get(SavedData.Factory<T> type, String id) {
-+        // ShreddedPaper start - thread-safe
-+        return (T) this.cache.computeIfAbsent(id, (key) -> {
-+            return this.readSavedData(type.deserializer(), type.type(), key);
-+        });
 +        // ShreddedPaper end
      }
  
