@@ -177,7 +177,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
  
              return interactionResult;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74b94c1cd1 100644
+index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d4fa186b0 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
@@ -188,7 +188,15 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
  import java.util.List;
  import java.util.UUID;
  import java.util.Set;
-@@ -142,12 +143,15 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -46,6 +47,7 @@ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.entity.EntitySelector;
+ import net.minecraft.world.entity.boss.EnderDragonPart;
+ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
++import net.minecraft.world.entity.item.ItemEntity;
+ import net.minecraft.world.entity.player.Player;
+ import net.minecraft.world.item.ItemStack;
+ import net.minecraft.world.item.alchemy.PotionBrewing;
+@@ -142,12 +144,15 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public boolean pvpMode;
      public @Nullable org.bukkit.generator.ChunkGenerator generator;
  
@@ -209,7 +217,16 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
      public final it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<SpawnCategory> ticksPerSpawnCategory = new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>();
      // Paper start - EAR 2
      public int wakeupInactiveRemainingAnimals;
-@@ -1068,8 +1072,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -923,7 +928,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         this.thread = Thread.currentThread();
+         this.biomeManager = new BiomeManager(this, biomeZoomSeed);
+         this.isDebug = isDebug;
+-        this.neighborUpdater = new PerThreadNeighborUpdater(() -> new CollectingNeighborUpdater(this, j)); // ShreddedPaper - thread-safe
++        this.neighborUpdater = new PerThreadNeighborUpdater(() -> new CollectingNeighborUpdater(this, maxChainedNeighborUpdates)); // ShreddedPaper - thread-safe
+         this.registryAccess = registryAccess;
+         this.damageSources = new DamageSources(registryAccess);
+ 
+@@ -1068,8 +1073,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      @Nullable
      public final BlockState getBlockStateIfLoaded(BlockPos pos) {
          // CraftBukkit start - tree generation
@@ -220,7 +237,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1134,15 +1138,15 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1134,15 +1139,15 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      @Override
      public boolean setBlock(BlockPos pos, BlockState state, int flags, int recursionLeft) {
          // CraftBukkit start - tree generation
@@ -239,7 +256,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
              }
              blockstate.setData(state);
              blockstate.setFlags(flags);
-@@ -1158,11 +1162,11 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1158,11 +1163,11 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
              Block block = state.getBlock();
              // CraftBukkit start - capture blockstates
              boolean captured = false;
@@ -253,7 +270,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
                      captured = true;
                  } else {
                      snapshot = this.capturedBlockStates.get(pos);
-@@ -1212,7 +1216,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1212,7 +1217,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
                  */
  
                  // CraftBukkit start
@@ -262,7 +279,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
                      // Modularize client and physic updates
                      // Spigot start
                      try {
-@@ -1376,8 +1380,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1376,8 +1381,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      @Override
      public BlockState getBlockState(BlockPos pos) {
          // CraftBukkit start - tree generation
@@ -273,7 +290,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1690,7 +1694,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1690,7 +1695,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public BlockEntity getBlockEntity(BlockPos pos) {
          // Paper start - Perf: Optimize capturedTileEntities lookup
          net.minecraft.world.level.block.entity.BlockEntity blockEntity;
@@ -282,7 +299,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74
              return blockEntity;
          }
          // Paper end - Perf: Optimize capturedTileEntities lookup
-@@ -1707,8 +1711,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1707,8 +1712,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
          BlockPos blockPos = blockEntity.getBlockPos();
          if (!this.isOutsideBuildHeight(blockPos)) {
              // CraftBukkit start

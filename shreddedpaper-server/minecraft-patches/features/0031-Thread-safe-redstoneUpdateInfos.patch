@@ -5,7 +5,7 @@ Subject: [PATCH] Thread-safe-redstoneUpdateInfos
 
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-index 5178554afff846be5876fc276ecc474726de0140..3f31c6fc4e1d9f08559aa5d987815e298bc6fc5d 100644
+index 22beb31c8f9b5a4f0ab51d60a4b7dab4458bcdb5..80a58b2d81b16c3ba646b2382fab0466786290da 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 @@ -11,10 +11,12 @@ import net.minecraft.server.level.ServerLevel;
@@ -30,10 +30,10 @@ index 5178554afff846be5876fc276ecc474726de0140..3f31c6fc4e1d9f08559aa5d987815e29
      public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
          this.level = level;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index ef969ed330483736b1bcc1ddedf17e51ad1dba37..c8ae18e441181fae081a0d8d0a7904a4bb01f993 100644
+index d578d5137552724189ac69f2354ae21d4fa186b0..fa562c808c83e3c309ab02cd789ae5ef6d007d8a 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -172,7 +172,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -173,7 +173,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public static @Nullable BlockPos lastPhysicsProblem; // Spigot
      // private int tileTickPosition; // ShreddedPaper - removed tileTickPosition
      public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions

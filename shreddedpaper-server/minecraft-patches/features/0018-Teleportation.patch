@@ -378,7 +378,7 @@ index 0cad6bc5f95ae643c63afe73a2662c9ac844e6d6..37ed11d6e9822e82ba15e9378ed9f14f
                  break;
              case REQUEST_STATS:
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..c479d0a3507fe941273e03cccfc70b2b0b3b6735 100644
+index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd190ce9e5e 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -6,6 +6,8 @@ import com.google.common.collect.Sets;
@@ -469,7 +469,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..c479d0a3507fe941273e03cccfc70b2b
          // Paper start - Add PlayerPostRespawnEvent
          boolean isBedSpawn = false;
          boolean isRespawn = false;
-@@ -610,24 +634,38 @@ public abstract class PlayerList {
+@@ -610,33 +634,46 @@ public abstract class PlayerList {
          // Paper end - Add PlayerPostRespawnEvent
  
          // CraftBukkit start - fire PlayerRespawnEvent
@@ -510,16 +510,28 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..c479d0a3507fe941273e03cccfc70b2b
 +            return CompletableFuture.supplyAsync(() -> postRespawn(serverPlayer, flag, entity_removalreason, reason, location2, teleportTransitionFuture, isRespawn2, isBedSpawn, fromWorld), r -> ShreddedPaperRegionScheduler.scheduleAcrossLevels(entityplayer1.serverLevel(), RegionPos.forChunk(entityplayer1.chunkPosition()), dimensiontransition.newLevel(), RegionPos.forLocation(location2), r)); // ShreddedPaper
 +        });
          // Spigot end
+-        ServerLevel level = teleportTransition.newLevel();
 +    }
 +
-+    private ServerPlayer postRespawn(ServerPlayer entityplayer1, boolean flag, Entity.RemovalReason entity_removalreason, RespawnReason reason, Location location, DimensionTransition dimensiontransition, boolean isRespawn, boolean isBedSpawn, Level fromWorld) { // ShreddedPaper
-+        ServerPlayer entityplayer = entityplayer1; // ShreddedPaper
-+        entityplayer1.serverLevel().removePlayerImmediately(entityplayer1, entity_removalreason); // ShreddedPaper - doing later
++    private ServerPlayer postRespawn(ServerPlayer serverPlayer, boolean flag, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location, TeleportTransition dimensiontransition, boolean isRespawn, boolean isBedSpawn, Level fromWorld) { // ShreddedPaper
++        serverPlayer.serverLevel().removePlayerImmediately(serverPlayer, entity_removalreason); // ShreddedPaper - doing later
 +
-         ServerLevel level = teleportTransition.newLevel();
++        ServerLevel level = TeleportTransition.newLevel();
          serverPlayer.spawnIn(level);
          serverPlayer.unsetRemoved();
-@@ -658,9 +696,9 @@ public abstract class PlayerList {
+         serverPlayer.setShiftKeyDown(false);
+-        Vec3 vec3 = teleportTransition.position();
+-        serverPlayer.forceSetPositionRotation(vec3.x, vec3.y, vec3.z, teleportTransition.yRot(), teleportTransition.xRot());
++        Vec3 vec3 = TeleportTransition.position();
++        serverPlayer.forceSetPositionRotation(vec3.x, vec3.y, vec3.z, TeleportTransition.yRot(), TeleportTransition.xRot());
+         level.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.POST_TELEPORT, new net.minecraft.world.level.ChunkPos(net.minecraft.util.Mth.floor(vec3.x()) >> 4, net.minecraft.util.Mth.floor(vec3.z()) >> 4), 1); // Paper - post teleport ticket type
+         // CraftBukkit end
+-        if (teleportTransition.missingRespawnBlock()) {
++        if (TeleportTransition.missingRespawnBlock()) {
+             serverPlayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
+             serverPlayer.setRespawnPosition(null, false, com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.PLAYER_RESPAWN); // CraftBukkit - SPIGOT-5988: Clear respawn location when obstructed // Paper - PlayerSetSpawnEvent
+         }
+@@ -658,9 +695,9 @@ public abstract class PlayerList {
          this.sendPlayerPermissionLevel(serverPlayer);
          if (!serverPlayer.connection.isDisconnected()) {
              level.addRespawnedPlayer(serverPlayer);
@@ -532,6 +544,55 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..c479d0a3507fe941273e03cccfc70b2b
          }
          // serverPlayer.initInventoryMenu();
          serverPlayer.setHealth(serverPlayer.getHealth());
+@@ -686,7 +723,7 @@ public abstract class PlayerList {
+                         );
+                 }
+                 // Paper start - Add PlayerPostRespawnEvent
+-                if (!teleportTransition.missingRespawnBlock()) {
++                if (!TeleportTransition.missingRespawnBlock()) {
+                     if (blockState.is(net.minecraft.tags.BlockTags.BEDS)) {
+                         isBedSpawn = true;
+                     } else if (blockState.is(Blocks.RESPAWN_ANCHOR)) {
+@@ -697,30 +734,30 @@ public abstract class PlayerList {
+             }
+         }
+         // Added from changeDimension
+-        this.sendAllPlayerInfo(player); // Update health, etc...
+-        player.onUpdateAbilities();
+-        for (MobEffectInstance mobEffect : player.getActiveEffects()) {
+-            player.connection.send(new ClientboundUpdateMobEffectPacket(player.getId(), mobEffect, false)); // blend = false
++        this.sendAllPlayerInfo(serverPlayer); // Update health, etc...
++        serverPlayer.onUpdateAbilities();
++        for (MobEffectInstance mobEffect : serverPlayer.getActiveEffects()) {
++            serverPlayer.connection.send(new ClientboundUpdateMobEffectPacket(serverPlayer.getId(), mobEffect, false)); // blend = false
+         }
+ 
+         // Fire advancement trigger
+-        player.triggerDimensionChangeTriggers(level);
++        serverPlayer.triggerDimensionChangeTriggers(level);
+ 
+         // Don't fire on respawn
+         if (fromWorld != level) {
+-            org.bukkit.event.player.PlayerChangedWorldEvent event = new org.bukkit.event.player.PlayerChangedWorldEvent(player.getBukkitEntity(), fromWorld.getWorld());
++            org.bukkit.event.player.PlayerChangedWorldEvent event = new org.bukkit.event.player.PlayerChangedWorldEvent(serverPlayer.getBukkitEntity(), fromWorld.getWorld());
+             this.server.server.getPluginManager().callEvent(event);
+         }
+ 
+         // Save player file again if they were disconnected
+-        if (player.connection.isDisconnected()) {
+-            this.save(player);
++        if (serverPlayer.connection.isDisconnected()) {
++            this.save(serverPlayer);
+         }
+ 
+         // Paper start - Add PlayerPostRespawnEvent
+         if (isRespawn) {
+             new com.destroystokyo.paper.event.player.PlayerPostRespawnEvent(
+-                player.getBukkitEntity(),
++                serverPlayer.getBukkitEntity(),
+                 location,
+                 isBedSpawn,
+                 isAnchorSpawn,
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
 index bae842012b02634e6f51f5df2b55c293e54f9e9f..cc7336f6af8b6fcc08e00d8a35534bbe2109e296 100644
 --- a/net/minecraft/world/entity/Entity.java
@@ -694,18 +755,20 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c2972923
      }
  
 diff --git a/net/minecraft/world/level/portal/TeleportTransition.java b/net/minecraft/world/level/portal/TeleportTransition.java
-index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..2951e30af80aac7514124ef387c0869b8aeed69e 100644
+index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..057b1379077190d1a23e46b210ea944efce0688b 100644
 --- a/net/minecraft/world/level/portal/TeleportTransition.java
 +++ b/net/minecraft/world/level/portal/TeleportTransition.java
-@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
+@@ -8,6 +8,9 @@ import net.minecraft.server.level.ServerPlayer;
  import net.minecraft.world.entity.Entity;
  import net.minecraft.world.entity.Relative;
  import net.minecraft.world.phys.Vec3;
++import org.bukkit.event.player.PlayerTeleportEvent;
++
 +import java.util.concurrent.CompletableFuture;
  
  public record TeleportTransition(
      ServerLevel newLevel,
-@@ -75,13 +76,17 @@ public record TeleportTransition(
+@@ -75,13 +78,17 @@ public record TeleportTransition(
          // CraftBukkit end
      }
  
@@ -730,7 +793,7 @@ index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..2951e30af80aac7514124ef387c0869b
      }
  
      private static void playPortalSound(Entity entity) {
-@@ -90,8 +95,15 @@ public record TeleportTransition(
+@@ -90,8 +97,15 @@ public record TeleportTransition(
          }
      }
  
