@@ -279,7 +279,7 @@ index 8b93dd5b5daf49c9df3c287b2e89ac3cca005fa2..f39768869086a7ace940c4d064c3f95c
                  this.changedBlocksPerSection[sectionIndex] = new ShortOpenHashSet();
              }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index b6e4f341fd63ed9b7448395014077e6f02cb045e..fbc3c4f781a5bb8501c638423f5fa09aaa0a0d85 100644
+index 5db3a8a48d89c4a7f3931ff7082cc9ccbeabc84f..aa0160c06527cc81da679d98eb96e3079744f4d8 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -22,7 +22,6 @@ import javax.annotation.Nullable;
@@ -328,20 +328,3 @@ index b6e4f341fd63ed9b7448395014077e6f02cb045e..fbc3c4f781a5bb8501c638423f5fa09a
      }
      // Paper end - chunk tick iteration optimisations
  
-diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index afcc39bfc95dfa864df88e4593ca01c6c7abf11e..39765562872e712a86edc194fd286a18418f5930 100644
---- a/net/minecraft/world/level/chunk/LevelChunk.java
-+++ b/net/minecraft/world/level/chunk/LevelChunk.java
-@@ -88,12 +88,6 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
-     private final LevelChunkTicks<Block> blockTicks;
-     private final LevelChunkTicks<Fluid> fluidTicks;
-     private LevelChunk.UnsavedListener unsavedListener = chunkPos -> {};
--    // ShreddedPaper start - toString
--    @Override
--    public String toString() {
--        return this.getClass().getSimpleName() + "{level=" + this.level.convertable.getLevelId() + ",pos=" + this.getPos() + "}";
--    }
--    // ShreddedPaper end - toString
-     // CraftBukkit start
-     public boolean mustNotSave;
-     public boolean needsDecoration;
