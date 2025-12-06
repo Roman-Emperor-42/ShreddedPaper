@@ -405,7 +405,7 @@ index 2882cd829d4d8e1f8615f085f6908efcdf68ac62..b098feae6fa0dec1840d88b6bbf0a994
          profiler.popPush("customSpawners");
          if (_boolean) {
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index a04547852854eb1c1fa077c62cc25063e6124289..d0977f2ab127e47a4b2c011cd453c0ee1af81694 100644
+index a04547852854eb1c1fa077c62cc25063e6124289..b76250adaa58e18e20b42812af5fde8556d078c1 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -301,9 +301,9 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -439,7 +439,7 @@ index a04547852854eb1c1fa077c62cc25063e6124289..d0977f2ab127e47a4b2c011cd453c0ee
 -    public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getTickingChunks() {
 -        return this.tickingChunks;
 -    }
-+    @// Override
++    // @Override
 +    // public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getTickingChunks() {
 +    //     return this.tickingChunks;
 +    // }
