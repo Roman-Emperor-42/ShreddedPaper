@@ -713,7 +713,7 @@ index 688abb1b597e9515a109675f1363518391ea6f73..2ed71de827b5c02155e46475c30e7534
      // Paper end - rewrite chunk system
  
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index e58f3716210ef463b307c9884ded6884b06f7463..78769f94c25e986d79658738c9a0ab1a46be753a 100644
+index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc674a017f39 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -1,5 +1,6 @@
@@ -766,7 +766,7 @@ index e58f3716210ef463b307c9884ded6884b06f7463..78769f94c25e986d79658738c9a0ab1a
              ChunkHolder visibleChunkIfPresent = this.getVisibleChunkIfPresent(pos.chunk().toLong());
              if (visibleChunkIfPresent != null && visibleChunkIfPresent.sectionLightChanged(type, pos.y())) {
                  this.chunkHoldersToBroadcast.add(visibleChunkIfPresent);
-@@ -842,13 +847,27 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -842,12 +847,27 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
  
          @Override
          public boolean pollTask() {
@@ -791,11 +791,10 @@ index e58f3716210ef463b307c9884ded6884b06f7463..78769f94c25e986d79658738c9a0ab1a
                  return true;
              } else {
 -                return super.pollTask() | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)serverChunkCache.level).moonrise$getChunkTaskScheduler().executeMainThreadTask();
--            }
-+                return (!ShreddedPaperTickThread.isShreddedPaperTickThread() && super.pollTask()) | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)serverChunkCache.level).moonrise$getChunkTaskScheduler().executeMainThreadTask(); // ShreddedPaper - don't run main thread tasks on workers            }
++                return (!ShreddedPaperTickThread.isShreddedPaperTickThread() && super.pollTask()) | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)serverChunkCache.level).moonrise$getChunkTaskScheduler().executeMainThreadTask(); // ShreddedPaper - don't run main thread tasks on workers
+             }
              // Paper end - rewrite chunk system
          }
-     }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
 index 1fc302c8734d31ebe854906f33723f4e80f41746..07314e48c991cf84969e8b1a8cc7b64722705925 100644
 --- a/net/minecraft/server/level/ServerLevel.java
