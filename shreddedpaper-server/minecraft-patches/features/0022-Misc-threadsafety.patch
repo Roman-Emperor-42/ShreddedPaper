@@ -799,7 +799,7 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..3df96cfe9f066b6ccf756cff2159fe7b
  
      public static int getColorForPower(int power) {
 diff --git a/net/minecraft/world/level/block/SaplingBlock.java b/net/minecraft/world/level/block/SaplingBlock.java
-index a22cb810622e0ae97bc2a0d6390d026d9482b783..6ef529ffc93379aaaee82aed2de235f2767b6240 100644
+index a22cb810622e0ae97bc2a0d6390d026d9482b783..5948c4e5e6d0cf7f59188050c51f538d66bf0201 100644
 --- a/net/minecraft/world/level/block/SaplingBlock.java
 +++ b/net/minecraft/world/level/block/SaplingBlock.java
 @@ -25,7 +25,7 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
@@ -807,7 +807,7 @@ index a22cb810622e0ae97bc2a0d6390d026d9482b783..6ef529ffc93379aaaee82aed2de235f2
      private static final VoxelShape SHAPE = Block.column(12.0, 0.0, 12.0);
      protected final TreeGrower treeGrower;
 -    public static @javax.annotation.Nullable org.bukkit.TreeType treeType; // CraftBukkit
-+    public static final ThreadLocal<TreeType> treeTypeThreadLocal = new ThreadLocal<>(); // CraftBukkit // ShreddedPaper - thread local for treeType
++    public static final ThreadLocal<org.bukkit.TreeType> treeTypeThreadLocal = new ThreadLocal<>(); // CraftBukkit // ShreddedPaper - thread local for treeType
  
      @Override
      public MapCodec<? extends SaplingBlock> codec() {
@@ -1031,7 +1031,7 @@ index d23f255de9208f42125fa358a9e8194c984fe4d3..50e20614f7cebc44a0a0d70883d3ff69
              throw new IllegalArgumentException("Unknown tree generator " + feature);
          }
 diff --git a/net/minecraft/world/level/block/state/BlockBehaviour.java b/net/minecraft/world/level/block/state/BlockBehaviour.java
-index 8db95b74f88f8096de93115ae8d3fb2e6184ad3b..9952e3b69e39743febc9a698de70513a9cc7d0fc 100644
+index 8db95b74f88f8096de93115ae8d3fb2e6184ad3b..5c0b3788f15a421420ebb4e49e0bc1d11f6047ea 100644
 --- a/net/minecraft/world/level/block/state/BlockBehaviour.java
 +++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
 @@ -1,5 +1,6 @@
@@ -1046,7 +1046,7 @@ index 8db95b74f88f8096de93115ae8d3fb2e6184ad3b..9952e3b69e39743febc9a698de70513a
  
      protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
 -        org.spigotmc.AsyncCatcher.catchOp("block onPlace"); // Spigot
-+        TickThread.ensureTickThread((ServerLevel) world, pos, "block onPlace"); // Spigot // ShreddedPaper
++        TickThread.ensureTickThread((ServerLevel) level, pos, "block onPlace"); // Spigot // ShreddedPaper
      }
  
      protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {

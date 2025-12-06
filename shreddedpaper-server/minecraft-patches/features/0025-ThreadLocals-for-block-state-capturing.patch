@@ -324,7 +324,7 @@ index a6f4db5c99d332ac26a52d5174f75e7dc9f51fe5..cf05f2d0170d8993c6e5ef33fff461db
              }
              // CraftBukkit end
 diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
-index d023c985344807db2180665a15d282fa50754299..53a2b035ac8bb92b949b4a2482d39da2fb72fe3f 100644
+index d023c985344807db2180665a15d282fa50754299..a407300584bafd632f1a9d226ee537c7e01f700e 100644
 --- a/net/minecraft/world/level/block/Block.java
 +++ b/net/minecraft/world/level/block/Block.java
 @@ -431,8 +431,8 @@ public class Block extends BlockBehaviour implements ItemLike {
@@ -334,12 +334,12 @@ index d023c985344807db2180665a15d282fa50754299..53a2b035ac8bb92b949b4a2482d39da2
 -            if (level.captureDrops != null) {
 -                level.captureDrops.add(itemEntity);
 +            if (level.captureDrops.get() != null) { // ShreddedPaper - thread local
-+                level.captureDrops.get().add(entityitem); // ShreddedPaper - thread local
++                level.captureDrops.get().add(itemEntity); // ShreddedPaper - thread local
              } else {
                  level.addFreshEntity(itemEntity);
              }
 diff --git a/net/minecraft/world/level/block/SaplingBlock.java b/net/minecraft/world/level/block/SaplingBlock.java
-index 6ef529ffc93379aaaee82aed2de235f2767b6240..58a2a36361cce84a8426e9ca6760cb9c7d3e9a64 100644
+index 5948c4e5e6d0cf7f59188050c51f538d66bf0201..439240b0dd6679295acfed59c7053b630b323970 100644
 --- a/net/minecraft/world/level/block/SaplingBlock.java
 +++ b/net/minecraft/world/level/block/SaplingBlock.java
 @@ -55,18 +55,18 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
