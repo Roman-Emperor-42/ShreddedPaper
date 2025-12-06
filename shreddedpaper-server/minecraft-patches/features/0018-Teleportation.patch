@@ -378,7 +378,7 @@ index 0cad6bc5f95ae643c63afe73a2662c9ac844e6d6..37ed11d6e9822e82ba15e9378ed9f14f
                  break;
              case REQUEST_STATS:
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a5a0abfda 100644
+index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..c479d0a3507fe941273e03cccfc70b2b0b3b6735 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -6,6 +6,8 @@ import com.google.common.collect.Sets;
@@ -403,7 +403,18 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
  import net.minecraft.ChatFormatting;
  import net.minecraft.FileUtil;
  import net.minecraft.commands.CommandSourceStack;
-@@ -580,10 +585,23 @@ public abstract class PlayerList {
+@@ -99,6 +104,10 @@ import net.minecraft.world.scores.DisplaySlot;
+ import net.minecraft.world.scores.Objective;
+ import net.minecraft.world.scores.PlayerTeam;
+ import net.minecraft.world.scores.Team;
++import org.bukkit.Location;
++import org.bukkit.craftbukkit.CraftWorld;
++import org.bukkit.craftbukkit.util.CraftLocation;
++import org.bukkit.event.player.PlayerRespawnEvent;
+ import org.slf4j.Logger;
+ 
+ public abstract class PlayerList {
+@@ -580,10 +589,23 @@ public abstract class PlayerList {
      }
  
      public ServerPlayer respawn(ServerPlayer player, boolean keepInventory, Entity.RemovalReason reason, @Nullable org.bukkit.event.player.PlayerRespawnEvent.RespawnReason eventReason, @Nullable org.bukkit.Location location) {
@@ -411,11 +422,11 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
 +        throw new UnsupportedOperationException("Cannot respawn player synchronously");
 +    }
 +
-+    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer entityplayer, boolean flag, Entity.RemovalReason entity_removalreason, RespawnReason reason) {
-+        return this.respawnAsync(entityplayer, flag, entity_removalreason, reason, null);
++    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer player, boolean flag, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason) {
++        return this.respawnAsync(player, flag, entity_removalreason, reason, null);
 +    }
 +
-+    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer entityplayer, boolean flag, Entity.RemovalReason entity_removalreason, RespawnReason reason, Location location) {
++    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer player, boolean flag, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location) {
 +        CompletableFuture<ServerPlayer> future = new CompletableFuture<>();
 +        // ShreddedPaper end - async respawn
 +        // Paper end - Expand PlayerRespawnEvent
@@ -430,7 +441,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
          // TeleportTransition teleportTransition = player.findRespawnPositionAndUseSpawnBlock(!keepInventory, TeleportTransition.DO_NOTHING);
          // ServerLevel level = teleportTransition.newLevel();
          // ServerPlayer serverPlayer = new ServerPlayer(this.server, level, player.getGameProfile(), player.clientInformation());
-@@ -591,18 +609,20 @@ public abstract class PlayerList {
+@@ -591,18 +613,20 @@ public abstract class PlayerList {
          Level fromWorld = player.level();
          player.wonGame = false;
          // CraftBukkit end
@@ -458,7 +469,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
          // Paper start - Add PlayerPostRespawnEvent
          boolean isBedSpawn = false;
          boolean isRespawn = false;
-@@ -610,24 +630,38 @@ public abstract class PlayerList {
+@@ -610,24 +634,38 @@ public abstract class PlayerList {
          // Paper end - Add PlayerPostRespawnEvent
  
          // CraftBukkit start - fire PlayerRespawnEvent
@@ -466,7 +477,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
 +        CompletableFuture<TeleportTransition> teleportTransitionFuture; // ShreddedPaper
          if (location == null) {
 -            teleportTransition = player.findRespawnPositionAndUseSpawnBlock(!keepInventory, TeleportTransition.DO_NOTHING, eventReason);
-+            teleportTransition = player.findRespawnPositionAndUseSpawnBlockAsync(!keepInventory, teleportTransition.DO_NOTHING, eventReason); // ShreddedPaper
++            teleportTransitionFuture = player.findRespawnPositionAndUseSpawnBlockAsync(!keepInventory, teleportTransitionFuture.DO_NOTHING, eventReason); // ShreddedPaper
  
              if (!keepInventory) player.reset(); // SPIGOT-4785
 -           // Paper start - Add PlayerPostRespawnEvent
@@ -475,28 +486,28 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
 -           location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(teleportTransition.position(), teleportTransition.newLevel().getWorld(), teleportTransition.yRot(), teleportTransition.xRot());
 -           // Paper end - Add PlayerPostRespawnEvent
 +            // Paper start - Add PlayerPostRespawnEvent
-+            if (teleportTransition == null)
++            if (teleportTransitionFuture == null)
 +                return player; // Early exit, mirrors belows early return for disconnected players in respawn event
 +            // ShreddedPaper - do later
 +            // Paper end - Add PlayerPostRespawnEvent
          } else {
 -            teleportTransition = new TeleportTransition(((org.bukkit.craftbukkit.CraftWorld) location.getWorld()).getHandle(), org.bukkit.craftbukkit.util.CraftLocation.toVec3(location), Vec3.ZERO, location.getYaw(), location.getPitch(), TeleportTransition.DO_NOTHING);
-+            teleportTransitionFuture = CompletableFuture.completedFuture(new teleportTransition(((CraftWorld) location.getWorld()).getHandle(), CraftLocation.toVec3D(location), Vec3.ZERO, location.getYaw(), location.getPitch(), teleportTransition.DO_NOTHING)); // ShreddedPaper
++            teleportTransitionFuture = CompletableFuture.completedFuture(new TeleportTransition(((CraftWorld) location.getWorld()).getHandle(), CraftLocation.toVec3D(location), Vec3.ZERO, location.getYaw(), location.getPitch(), TeleportTransition.DO_NOTHING)); // ShreddedPaper
          }
          // Spigot start
 -        if (teleportTransition == null) { // Paper - Add PlayerPostRespawnEvent - diff on change - spigot early returns if respawn pos is null, that is how they handle disconnected player in respawn event
 -            return player;
 -        }
 +        // ShreddedPaper start
-+        return teleportTransitionFutureFuture.thenCompose(teleportTransitionFuture -> {
++        return teleportTransitionFuture.thenCompose(teleportTransitionFuture -> {
 +            if (teleportTransitionFuture == null) {
 +                return CompletableFuture.completedFuture(player);
 +            }
 +
 +            boolean isRespawn2 = location == null; // ShreddedPaper
-+            Location location2 = CraftLocation.toBukkit(teleportTransition.pos(), teleportTransition.newLevel().getWorld(), teleportTransition.yRot(), teleportTransition.xRot()); // ShreddedPaper
++            Location location2 = CraftLocation.toBukkit(teleportTransitionFuture.pos(), teleportTransitionFuture.newLevel().getWorld(), teleportTransitionFuture.yRot(), teleportTransitionFuture.xRot()); // ShreddedPaper
 +
-+            return CompletableFuture.supplyAsync(() -> postRespawn(entityplayer1, flag, entity_removalreason, reason, location2, teleportTransition, isRespawn2, isBedSpawn, fromWorld), r -> ShreddedPaperRegionScheduler.scheduleAcrossLevels(entityplayer1.serverLevel(), RegionPos.forChunk(entityplayer1.chunkPosition()), dimensiontransition.newLevel(), RegionPos.forLocation(location2), r)); // ShreddedPaper
++            return CompletableFuture.supplyAsync(() -> postRespawn(serverPlayer, flag, entity_removalreason, reason, location2, teleportTransitionFuture, isRespawn2, isBedSpawn, fromWorld), r -> ShreddedPaperRegionScheduler.scheduleAcrossLevels(entityplayer1.serverLevel(), RegionPos.forChunk(entityplayer1.chunkPosition()), dimensiontransition.newLevel(), RegionPos.forLocation(location2), r)); // ShreddedPaper
 +        });
          // Spigot end
 +    }
@@ -508,7 +519,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..8b01ad02efc3a080231afecf3dbe438a
          ServerLevel level = teleportTransition.newLevel();
          serverPlayer.spawnIn(level);
          serverPlayer.unsetRemoved();
-@@ -658,9 +692,9 @@ public abstract class PlayerList {
+@@ -658,9 +696,9 @@ public abstract class PlayerList {
          this.sendPlayerPermissionLevel(serverPlayer);
          if (!serverPlayer.connection.isDisconnected()) {
              level.addRespawnedPlayer(serverPlayer);
