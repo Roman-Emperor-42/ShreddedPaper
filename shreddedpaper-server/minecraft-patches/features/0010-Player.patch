@@ -374,7 +374,7 @@ index 2ed71de827b5c02155e46475c30e753448488c46..a0e962f1dadc6cef913c7be025b1f874
          for (ServerLevel serverLevel : this.getAllLevels()) {
              serverLevel.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 07314e48c991cf84969e8b1a8cc7b64722705925..5b32749d88f07e4c5113bbb4599bddfe86ffb865 100644
+index 58971c05eafd165b3d923bcf0f61f1c62f05cacc..d25b53e4d24f711a7541fdf7858793b2d86fc1f8 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -25,6 +25,7 @@ import java.util.Locale;
@@ -564,7 +564,7 @@ index 577bb59afb4e059523e68af6c3515d64f0b9e559..ee3731bcca110ceb185d4fe28f9f84a2
      private boolean noCollisionNoLiquid(ServerLevel level, AABB collisionBox) {
          return level.noCollision(this, collisionBox, true);
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index 436f753d00f3854c481c95e4ddacfd9fac9932d4..a167771494f4115db017de4d7ea1a5af21a21f8c 100644
+index 436f753d00f3854c481c95e4ddacfd9fac9932d4..45f7934850fb6855e064ef74d43ebdb9a236b9ef 100644
 --- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 @@ -1,9 +1,13 @@
@@ -588,7 +588,7 @@ index 436f753d00f3854c481c95e4ddacfd9fac9932d4..a167771494f4115db017de4d7ea1a5af
 -                this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
 +                ShreddedPaper.runSync(this.player, () -> { // ShreddedPaper - run on player's thread
 +                            this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
-+                }
++                });
                  // Paper end - improve keepalives
              }
          }
