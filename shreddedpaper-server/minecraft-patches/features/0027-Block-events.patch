@@ -5,11 +5,11 @@ Subject: [PATCH] Block-events
 
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-index fa02e308510823ba68457b6a00a770a1abbd9ade..5178554afff846be5876fc276ecc474726de0140 100644
+index daef360dcd0c133e9941ffdf0884ffff89bce9ff..22beb31c8f9b5a4f0ab51d60a4b7dab4458bcdb5 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 @@ -4,20 +4,25 @@ import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
- import ca.spottedleaf.concurrentutil.executor.standard.PrioritisedThreadedTaskQueue;
+ import io.multipaper.shreddedpaper.util.PrioritisedThreadedTaskQueue;
  import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
  import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 +import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -137,7 +137,7 @@ index 7471bb8bb40b21e9f87661ffd9b4053e155e6a3b..1f15b249ec7990d8ea2b63b1a18ecc97
  
              region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a..d2af8f63b4f4bd92b00b595e6ad1416f1890ddc5 100644
+index 62efc671c7d833bcef091ef46f8642322efb6074..53c5cf9676c35ba148edc90b7a83bc9b397baa32 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -6,12 +6,12 @@ import com.google.common.collect.Lists;

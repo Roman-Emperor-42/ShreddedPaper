@@ -5,10 +5,15 @@ Subject: [PATCH] Block-entities
 
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-index d2a7a4b5f1d219526ce289e4c1cec64320584860..cc248b69627dd6cd1fa3ca53d82e7dd4df94a28f 100644
+index d2a7a4b5f1d219526ce289e4c1cec64320584860..40b3ba048cdf1dc08d2c7d2fc0b229438a0ff0c7 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-@@ -5,9 +5,11 @@ import ca.spottedleaf.concurrentutil.executor.standard.PrioritisedThreadedTaskQu
+@@ -1,13 +1,15 @@
+ package io.multipaper.shreddedpaper.region;
+ 
+ import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
+-import ca.spottedleaf.concurrentutil.executor.standard.PrioritisedThreadedTaskQueue;
++import io.multipaper.shreddedpaper.util.PrioritisedThreadedTaskQueue;
  import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
  import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;

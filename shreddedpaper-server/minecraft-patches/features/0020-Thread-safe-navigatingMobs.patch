@@ -5,7 +5,7 @@ Subject: [PATCH] Thread-safe-navigatingMobs
 
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1abbd9ade 100644
+index 85a3fea714fa20832bf51ba9cb98dfd32d81d394..daef360dcd0c133e9941ffdf0884ffff89bce9ff 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 @@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
@@ -24,7 +24,7 @@ index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1
  
      public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
          this.level = level;
-@@ -113,8 +115,20 @@ public class LevelChunkRegion {
+@@ -113,6 +115,18 @@ public class LevelChunkRegion {
          return this.players.isEmpty() ? List.of() : new ObjectArrayList<>(this.players);
      }
  
@@ -41,11 +41,8 @@ index f4e090635be94b74da3c64e91b2b9e7b10ec6ebf..fa02e308510823ba68457b6a00a770a1
 +    }
 +
      public RegionPos getRegionPos() {
--        return regionPos;
-+        returCraftPlayer.javan regionPos;
+         return regionPos;
      }
- 
-     public void forEachTickingChunk(Consumer<LevelChunk> consumer) {
 @@ -156,6 +170,7 @@ public class LevelChunkRegion {
                  && tickingBlockEntities.isEmpty()
                  && pendingBlockEntityTickers.isEmpty()
@@ -139,7 +136,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
  }
 \ No newline at end of file
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index 78769f94c25e986d79658738c9a0ab1a46be753a..fbc3c4f781a5bb8501c638423f5fa09aaa0a0d85 100644
+index 7dd80eb345e1042a8180fe7cf400dc674a017f39..aa0160c06527cc81da679d98eb96e3079744f4d8 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -446,6 +446,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
@@ -151,7 +148,7 @@ index 78769f94c25e986d79658738c9a0ab1a46be753a..fbc3c4f781a5bb8501c638423f5fa09a
      }
  
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 90642366ba1d252c217ddfc4fab83761883cc396..f0b67a63d509aefc516724aa632d48ea27b0af19 100644
+index e7f94759951f2f899c1d857373c9345ebec3c624..3aadb54385a3e194042ac30acd21b15b8a315145 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -196,7 +196,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
