@@ -34,7 +34,7 @@ index 9d29912c82d2031122987b2c76c7d1a0b19b168f..b942dc0cee13040dd09739ee5112af48
                      if (treeType != null) {
                          structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, states);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 271d5816505e7f7b3c0f76b4c39c6f592cf1771a..c3e78bd26fcac55c19c3b6c5f3ea331c5d3ed72a 100644
+index 1964db60389d802aac5541c63f164f98753d3a5a..62efc671c7d833bcef091ef46f8642322efb6074 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1651,8 +1651,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -177,7 +177,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
  
              return interactionResult;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 6edc0cd2578a2aaa1cc4d748f3eecad45dbad9b8..ef969ed330483736b1bcc1ddedf17e51ad1dba37 100644
+index d79d96d8778c56cd01a29598b3fd85d7c27cac05..fe8b59122ad6f0ad81f3b22e67161d74b94c1cd1 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
@@ -273,7 +273,7 @@ index 6edc0cd2578a2aaa1cc4d748f3eecad45dbad9b8..ef969ed330483736b1bcc1ddedf17e51
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1689,7 +1693,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1690,7 +1694,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public BlockEntity getBlockEntity(BlockPos pos) {
          // Paper start - Perf: Optimize capturedTileEntities lookup
          net.minecraft.world.level.block.entity.BlockEntity blockEntity;
@@ -282,7 +282,7 @@ index 6edc0cd2578a2aaa1cc4d748f3eecad45dbad9b8..ef969ed330483736b1bcc1ddedf17e51
              return blockEntity;
          }
          // Paper end - Perf: Optimize capturedTileEntities lookup
-@@ -1706,8 +1710,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1707,8 +1711,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
          BlockPos blockPos = blockEntity.getBlockPos();
          if (!this.isOutsideBuildHeight(blockPos)) {
              // CraftBukkit start

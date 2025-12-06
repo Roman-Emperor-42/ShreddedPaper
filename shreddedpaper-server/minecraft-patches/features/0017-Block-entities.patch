@@ -111,7 +111,7 @@ index e6ae6fd09647095a5f21dbe988172030a613b3af..65e02292c786a950e26a36a6faddb0e1
      }
  
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c2108639f 100644
+index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..927cf50e3e108a4fe09e3182e43ae5c403dc76b0 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -7,6 +7,7 @@ import java.util.Collection;
@@ -152,7 +152,7 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c
      public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions
      public java.util.ArrayDeque<net.minecraft.world.level.block.RedstoneTorchBlock.Toggle> redstoneUpdateInfos; // Paper - Faster redstone torch rapid clock removal; Move from Map in BlockRedstoneTorch to here
  
-@@ -1486,41 +1489,52 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1486,43 +1489,55 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      }
  
      public void addBlockEntityTicker(TickingBlockEntity ticker) {
@@ -175,17 +175,10 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c
 -            this.blockEntityTickers.addAll(this.pendingBlockEntityTickers);
 -            this.pendingBlockEntityTickers.clear();
 -        }
-+        tickingBlockEntities = true;
-+        if (!pendingBlockEntityTickers.isEmpty()) { // ShreddedPaper
-+            synchronized (pendingBlockEntityTickers) { // ShreddedPaper
-+                blockEntityTickers.addAll(pendingBlockEntityTickers); // ShreddedPaper
-+                pendingBlockEntityTickers.clear(); // ShreddedPaper
-+            } // ShreddedPaper
-+
- 
-         // Spigot start
-         boolean runsNormally = this.tickRateManager().runsNormally();
- 
+-
+-        // Spigot start
+-        boolean runsNormally = this.tickRateManager().runsNormally();
+-
 -        int tickedEntities = 0; // Paper - rewrite chunk system
 -        var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
 -        toRemove.add(null); // Paper - Fix MC-117075
@@ -199,6 +192,17 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c
 -                // Paper start - rewrite chunk system
 -                if ((++tickedEntities & 7) == 0) {
 -                    ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel)(Level)(Object)this).moonrise$midTickTasks();
++        tickingBlockEntities = true;
++        if (!pendingBlockEntityTickers.isEmpty()) { // ShreddedPaper
++            synchronized (pendingBlockEntityTickers) { // ShreddedPaper
++                blockEntityTickers.addAll(pendingBlockEntityTickers); // ShreddedPaper
++                pendingBlockEntityTickers.clear(); // ShreddedPaper
++            } // ShreddedPaper
++
++
++            // Spigot start
++            boolean runsNormally = this.tickRateManager().runsNormally();
++
 +            int tilesThisCycle = 0;
 +            var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
 +            toRemove.add(null); // Paper - Fix MC-117075
@@ -225,10 +229,15 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..e832e57169a52936645a5b94d0b4501c
 +            blockEntityTickers.removeAll(toRemove); // Paper - Fix MC-117075 // ShreddedPaper
  
 -        this.tickingBlockEntities = false;
+-        profilerFiller.pop();
+-        this.spigotConfig.currentPrimedTnt = 0; // Spigot
 +            tickingBlockEntities = false;
-         profilerFiller.pop();
-         this.spigotConfig.currentPrimedTnt = 0; // Spigot
++            profilerFiller.pop();
++            this.spigotConfig.currentPrimedTnt = 0; // Spigot
++        }
      }
+ 
+     public <T extends Entity> void guardEntityTick(Consumer<T> consumerEntity, T entity) {
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
 index 75578e6ed7233a03d9b6cd3c6d3997f1c6148392..144d79351b08ef3f6b81615f4865ece619e10e70 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
