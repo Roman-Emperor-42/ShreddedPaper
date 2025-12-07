@@ -137,7 +137,7 @@ index 7471bb8bb40b21e9f87661ffd9b4053e155e6a3b..1f15b249ec7990d8ea2b63b1a18ecc97
  
              region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 647444ed44c048ad630bfb08fe3f9706e1d2398d..e2d54c7f1e6f3341fd6e11382aca835ab3e3d3ef 100644
+index 4a4db32cd6b4bf381ec5543ae701f173a4b3df61..2299629ced4c26ab45a0574c80710da57c991886 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -6,12 +6,12 @@ import com.google.common.collect.Lists;
@@ -180,7 +180,15 @@ index 647444ed44c048ad630bfb08fe3f9706e1d2398d..e2d54c7f1e6f3341fd6e11382aca835a
      private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
      private boolean handlingTick;
      private final List<CustomSpawner> customSpawners;
-@@ -799,7 +798,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -599,6 +598,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         // CraftBukkit end
+         this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, Profiler::get); // ShreddedPaper
+         this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, Profiler::get); // ShreddedPaper
++        this.blockEventsToRescheduleThreadLocal = ThreadLocal.withInitial(() -> new ArrayList(64)); // ShreddedPaper
+         this.tickTime = tickTime;
+         this.server = server;
+         // Purpur start - Allow toggling special MobSpawners per world
+@@ -799,7 +799,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          this.getChunkSource().tick(hasTimeLeft, true);
          profilerFiller.popPush("blockEvents");
          if (runsNormally) {
@@ -189,7 +197,7 @@ index 647444ed44c048ad630bfb08fe3f9706e1d2398d..e2d54c7f1e6f3341fd6e11382aca835a
          }
  
          this.handlingTick = false;
-@@ -2021,14 +2020,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2021,34 +2021,35 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      @Override
      public void blockEvent(BlockPos pos, Block block, int eventID, int eventParam) {
@@ -205,12 +213,31 @@ index 647444ed44c048ad630bfb08fe3f9706e1d2398d..e2d54c7f1e6f3341fd6e11382aca835a
  
 -        while (!this.blockEvents.isEmpty()) {
 -            BlockEventData blockEventData = this.blockEvents.removeFirst();
+-            if (this.shouldTickBlocksAt(blockEventData.pos())) {
+-                if (this.doBlockEvent(blockEventData)) {
 +        while (region.hasBlockEvents()) { // ShreddedPaper
 +            BlockEventData blockactiondata = (BlockEventData) region.removeFirstBlockEvent(); // ShreddedPaper
-             if (this.shouldTickBlocksAt(blockEventData.pos())) {
-                 if (this.doBlockEvent(blockEventData)) {
++            if (this.shouldTickBlocksAt(blockactiondata.pos())) {
++                if (this.doBlockEvent(blockactiondata)) {
                      this.server
-@@ -2044,11 +2044,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+-                        .getPlayerList()
+-                        .broadcast(
+-                            null,
+-                            blockEventData.pos().getX(),
+-                            blockEventData.pos().getY(),
+-                            blockEventData.pos().getZ(),
+-                            64.0,
+-                            this.dimension(),
+-                            new ClientboundBlockEventPacket(blockEventData.pos(), blockEventData.block(), blockEventData.paramA(), blockEventData.paramB())
++                            .getPlayerList()
++                            .broadcast(
++                                    null,
++                                    blockactiondata.pos().getX(),
++                                    blockactiondata.pos().getY(),
++                                    blockactiondata.pos().getZ(),
++                                    64.0,
++                                    this.dimension(),
++                                    new ClientboundBlockEventPacket(blockactiondata.pos(), blockactiondata.block(), blockactiondata.paramA(), blockactiondata.paramB())
                          );
                  }
              } else {
@@ -224,15 +251,15 @@ index 647444ed44c048ad630bfb08fe3f9706e1d2398d..e2d54c7f1e6f3341fd6e11382aca835a
      }
  
      private boolean doBlockEvent(BlockEventData event) {
-@@ -2488,7 +2488,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2488,7 +2489,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      @VisibleForTesting
      public void clearBlockEvents(BoundingBox boundingBox) {
 -        this.blockEvents.removeIf(blockEventData -> boundingBox.isInside(blockEventData.pos()));
 +        // ShreddedPaper start - moved blockEvents into regions
-+        this.getLevel().getChunkSource().tickingRegions.forEachRegionInBoundingBox(box, region -> {
++        this.getLevel().getChunkSource().tickingRegions.forEachRegionInBoundingBox(boundingBox, region -> {
 +            region.removeBlockEventsIf((blockactiondata) -> {
-+                return box.isInside(blockactiondata.pos());
++                return boundingBox.isInside(blockactiondata.pos());
 +            });
 +        });
 +        // ShreddedPaper end - moved blockEvents into regions

@@ -348,7 +348,7 @@ index 64cbdc4cf7ce6b32523e8651b363e6e93dfadb9a..a215f094c11056a3a594506383f7182e
  import net.minecraft.network.protocol.Packet;
  import net.minecraft.network.protocol.game.ClientGamePacketListener;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 3aadb54385a3e194042ac30acd21b15b8a315145..1964db60389d802aac5541c63f164f98753d3a5a 100644
+index f2c11ce12d0c8dd62f5e77bdbd4e3508a08d6db7..0ef0196238b53cc46d02b900ad71dd96465cc39a 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -909,8 +909,10 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -378,7 +378,7 @@ index 3aadb54385a3e194042ac30acd21b15b8a315145..1964db60389d802aac5541c63f164f98
              if (mapData != null) { // map was read, init it and return
                  mapData.id = mapId;
 -                new org.bukkit.event.server.MapInitializeEvent(mapData.mapView).callEvent();
-+                if (worldmap.hasCalledMapInitializeEvent.compareAndSet(false, true)) new org.bukkit.event.server.MapInitializeEvent(mapData.mapView).callEvent(); // ShreddedPaper - ensure only called once
++                if (mapData.hasCalledMapInitializeEvent.compareAndSet(false, true)) new org.bukkit.event.server.MapInitializeEvent(mapData.mapView).callEvent(); // ShreddedPaper - ensure only called once
                  return mapData;
              }
  
@@ -661,7 +661,7 @@ index 049bb1419dc2d5cf7182dc78a2806264ffe47400..3da9a310131251a2ac1ef15aad98004b
                      : new LodestoneTracker(Optional.empty(), true);
              }
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 927cf50e3e108a4fe09e3182e43ae5c403dc76b0..d79d96d8778c56cd01a29598b3fd85d7c27cac05 100644
+index 14644debd9df1c0b96168afb638a1266f101b071..ba6f64cdd43a7ff8f081bc0971d57cf63c0aad5b 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -155,7 +155,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl

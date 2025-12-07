@@ -374,7 +374,7 @@ index 2ed71de827b5c02155e46475c30e753448488c46..a0e962f1dadc6cef913c7be025b1f874
          for (ServerLevel serverLevel : this.getAllLevels()) {
              serverLevel.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 58971c05eafd165b3d923bcf0f61f1c62f05cacc..d25b53e4d24f711a7541fdf7858793b2d86fc1f8 100644
+index 683da961ddc325f5d5b3d695022724766e0041d4..58cd242012363c14a8702d83a4835b2a464349cb 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -25,6 +25,7 @@ import java.util.Locale;
@@ -407,7 +407,7 @@ index 58971c05eafd165b3d923bcf0f61f1c62f05cacc..d25b53e4d24f711a7541fdf7858793b2
                      ServerLevel.this.getWaypointManager().addPlayer(serverPlayer);
                  }
 -
-+                ServerLevel.this.getChunkSource().tickingRegions.addPlayer(entityplayer); // ShreddedPaper - add player to region
++                ServerLevel.this.getChunkSource().tickingRegions.addPlayer(serverPlayer); // ShreddedPaper - add player to region
                  ServerLevel.this.updateSleepingPlayerList();
              }
  
@@ -415,7 +415,7 @@ index 58971c05eafd165b3d923bcf0f61f1c62f05cacc..d25b53e4d24f711a7541fdf7858793b2
              if (entity instanceof ServerPlayer serverPlayer) {
                  ServerLevel.this.players.remove(serverPlayer);
                  ServerLevel.this.getWaypointManager().removePlayer(serverPlayer);
-+                ServerLevel.this.getChunkSource().tickingRegions.removePlayer(entityplayer); // ShreddedPaper - remove player from region
++                ServerLevel.this.getChunkSource().tickingRegions.removePlayer(serverPlayer); // ShreddedPaper - remove player from region
                  ServerLevel.this.updateSleepingPlayerList();
              }
  

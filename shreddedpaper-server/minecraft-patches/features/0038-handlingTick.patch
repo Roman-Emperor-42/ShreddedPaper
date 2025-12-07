@@ -27,7 +27,7 @@ index a65b83f5f5296a947891070b13d098215d1a39aa..72e0ca437f3ef8740332792d2838f8df
  
              region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 08299cb69af3a54f7bf7367510865e07783285a9..32f403b84313720b1ba634947c40b5fa9524fa2b 100644
+index 99632d6f95e03173c01feda676ba44d3f6e2781c..227bdd3c6bc5ad1e4286efc7151fd2179d648808 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -199,7 +199,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -39,7 +39,7 @@ index 08299cb69af3a54f7bf7367510865e07783285a9..32f403b84313720b1ba634947c40b5fa
      private final List<CustomSpawner> customSpawners;
      @Nullable
      private EndDragonFight dragonFight;
-@@ -737,7 +737,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -738,7 +738,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      public void tick(BooleanSupplier hasTimeLeft) {
          ProfilerFiller profilerFiller = Profiler.get();
@@ -48,7 +48,7 @@ index 08299cb69af3a54f7bf7367510865e07783285a9..32f403b84313720b1ba634947c40b5fa
          TickRateManager tickRateManager = this.tickRateManager();
          boolean runsNormally = tickRateManager.runsNormally();
          if (runsNormally) {
-@@ -801,7 +801,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -802,7 +802,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              // this.runBlockEvents(); // ShreddedPaper - handled locally in the region
          }
  
@@ -57,7 +57,7 @@ index 08299cb69af3a54f7bf7367510865e07783285a9..32f403b84313720b1ba634947c40b5fa
          profilerFiller.pop();
          boolean flag = !paperConfig().unsupportedSettings.disableWorldTickingWhenEmpty || !this.players.isEmpty() || !this.getForceLoadedChunks().isEmpty(); // CraftBukkit - this prevents entity cleanup, other issues on servers with no players // Paper - restore this
          if (flag) {
-@@ -1134,7 +1134,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1135,7 +1135,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      }
  
      public boolean isHandlingTick() {

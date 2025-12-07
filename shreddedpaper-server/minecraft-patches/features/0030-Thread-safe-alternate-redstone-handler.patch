@@ -5,7 +5,7 @@ Subject: [PATCH] Thread-safe-alternate-redstone-handler
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index e2d54c7f1e6f3341fd6e11382aca835ab3e3d3ef..08299cb69af3a54f7bf7367510865e07783285a9 100644
+index 2299629ced4c26ab45a0574c80710da57c991886..99632d6f95e03173c01feda676ba44d3f6e2781c 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -217,7 +217,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -17,7 +17,7 @@ index e2d54c7f1e6f3341fd6e11382aca835ab3e3d3ef..08299cb69af3a54f7bf7367510865e07
      public boolean hasRidableMoveEvent = false; // Purpur - Ridables
  
      @Override
-@@ -2735,7 +2735,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2736,7 +2736,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      // Paper start - optimize redstone (Alternate Current)
      @Override
      public alternate.current.wire.WireHandler getWireHandler() {
