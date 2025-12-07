@@ -5,23 +5,41 @@ Subject: [PATCH] teleportIfOutsideBorder-use-teleportAsync
 
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index a3b985cc454b2c62e7642f7eb05de590ecde9272..e669f2c0ccc0e2368a8eb6bb8ec858e34d31f376 100644
+index a3b985cc454b2c62e7642f7eb05de590ecde9272..59a581aa938033af35cc7529ed0fc125d3f20972 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -451,7 +451,7 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -451,25 +451,26 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
                      if (damagePerBlock > 0.0) {
                          // Purpur start - Add option to teleport to spawn if outside world border
                          if (this.level().purpurConfig.teleportIfOutsideBorder && this instanceof ServerPlayer serverPlayer) {
 -                            serverPlayer.teleport(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(this.level().getSharedSpawnPos(), this.level()));
-+                            serverPlayer.getBukkitEntity().teleportAsync(io.papermc.paper.util.MCUtil.toLocation(level(), ((ServerLevel) level()).getSharedSpawnPos())); return; } // Purpur // ShreddedPaper - use teleportAsync
++                            serverPlayer.getBukkitEntity().teleportAsync(io.papermc.paper.util.MCUtil.toLocation(level(), (Vec3.atCenterOf(serverLevel1.getSharedSpawnPos()))));
                              return;
-                         }
-                         // Purpur end - Add option to teleport to spawn if outside world border
-@@ -488,7 +488,6 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
-                 this.lastPos = blockPos;
-                 this.onChangedBlock(serverLevel1, blockPos);
+-                        }
+-                        // Purpur end - Add option to teleport to spawn if outside world border
+-                        this.hurtServer(serverLevel1, this.damageSources().outOfBorder(), Math.max(1, Mth.floor(-d * damagePerBlock)));
++                        } // Purpur // ShreddedPaper - use teleportAsync
++                        return;
+                     }
++                    // Purpur end - Add option to teleport to spawn if outside world border
++                    this.hurtServer(serverLevel1, this.damageSources().outOfBorder(), Math.max(1, Mth.floor(-d * damagePerBlock)));
+                 }
              }
--        }
  
-         if (this.hurtTime > 0) {
-             this.hurtTime--;
+             if (this.isEyeInFluid(FluidTags.WATER)
+-                && !serverLevel1.getBlockState(BlockPos.containing(this.getX(), this.getEyeY(), this.getZ())).is(Blocks.BUBBLE_COLUMN)) {
++                    && !serverLevel1.getBlockState(BlockPos.containing(this.getX(), this.getEyeY(), this.getZ())).is(Blocks.BUBBLE_COLUMN)) {
+                 boolean flag1 = !this.canBreatheUnderwater()
+-                    && !MobEffectUtil.hasWaterBreathing(this)
+-                    && (!flag || !((Player)this).getAbilities().invulnerable);
++                        && !MobEffectUtil.hasWaterBreathing(this)
++                        && (!flag || !((Player) this).getAbilities().invulnerable);
+                 if (flag1) {
+                     this.setAirSupply(this.decreaseAirSupply(this.getAirSupply()));
+                     if (this.getAirSupply() == -this.level().purpurConfig.drowningDamageInterval) { // Purpur - Drowning Settings
+                         this.setAirSupply(0);
+-                        serverLevel1.broadcastEntityEvent(this, (byte)67);
++                        serverLevel1.broadcastEntityEvent(this, (byte) 67);
+                         this.hurtServer(serverLevel1, this.damageSources().drown(), (float) this.level().purpurConfig.damageFromDrowning); // Purpur - Drowning Settings
+                     }
+                 } else if (this.getAirSupply() < this.getMaxAirSupply()) {
