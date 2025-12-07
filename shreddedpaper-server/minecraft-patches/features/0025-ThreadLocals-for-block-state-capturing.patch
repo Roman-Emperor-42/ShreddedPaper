@@ -177,7 +177,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
  
              return interactionResult;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index ba6f64cdd43a7ff8f081bc0971d57cf63c0aad5b..18705fb75522b5c3bda5915a366be98123622a0d 100644
+index ba6f64cdd43a7ff8f081bc0971d57cf63c0aad5b..071495f2ab27462a66036efbe4987bf7e910e87b 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
@@ -323,7 +323,7 @@ index ba6f64cdd43a7ff8f081bc0971d57cf63c0aad5b..18705fb75522b5c3bda5915a366be981
 -            if (this.captureBlockStates) {
 -                this.capturedTileEntities.put(blockPos.immutable(), blockEntity);
 +            if (this.captureBlockStates.get()) { // ShreddedPaper - thread local
-+                this.capturedTileEntities.get().put(blockposition.immutable(), blockEntity); // ShreddedPaper - thread local
++                this.capturedTileEntities.get().put(blockPos.immutable(), blockEntity); // ShreddedPaper - thread local
                  return;
              }
              // CraftBukkit end
