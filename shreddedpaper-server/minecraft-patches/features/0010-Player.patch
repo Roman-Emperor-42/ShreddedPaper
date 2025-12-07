@@ -428,7 +428,7 @@ index 683da961ddc325f5d5b3d695022724766e0041d4..58cd242012363c14a8702d83a4835b2a
      }
  
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 577bb59afb4e059523e68af6c3515d64f0b9e559..ee3731bcca110ceb185d4fe28f9f84a294a87133 100644
+index 577bb59afb4e059523e68af6c3515d64f0b9e559..d3843eca43982455f6c47b4e3ecd11e7c59cf38c 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -18,6 +18,9 @@ import java.util.List;
@@ -487,7 +487,7 @@ index 577bb59afb4e059523e68af6c3515d64f0b9e559..ee3731bcca110ceb185d4fe28f9f84a2
 -                    throw new ReportedException(crashReport);
 -                }
 +                // ShreddedPaper start - run on region's thread
-+                if (true) return this.findSpawnLocation(world, basePos, i, i1, j1, k1, 0, axisalignedbb); // ShreddedPaper - run on region's thread
++                if (true) return this.findSpawnLocation(level, pos, i, i1, i5, i6, 0, aabb); // ShreddedPaper - run on region's thread
 +                //try {
 +                //    blockPos = PlayerRespawnLogic.getOverworldRespawnPos(level, i5, i6);
 +                //    if (blockPos != null && this.noCollisionNoLiquid(level, aabb.move(blockPos.getBottomCenter()))) {
@@ -513,24 +513,24 @@ index 577bb59afb4e059523e68af6c3515d64f0b9e559..ee3731bcca110ceb185d4fe28f9f84a2
 -        while (!this.noCollisionNoLiquid(level, aabb.move(blockPos.getBottomCenter())) && blockPos.getY() < level.getMaxY()) {
 -            blockPos = blockPos.above();
 -        }
-+        return fallbackSpawnLocation(world, blockPos, axisalignedbb); // ShreddedPaper - run on region's thread
++        return fallbackSpawnLocation(level, blockPos, aabb); // ShreddedPaper - run on region's thread
 +    }
 +
 +    // ShreddedPaper start - run on region's thread
 +    private CompletableFuture<BlockPos> fallbackSpawnLocation(ServerLevel world, BlockPos blockPos, AABB axisalignedbb) {
 +        return CompletableFuture.supplyAsync(() -> {
-+            BlockPos blockPos = blockPos;
-+            while (!world.noCollision(this, axisalignedbb.move(blockPos.getBottomCenter())) && blockPos.getY() < world.getMaxBuildHeight() - 1) {
-+                blockPos = blockPos.above();
++            BlockPos blockposition1 = blockPos;
++            while (!world.noCollision(this, axisalignedbb.move(blockposition1.getBottomCenter())) && blockposition1.getY() < world.getMaxY() - 1) {
++                blockposition1 = blockposition1.above();
 +            }
  
 -        while (this.noCollisionNoLiquid(level, aabb.move(blockPos.below().getBottomCenter())) && blockPos.getY() > level.getMinY() + 1) {
 -            blockPos = blockPos.below();
-+            while (world.noCollision(this, axisalignedbb.move(blockPos.below().getBottomCenter())) && blockPos.getY() > world.getMinBuildHeight() + 1) {
-+                blockPos = blockPos.below();
++            while (world.noCollision(this, axisalignedbb.move(blockposition1.below().getBottomCenter())) && blockposition1.getY() > world.getMinY() + 1) {
++                blockposition1 = blockposition1.below();
 +            }
 +
-+            return blockPos;
++            return blockposition1;
 +        }, r -> ShreddedPaper.ensureSync(world, blockPos, r));
 +    }
 +    // ShreddedPaper end - run on region's thread
