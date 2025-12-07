@@ -5,16 +5,37 @@ Subject: [PATCH] Updated-schedulers-and-locks
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java b/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java
-index 0a10f49ee410d93e95ceb90108200a1a9d12b54b..4f24ca13c920c90a317c258328feac66eb45c258 100644
+index 0a10f49ee410d93e95ceb90108200a1a9d12b54b..58eb87409f19c8e4a0d19cf465fa340377d5b90a 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java
-@@ -425,7 +425,8 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
+@@ -1,10 +1,8 @@
+ package org.bukkit.craftbukkit;
+ 
+ import com.google.common.base.Preconditions;
+-import java.util.ArrayList;
+-import java.util.Collection;
+-import java.util.List;
+-import java.util.Random;
++
++import java.util.*;
+ import java.util.function.Consumer;
+ import java.util.function.Predicate;
+ import net.minecraft.core.BlockPos;
+@@ -23,6 +21,7 @@ import net.minecraft.world.level.block.ChorusFlowerBlock;
+ import net.minecraft.world.level.chunk.ChunkGenerator;
+ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+ import net.minecraft.world.level.portal.TeleportTransition;
++import net.minecraft.world.phys.Vec3;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.RegionAccessor;
+@@ -425,7 +424,8 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
          Preconditions.checkArgument(!entity.isInWorld(), "Entity has already been added to a world");
          net.minecraft.world.entity.Entity nmsEntity = ((CraftEntity) entity).getHandle();
          if (nmsEntity.level() != this.getHandle().getLevel()) {
 -            nmsEntity = nmsEntity.teleport(new TeleportTransition(this.getHandle().getLevel(), nmsEntity, TeleportTransition.DO_NOTHING));
-+            nmsEntity = nmsEntity.changeDimension(new DimensionTransition(this.getHandle().getLevel(), nmsEntity.position(), nmsEntity.getDeltaMovement(), nmsEntity.getYRot(), nmsEntity.getXRot(), DimensionTransition.DO_NOTHING) // PostDimensionTransition
-+            );
++            Vec3 position = nmsEntity.position();
++            nmsEntity.teleportTo(this.getHandle().getLevel(), position.x(), position.y(), position.z(), Set.of(), nmsEntity.getYRot(), nmsEntity.getXRot(), false); // PostTeleportTransition
          }
  
          this.addEntityWithPassengers(nmsEntity, CreatureSpawnEvent.SpawnReason.CUSTOM);

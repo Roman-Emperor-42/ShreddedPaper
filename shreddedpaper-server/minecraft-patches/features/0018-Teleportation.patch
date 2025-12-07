@@ -390,7 +390,7 @@ index 95de62bb6c0e9d944612fcd998efe40217a79737..37914e98904811ab62fcbd5c9acf9e1b
                  break;
              case REQUEST_STATS:
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd190ce9e5e 100644
+index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..e574ea82a18e86412c45429229fc8013147dc69c 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -6,6 +6,8 @@ import com.google.common.collect.Sets;
@@ -438,7 +438,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
 +        return this.respawnAsync(player, flag, entity_removalreason, reason, null);
 +    }
 +
-+    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer player, boolean flag, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location) {
++    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer player, boolean keepInventory, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location) {
 +        CompletableFuture<ServerPlayer> future = new CompletableFuture<>();
 +        // ShreddedPaper end - async respawn
 +        // Paper end - Expand PlayerRespawnEvent
@@ -481,7 +481,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
          // Paper start - Add PlayerPostRespawnEvent
          boolean isBedSpawn = false;
          boolean isRespawn = false;
-@@ -610,33 +634,46 @@ public abstract class PlayerList {
+@@ -610,33 +634,56 @@ public abstract class PlayerList {
          // Paper end - Add PlayerPostRespawnEvent
  
          // CraftBukkit start - fire PlayerRespawnEvent
@@ -489,7 +489,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
 +        CompletableFuture<TeleportTransition> teleportTransitionFuture; // ShreddedPaper
          if (location == null) {
 -            teleportTransition = player.findRespawnPositionAndUseSpawnBlock(!keepInventory, TeleportTransition.DO_NOTHING, eventReason);
-+            teleportTransitionFuture = player.findRespawnPositionAndUseSpawnBlockAsync(!keepInventory, teleportTransitionFuture.DO_NOTHING, eventReason); // ShreddedPaper
++            teleportTransitionFuture = player.findRespawnPositionAndUseSpawnBlockAsync(!keepInventory, TeleportTransition.DO_NOTHING, reason); // ShreddedPaper
  
              if (!keepInventory) player.reset(); // SPIGOT-4785
 -           // Paper start - Add PlayerPostRespawnEvent
@@ -498,36 +498,46 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
 -           location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(teleportTransition.position(), teleportTransition.newLevel().getWorld(), teleportTransition.yRot(), teleportTransition.xRot());
 -           // Paper end - Add PlayerPostRespawnEvent
 +            // Paper start - Add PlayerPostRespawnEvent
-+            if (teleportTransitionFuture == null)
-+                return player; // Early exit, mirrors belows early return for disconnected players in respawn event
++            if (teleportTransitionFuture == null) {}
++                //return player; // Early exit, mirrors belows early return for disconnected players in respawn event // ShreddedPaper - Might need done later
 +            // ShreddedPaper - do later
 +            // Paper end - Add PlayerPostRespawnEvent
          } else {
 -            teleportTransition = new TeleportTransition(((org.bukkit.craftbukkit.CraftWorld) location.getWorld()).getHandle(), org.bukkit.craftbukkit.util.CraftLocation.toVec3(location), Vec3.ZERO, location.getYaw(), location.getPitch(), TeleportTransition.DO_NOTHING);
-+            teleportTransitionFuture = CompletableFuture.completedFuture(new TeleportTransition(((CraftWorld) location.getWorld()).getHandle(), CraftLocation.toVec3D(location), Vec3.ZERO, location.getYaw(), location.getPitch(), TeleportTransition.DO_NOTHING)); // ShreddedPaper
++            teleportTransitionFuture = CompletableFuture.completedFuture(
++                    new TeleportTransition(
++                        ((CraftWorld) location.getWorld()).getHandle(),
++                        CraftLocation.toVec3(location),
++                        Vec3.ZERO,
++                        location.getYaw(),
++                        location.getPitch(),
++                        TeleportTransition.DO_NOTHING
++                    )
++            ); // ShreddedPaper
          }
          // Spigot start
 -        if (teleportTransition == null) { // Paper - Add PlayerPostRespawnEvent - diff on change - spigot early returns if respawn pos is null, that is how they handle disconnected player in respawn event
 -            return player;
 -        }
 +        // ShreddedPaper start
-+        return teleportTransitionFuture.thenCompose(teleportTransitionFuture -> {
++        return teleportTransitionFuture.thenCompose(teleportTransition -> {
 +            if (teleportTransitionFuture == null) {
 +                return CompletableFuture.completedFuture(player);
 +            }
 +
 +            boolean isRespawn2 = location == null; // ShreddedPaper
-+            Location location2 = CraftLocation.toBukkit(teleportTransitionFuture.pos(), teleportTransitionFuture.newLevel().getWorld(), teleportTransitionFuture.yRot(), teleportTransitionFuture.xRot()); // ShreddedPaper
++            Location location2 = CraftLocation.toBukkit(teleportTransition.position(), teleportTransition.newLevel().getWorld(), teleportTransition.yRot(), teleportTransition.xRot()); // ShreddedPaper
 +
-+            return CompletableFuture.supplyAsync(() -> postRespawn(serverPlayer, flag, entity_removalreason, reason, location2, teleportTransitionFuture, isRespawn2, isBedSpawn, fromWorld), r -> ShreddedPaperRegionScheduler.scheduleAcrossLevels(entityplayer1.serverLevel(), RegionPos.forChunk(entityplayer1.chunkPosition()), dimensiontransition.newLevel(), RegionPos.forLocation(location2), r)); // ShreddedPaper
++            return CompletableFuture.supplyAsync(() -> postRespawn(serverPlayer, keepInventory, entity_removalreason, reason, location2, teleportTransition, isRespawn2, isBedSpawn, fromWorld), r -> ShreddedPaperRegionScheduler.scheduleAcrossLevels(player.level(), RegionPos.forChunk(player.chunkPosition()), teleportTransition.newLevel(), RegionPos.forLocation(location2), r)); // ShreddedPaper
 +        });
          // Spigot end
 -        ServerLevel level = teleportTransition.newLevel();
 +    }
 +
-+    private ServerPlayer postRespawn(ServerPlayer serverPlayer, boolean flag, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location, TeleportTransition dimensiontransition, boolean isRespawn, boolean isBedSpawn, Level fromWorld) { // ShreddedPaper
-+        serverPlayer.serverLevel().removePlayerImmediately(serverPlayer, entity_removalreason); // ShreddedPaper - doing later
++    private ServerPlayer postRespawn(ServerPlayer serverPlayer, boolean keepInventory, Entity.RemovalReason entity_removalreason, PlayerRespawnEvent.RespawnReason reason, Location location, TeleportTransition TeleportTransition, boolean isRespawn, boolean isBedSpawn, Level fromWorld) { // ShreddedPaper
++        serverPlayer.level().removePlayerImmediately(serverPlayer, entity_removalreason); // ShreddedPaper - doing later
 +
++        boolean isAnchorSpawn = false;
 +        ServerLevel level = TeleportTransition.newLevel();
          serverPlayer.spawnIn(level);
          serverPlayer.unsetRemoved();
@@ -543,7 +553,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
              serverPlayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
              serverPlayer.setRespawnPosition(null, false, com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.PLAYER_RESPAWN); // CraftBukkit - SPIGOT-5988: Clear respawn location when obstructed // Paper - PlayerSetSpawnEvent
          }
-@@ -658,9 +695,9 @@ public abstract class PlayerList {
+@@ -658,9 +705,9 @@ public abstract class PlayerList {
          this.sendPlayerPermissionLevel(serverPlayer);
          if (!serverPlayer.connection.isDisconnected()) {
              level.addRespawnedPlayer(serverPlayer);
@@ -556,7 +566,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
          }
          // serverPlayer.initInventoryMenu();
          serverPlayer.setHealth(serverPlayer.getHealth());
-@@ -686,7 +723,7 @@ public abstract class PlayerList {
+@@ -686,7 +733,7 @@ public abstract class PlayerList {
                          );
                  }
                  // Paper start - Add PlayerPostRespawnEvent
@@ -565,7 +575,7 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
                      if (blockState.is(net.minecraft.tags.BlockTags.BEDS)) {
                          isBedSpawn = true;
                      } else if (blockState.is(Blocks.RESPAWN_ANCHOR)) {
-@@ -697,30 +734,30 @@ public abstract class PlayerList {
+@@ -697,35 +744,35 @@ public abstract class PlayerList {
              }
          }
          // Added from changeDimension
@@ -605,6 +615,13 @@ index ae363aee6ddf9619c31fd28b9ecd28c9950b86fb..1df9074d33e4a1ce08f7e29023240cd1
                  location,
                  isBedSpawn,
                  isAnchorSpawn,
+-                teleportTransition.missingRespawnBlock(),
+-                eventReason
++                TeleportTransition.missingRespawnBlock(),
++                reason
+             ).callEvent();
+         }
+         // Paper end - Add PlayerPostRespawnEvent
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
 index bae842012b02634e6f51f5df2b55c293e54f9e9f..cc7336f6af8b6fcc08e00d8a35534bbe2109e296 100644
 --- a/net/minecraft/world/entity/Entity.java

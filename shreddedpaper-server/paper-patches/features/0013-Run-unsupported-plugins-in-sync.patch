@@ -163,7 +163,7 @@ index a9a74db4db3667d7186d79a7aac5dd95a821ff7b..bbdaaae914259be74c0e5f4ce42272a3
                  Plugin plugin = registration.getPlugin();
  
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index ce66412e09b8fc471f94dc8cd8c1054a68347a05..55603f6b8a7130ac7b6113590e0709984eb629e4 100644
+index 762f352bb5780f802801c009fae7a0949eb35874..1d164c5c121c6a47afe61bfd23bf74cb9664eb61 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 @@ -8,6 +8,7 @@ import com.google.common.base.Predicates;
@@ -174,7 +174,7 @@ index ce66412e09b8fc471f94dc8cd8c1054a68347a05..55603f6b8a7130ac7b6113590e070998
  import io.papermc.paper.FeatureHooks;
  import io.papermc.paper.raytracing.RayTraceTarget;
  import io.papermc.paper.registry.RegistryAccess;
-@@ -2490,11 +2491,13 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -2491,11 +2492,13 @@ public class CraftWorld extends CraftRegionAccessor implements World {
      @Override
      public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
          warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper

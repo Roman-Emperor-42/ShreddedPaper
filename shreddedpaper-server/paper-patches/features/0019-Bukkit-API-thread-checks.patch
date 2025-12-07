@@ -51,7 +51,7 @@ index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d121
          net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
          if (full != null) {
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 79fd0508b6a5b19c0f01dc821a747495dd08daec..0a093ca9dd93937c59db6bee53b039a041b6e1c1 100644
+index 8fd6c341671eef2edfa95824f9d91aa7d235c016..f5fa22d839d142a876e484b8ce772758a6bd083e 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 @@ -8,6 +8,7 @@ import com.google.common.base.Predicates;
@@ -66,21 +66,20 @@ index 79fd0508b6a5b19c0f01dc821a747495dd08daec..0a093ca9dd93937c59db6bee53b039a0
  
      @Override
      public Chunk getChunkAt(int x, int z) {
-+        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.world, x, z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.world.convertable.getLevelId() + ", chunkpos=[" + x + "," + z + "]"); // ShreddedPaper - regions
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.world, x, z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.world.getLevel() + ", chunkpos=[" + x + "," + z + "]"); // ShreddedPaper - regions
          warnUnsafeChunk("getting a faraway chunk", x, z); // Paper
          net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(x, z, ChunkStatus.FULL, true);
          return new CraftChunk(chunk);
-@@ -435,6 +437,9 @@ public class CraftWorld extends CraftRegionAccessor implements World {
-         }).join();
+@@ -437,6 +439,8 @@ public class CraftWorld extends CraftRegionAccessor implements World {
          // Paper end - Fix this method
      }
-+        }
-+
-+
  
++
++
      @Override
      public Chunk[] getLoadedChunks() {
-@@ -2494,17 +2499,19 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         ServerChunkCache serverChunkCache = this.getHandle().chunkSource;
+@@ -2495,17 +2499,19 @@ public class CraftWorld extends CraftRegionAccessor implements World {
      @Override
      public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
          warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper

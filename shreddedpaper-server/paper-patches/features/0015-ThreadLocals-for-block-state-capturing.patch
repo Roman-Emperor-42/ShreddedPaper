@@ -5,10 +5,10 @@ Subject: [PATCH] ThreadLocals-for-block-state-capturing
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 55603f6b8a7130ac7b6113590e0709984eb629e4..79fd0508b6a5b19c0f01dc821a747495dd08daec 100644
+index 1d164c5c121c6a47afe61bfd23bf74cb9664eb61..8fd6c341671eef2edfa95824f9d91aa7d235c016 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-@@ -781,13 +781,16 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -782,13 +782,16 @@ public class CraftWorld extends CraftRegionAccessor implements World {
  
      @Override
      public boolean generateTree(Location loc, TreeType type, BlockChangeDelegate delegate) {
@@ -30,7 +30,7 @@ index 55603f6b8a7130ac7b6113590e0709984eb629e4..79fd0508b6a5b19c0f01dc821a747495
                  BlockPos position = ((CraftBlockState) blockstate).getPosition();
                  net.minecraft.world.level.block.state.BlockState oldBlock = this.world.getBlockState(position);
                  int flags = ((CraftBlockState) blockstate).getFlags();
-@@ -795,10 +798,10 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -796,10 +799,10 @@ public class CraftWorld extends CraftRegionAccessor implements World {
                  net.minecraft.world.level.block.state.BlockState newBlock = this.world.getBlockState(position);
                  this.world.notifyAndUpdatePhysics(position, null, oldBlock, newBlock, newBlock, flags, net.minecraft.world.level.block.Block.UPDATE_LIMIT);
              }

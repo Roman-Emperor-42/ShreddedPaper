@@ -5,10 +5,25 @@ Subject: [PATCH] Ensure-worlds-are-loaded-on-the-global-scheduler
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 78eb132db5ed6e4c09759cb86a033d3f9e7310dc..cbd0d3af7797cfe7f44b32a54824593cc79cb3c3 100644
+index 78eb132db5ed6e4c09759cb86a033d3f9e7310dc..82dbe4e94f500e0e90156a04fc156109cdd641c5 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-@@ -1252,6 +1252,8 @@ public final class CraftServer implements Server {
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.google.common.base.Function;
+ import com.google.common.base.Joiner;
+ import com.google.common.base.Preconditions;
+@@ -12,6 +13,7 @@ import com.mojang.brigadier.StringReader;
+ import com.mojang.brigadier.exceptions.CommandSyntaxException;
+ import com.mojang.serialization.Dynamic;
+ import com.mojang.serialization.Lifecycle;
++import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
+ import io.papermc.paper.configuration.PaperServerConfiguration;
+ import io.papermc.paper.configuration.ServerConfiguration;
+ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+@@ -1252,6 +1254,8 @@ public final class CraftServer implements Server {
          Preconditions.checkState(this.console.getAllLevels().iterator().hasNext(), "Cannot create additional worlds on STARTUP");
          //Preconditions.checkState(!this.console.isIteratingOverLevels, "Cannot create a world while worlds are being ticked"); // Paper - Cat - Temp disable. We'll see how this goes.
          Preconditions.checkArgument(creator != null, "WorldCreator cannot be null");

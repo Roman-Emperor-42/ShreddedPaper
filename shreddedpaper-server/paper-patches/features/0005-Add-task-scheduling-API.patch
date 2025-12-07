@@ -26,7 +26,7 @@ index c95a18a165fc86140a2f91bff5b0fd0498d6eb2e..78eb132db5ed6e4c09759cb86a033d3f
      private final io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler globalRegionScheduler = new io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler();
  
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 61121d2efd0df2fcafdc4c272e1cd1b986f42e24..d06727d8df701a3a057321130d6daa8e5e94f752 100644
+index 61121d2efd0df2fcafdc4c272e1cd1b986f42e24..bacc7aae64d49527dd61ecb16ba0ff44ba1de3cd 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 @@ -2,9 +2,12 @@ package org.bukkit.craftbukkit;
@@ -50,7 +50,7 @@ index 61121d2efd0df2fcafdc4c272e1cd1b986f42e24..d06727d8df701a3a057321130d6daa8e
  import java.util.function.Consumer;
  import java.util.function.Predicate;
  import java.util.stream.Collectors;
-@@ -407,11 +411,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -407,10 +411,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
      @Override
      public boolean isChunkGenerated(int x, int z) {
          // Paper start - Fix this method
@@ -60,14 +60,13 @@ index 61121d2efd0df2fcafdc4c272e1cd1b986f42e24..d06727d8df701a3a057321130d6daa8e
 +            CompletableFuture<Boolean> future = java.util.concurrent.CompletableFuture.supplyAsync(() -> { // ShreddedPaper - regions
                  return CraftWorld.this.isChunkGenerated(x, z);
 -            }, world.getChunkSource().mainThreadProcessor).join();
--        }
 +                }, world.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(x, z))); // ShreddedPaper - regions
 +            if (TickThread.isTickThread()) this.getHandle().chunkSource.mainThreadProcessor.managedBlock(future::isDone); // ShreddedPaper - run tick thread tasks (this might be one tick thread accessing a chunk in another tick thread)
-+            return future.join(); // ShreddedPaper - regions        }
++            return future.join(); // ShreddedPaper - regions
+         }
          ChunkAccess chunk = world.getChunkSource().getChunkAtImmediately(x, z);
          if (chunk != null) {
-             return chunk instanceof ImposterProtoChunk || chunk instanceof net.minecraft.world.level.chunk.LevelChunk;
-@@ -2485,11 +2490,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -2485,11 +2491,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
      @Override
      public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
          warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper

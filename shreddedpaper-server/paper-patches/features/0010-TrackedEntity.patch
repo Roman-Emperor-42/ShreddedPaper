@@ -5,10 +5,10 @@ Subject: [PATCH] TrackedEntity
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index fb1d5ea110c74bb2d28ed19e9f9861a914da9a86..ce66412e09b8fc471f94dc8cd8c1054a68347a05 100644
+index 851badfa9cccd62b514e1b417c0c4c0e4e7ca187..762f352bb5780f802801c009fae7a0949eb35874 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-@@ -1945,7 +1945,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -1946,7 +1946,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
          if (!(entity instanceof CraftEntity craftEntity) || entity.getWorld() != this || sound == null || category == null) return;
  
          ClientboundSoundEntityPacket packet = new ClientboundSoundEntityPacket(CraftSound.bukkitToMinecraftHolder(sound), net.minecraft.sounds.SoundSource.valueOf(category.name()), craftEntity.getHandle(), volume, pitch, seed);
@@ -17,7 +17,7 @@ index fb1d5ea110c74bb2d28ed19e9f9861a914da9a86..ce66412e09b8fc471f94dc8cd8c1054a
          if (entityTracker != null) {
              entityTracker.broadcastAndSend(packet);
          }
-@@ -1966,7 +1966,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -1967,7 +1967,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
          if (!(entity instanceof CraftEntity craftEntity) || entity.getWorld() != this || sound == null || category == null) return;
  
          ClientboundSoundEntityPacket packet = new ClientboundSoundEntityPacket(Holder.direct(SoundEvent.createVariableRangeEvent(ResourceLocation.parse(sound))), net.minecraft.sounds.SoundSource.valueOf(category.name()), craftEntity.getHandle(), volume, pitch, seed);
