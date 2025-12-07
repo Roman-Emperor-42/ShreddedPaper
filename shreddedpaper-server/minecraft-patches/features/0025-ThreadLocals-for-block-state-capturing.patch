@@ -177,7 +177,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
  
              return interactionResult;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d4fa186b0 100644
+index d79d96d8778c56cd01a29598b3fd85d7c27cac05..9fb189e167464d13a939bffcdcba2e3c55c79943 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
@@ -256,21 +256,38 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d
              }
              blockstate.setData(state);
              blockstate.setFlags(flags);
-@@ -1158,11 +1163,11 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1158,24 +1163,19 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
              Block block = state.getBlock();
              // CraftBukkit start - capture blockstates
              boolean captured = false;
 -            if (this.captureBlockStates) {
-+            if (this.captureBlockStates.get().containsKey(pos)) { // ShreddedPaper - thread local
-                 final CraftBlockState snapshot;
-                 if (!this.capturedBlockStates.containsKey(pos)) {
-                     snapshot = (CraftBlockState) org.bukkit.craftbukkit.block.CraftBlock.at(this, pos).getState(); // Paper - use CB getState to get a suitable snapshot
+-                final CraftBlockState snapshot;
+-                if (!this.capturedBlockStates.containsKey(pos)) {
+-                    snapshot = (CraftBlockState) org.bukkit.craftbukkit.block.CraftBlock.at(this, pos).getState(); // Paper - use CB getState to get a suitable snapshot
 -                    this.capturedBlockStates.put(pos.immutable(), snapshot);
-+                    this.capturedBlockStates.get().put(pos.immutable(), blockstate); // ShreddedPaper - thread local
-                     captured = true;
-                 } else {
-                     snapshot = this.capturedBlockStates.get(pos);
-@@ -1212,7 +1217,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+-                    captured = true;
+-                } else {
+-                    snapshot = this.capturedBlockStates.get(pos);
+-                }
++            if (this.captureBlockStates.get() && !this.capturedBlockStates.get().containsKey(pos)) { // ShreddedPaper - thread local
++                CraftBlockState snapshot = (CraftBlockState) org.bukkit.craftbukkit.block.CraftBlock.at(this, pos).getState(); // Paper - use CB getState to get a suitable snapshot
+                 snapshot.setFlags(flags); // Paper - always set the flag of the most recent call to mitigate issues with multiple update at the same pos with different flags
++                this.capturedBlockStates.get().put(pos.immutable(), snapshot); // ShreddedPaper - thread local
++                captured = true;
+             }
+             BlockState blockState = chunkAt.setBlockState(pos, state, flags);
+             this.chunkPacketBlockController.onBlockChange(this, pos, state, blockState, flags, recursionLeft); // Paper - Anti-Xray
+             // CraftBukkit end
+             if (blockState == null) {
+                 // CraftBukkit start - remove blockstate if failed (or the same)
+-                if (this.captureBlockStates && captured) {
+-                    this.capturedBlockStates.remove(pos);
++                if (this.captureBlockStates.get() && captured) {
++                    this.capturedBlockStates.get().remove(pos);
+                 }
+                 // CraftBukkit end
+                 return false;
+@@ -1212,7 +1212,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
                  */
  
                  // CraftBukkit start
@@ -279,7 +296,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d
                      // Modularize client and physic updates
                      // Spigot start
                      try {
-@@ -1376,8 +1381,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1376,8 +1376,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      @Override
      public BlockState getBlockState(BlockPos pos) {
          // CraftBukkit start - tree generation
@@ -290,7 +307,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1690,7 +1695,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1690,7 +1690,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public BlockEntity getBlockEntity(BlockPos pos) {
          // Paper start - Perf: Optimize capturedTileEntities lookup
          net.minecraft.world.level.block.entity.BlockEntity blockEntity;
@@ -299,7 +316,7 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..d578d5137552724189ac69f2354ae21d
              return blockEntity;
          }
          // Paper end - Perf: Optimize capturedTileEntities lookup
-@@ -1707,8 +1712,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1707,8 +1707,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
          BlockPos blockPos = blockEntity.getBlockPos();
          if (!this.isOutsideBuildHeight(blockPos)) {
              // CraftBukkit start
@@ -381,7 +398,7 @@ index a70f552fddc58efdce770c36abb548ef8359d939..4238de7e841aa57a778733d491a9d300
              BlockState blockState = blockEntity.getBlockState();
              boolean flag = blockState.is(Blocks.WITHER_SKELETON_SKULL) || blockState.is(Blocks.WITHER_SKELETON_WALL_SKULL);
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 9eb1ad461176b4d726dbd881adb972af532adc4a..39765562872e712a86edc194fd286a18418f5930 100644
+index 3915c924baa1693adb6653756e258e2c1459fcb9..0f071584157bd5a3f45be03b6f0a5aa7021f19c9 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -414,7 +414,7 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p

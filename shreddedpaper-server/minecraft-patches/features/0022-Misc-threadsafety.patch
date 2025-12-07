@@ -1077,11 +1077,15 @@ index 449c24a18209b111253e18f573ad2c067dfdf453..1404f1c9d81a00fa6c7bdbf84e28064c
      // Paper end - Bound treasure maps to world border
  
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 144d79351b08ef3f6b81615f4865ece619e10e70..9eb1ad461176b4d726dbd881adb972af532adc4a 100644
+index 144d79351b08ef3f6b81615f4865ece619e10e70..3915c924baa1693adb6653756e258e2c1459fcb9 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
-@@ -660,10 +660,10 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
-                     this.level.populating = true;
+@@ -657,13 +657,13 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+ 
+                 org.bukkit.World world = this.level.getWorld();
+                 if (world != null) {
+-                    this.level.populating = true;
++                    this.level.populatingThreadLocal.set(true); // ShreddedPaper - thread local for populating
                      try {
                          for (org.bukkit.generator.BlockPopulator populator : world.getPopulators()) {
 -                            populator.populate(world, random, bukkitChunk);
