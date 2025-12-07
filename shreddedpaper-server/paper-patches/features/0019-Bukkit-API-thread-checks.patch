@@ -4,6 +4,21 @@ Date: Mon, 1 Dec 2025 01:42:07 -0600
 Subject: [PATCH] Bukkit-API-thread-checks
 
 
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/ChunkSystemHooks.java b/src/main/java/ca/spottedleaf/moonrise/common/util/ChunkSystemHooks.java
+index 15a3c2436b04f0e1b2a538682183ff3ce9c0573e..2483ff8dbc207d11ffe28eea106bd3487e90715a 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/util/ChunkSystemHooks.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/util/ChunkSystemHooks.java
+@@ -20,8 +20,8 @@ public interface ChunkSystemHooks {
+     public void scheduleChunkTask(final ServerLevel level, final int chunkX, final int chunkZ, final Runnable run, final Priority priority);
+ 
+     public void scheduleChunkLoad(final ServerLevel level, final int chunkX, final int chunkZ, final boolean gen,
+-                                  final ChunkStatus toStatus, final boolean addTicket, final Priority priority,
+-                                  final Consumer<ChunkAccess> onComplete);
++                                         final ChunkStatus toStatus, final boolean addTicket, final Priority priority,
++                                         final Consumer<ChunkAccess> onComplete);
+ 
+     public void scheduleChunkLoad(final ServerLevel level, final int chunkX, final int chunkZ, final ChunkStatus toStatus,
+                                   final boolean addTicket, final Priority priority, final Consumer<ChunkAccess> onComplete);
 diff --git a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java b/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
 index a127e982e6ee1bf035ce343a6751c8894d4d93c9..5cea6007ce2e0957be60723eb83140432da23f9c 100644
 --- a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
@@ -51,10 +66,16 @@ index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d121
          net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
          if (full != null) {
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 8fd6c341671eef2edfa95824f9d91aa7d235c016..f5fa22d839d142a876e484b8ce772758a6bd083e 100644
+index 8fd6c341671eef2edfa95824f9d91aa7d235c016..034da58f5b85b07ff70de16892ee5154e0c69850 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-@@ -8,6 +8,7 @@ import com.google.common.base.Predicates;
+@@ -3,11 +3,13 @@ package org.bukkit.craftbukkit;
+ import ca.spottedleaf.moonrise.common.list.ReferenceList;
+ import ca.spottedleaf.moonrise.common.util.CoordinateUtils;
+ import ca.spottedleaf.moonrise.common.util.TickThread;
++import ca.spottedleaf.moonrise.paper.util.BaseChunkSystemHooks;
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Predicates;
  import com.mojang.datafixers.util.Pair;
  import io.multipaper.shreddedpaper.ShreddedPaper;
  import io.multipaper.shreddedpaper.region.RegionPos;
@@ -62,7 +83,7 @@ index 8fd6c341671eef2edfa95824f9d91aa7d235c016..f5fa22d839d142a876e484b8ce772758
  import io.multipaper.shreddedpaper.threading.SynchronousPluginExecution;
  import io.papermc.paper.FeatureHooks;
  import io.papermc.paper.raytracing.RayTraceTarget;
-@@ -382,6 +383,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -382,6 +384,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
  
      @Override
      public Chunk getChunkAt(int x, int z) {
@@ -70,7 +91,16 @@ index 8fd6c341671eef2edfa95824f9d91aa7d235c016..f5fa22d839d142a876e484b8ce772758
          warnUnsafeChunk("getting a faraway chunk", x, z); // Paper
          net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(x, z, ChunkStatus.FULL, true);
          return new CraftChunk(chunk);
-@@ -437,6 +439,8 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -425,7 +428,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         }
+         final java.util.concurrent.CompletableFuture<ChunkAccess> future = new java.util.concurrent.CompletableFuture<>();
+         ca.spottedleaf.moonrise.common.PlatformHooks.get().scheduleChunkLoad(
+-            this.world, x, z, false, ChunkStatus.EMPTY, true, ca.spottedleaf.concurrentutil.util.Priority.NORMAL, future::complete
++            this.world, x, z,  ChunkStatus.EMPTY, true, ca.spottedleaf.concurrentutil.util.Priority.NORMAL, future::complete
+         );
+         world.getChunkSource().mainThreadProcessor.managedBlock(future::isDone);
+         return future.thenApply(c -> {
+@@ -437,6 +440,8 @@ public class CraftWorld extends CraftRegionAccessor implements World {
          // Paper end - Fix this method
      }
  
@@ -79,32 +109,37 @@ index 8fd6c341671eef2edfa95824f9d91aa7d235c016..f5fa22d839d142a876e484b8ce772758
      @Override
      public Chunk[] getLoadedChunks() {
          ServerChunkCache serverChunkCache = this.getHandle().chunkSource;
-@@ -2495,17 +2499,19 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+@@ -2495,17 +2500,23 @@ public class CraftWorld extends CraftRegionAccessor implements World {
      @Override
      public void getChunkAtAsync(int x, int z, boolean gen, boolean urgent, @NotNull Consumer<? super Chunk> cb) {
          warnUnsafeChunk("getting a faraway chunk async", x, z); // Paper
 -            java.util.concurrent.CompletableFuture<Chunk> ret = new java.util.concurrent.CompletableFuture<>();  // ShreddedPaper - synchronous plugin execution
 -            Plugin plugin = SynchronousPluginExecution.getCurrentPlugin(); // ShreddedPaper - synchronous plugin execution
 -            ShreddedPaper.ensureSync(this.getHandle(), c.getPos(), () -> { // ShreddedPaper - ensure on correct thread
-+        Plugin plugin = SynchronousPluginExecution.getCurrentPlugin(); // ShreddedPaper - synchronous plugin execution
-+
-+        ca.spottedleaf.moonrise.common.util.ChunkSystem.scheduleChunkLoad(
-                 this.getHandle(), x, z, gen, ChunkStatus.FULL, true,
+-                this.getHandle(), x, z, gen, ChunkStatus.FULL, true,
 -                        urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
 -                        (ChunkAccess chunk) -> {
 -                            SynchronousPluginExecution.executeNoException(plugin, () -> ret.complete(chunk == null ? null : new CraftChunk(chunk))); // ShreddedPaper - synchronous plugin execution
 -                        }
 -            }
+-        );
++        Plugin plugin = SynchronousPluginExecution.getCurrentPlugin(); // ShreddedPaper - synchronous plugin execution
+ 
++        ca.spottedleaf.moonrise.common.PlatformHooks.get().scheduleChunkLoad(
++                this.getHandle().getLevel(),
++                x,
++                z,
++                gen,
++                ChunkStatus.FULL,
++                true,
 +                urgent ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
 +                (ChunkAccess c) -> {
 +                    ShreddedPaper.ensureSync(this.getHandle(), c.getPos(), () -> { // ShreddedPaper - ensure on correct thread
 +                        net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) c;
-+                        if (chunk != null) this.addTicket(x, z); // Paper
 +                        SynchronousPluginExecution.executeNoException(plugin, () -> cb.accept(chunk == null ? null : new CraftChunk(chunk))); // ShreddedPaper - synchronous plugin execution
 +                    });
 +                }
-         );
--
++        );
      }
  
      @Override
