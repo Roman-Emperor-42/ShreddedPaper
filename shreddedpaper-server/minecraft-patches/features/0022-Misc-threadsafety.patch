@@ -275,7 +275,7 @@ index 656041c9539b6834b4d37b353eb6b810a7763ff4..a5fe77936bd44cb5d046533aea1cdc9d
          if (tickingChunk == null) {
              return false;
 diff --git a/net/minecraft/server/level/PlayerMap.java b/net/minecraft/server/level/PlayerMap.java
-index a936d8920ff558113aa5a9f4f6ee2ecd81d8f185..4cb03cebb980cc9d1daa98a4ce0533ca76325c55 100644
+index a936d8920ff558113aa5a9f4f6ee2ecd81d8f185..d3d17427b02c5cd353a0bd33461ccbb413f0f121 100644
 --- a/net/minecraft/server/level/PlayerMap.java
 +++ b/net/minecraft/server/level/PlayerMap.java
 @@ -2,36 +2,48 @@ package net.minecraft.server.level;
@@ -305,7 +305,7 @@ index a936d8920ff558113aa5a9f4f6ee2ecd81d8f185..4cb03cebb980cc9d1daa98a4ce0533ca
  
      public void addPlayer(ServerPlayer player, boolean skipPlayer) {
 -        this.players.put(player, skipPlayer);
-+        this.playersLock.write(() -> this.players.put(player, inactive)); // ShreddedPaper
++        this.playersLock.write(() -> this.players.put(player, skipPlayer)); // ShreddedPaper
 +        this.playersList.add(player); // ShreddedPaper
      }
  
@@ -348,7 +348,7 @@ index 64cbdc4cf7ce6b32523e8651b363e6e93dfadb9a..a215f094c11056a3a594506383f7182e
  import net.minecraft.network.protocol.Packet;
  import net.minecraft.network.protocol.game.ClientGamePacketListener;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index f2c11ce12d0c8dd62f5e77bdbd4e3508a08d6db7..0ef0196238b53cc46d02b900ad71dd96465cc39a 100644
+index 8d3a4b7890bf67786e833808f6bae91d642305f5..618e8d3f0c74081d42193800349641c94fc26a11 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -909,8 +909,10 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -383,7 +383,7 @@ index f2c11ce12d0c8dd62f5e77bdbd4e3508a08d6db7..0ef0196238b53cc46d02b900ad71dd96
              }
  
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 37ed11d6e9822e82ba15e9378ed9f14f39e14d83..ec41f3615aab794055866576d00488a1160808e9 100644
+index 37914e98904811ab62fcbd5c9acf9e1b3fb04634..ab1896fe5434cfa1e535d7c41363b2e6fca27967 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -8,6 +8,7 @@ import com.mojang.brigadier.ParseResults;
@@ -848,7 +848,7 @@ index a5ade8268a74738170caf519e7e45e13862bc39d..0f5fd00a25f207548fd98a218366fbe1
          }
      }
 diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 01ed25d1f895d94485b5fecd98476534cbb26930..db313765ce0b937986ebf58fedfce5e9d3d4af1b 100644
+index 01ed25d1f895d94485b5fecd98476534cbb26930..ab7d78db6b0a80d58a3ba0e7151ddd554879f690 100644
 --- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 @@ -218,11 +218,11 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
@@ -889,10 +889,10 @@ index 01ed25d1f895d94485b5fecd98476534cbb26930..db313765ce0b937986ebf58fedfce5e9
              }
  
 -            ignoreBlockEntityUpdates = true;
-+            ignoreTileUpdatesThreadLocal.set(true); // ShreddedPaper - use thread local for ignoreTileUpdates
++            ignoreBlockEntityUpdatesThreadLocal.set(true); // ShreddedPaper - use thread local for ignoreTileUpdates
              container.setItem(i, origItemStack);
 -            ignoreBlockEntityUpdates = false;
-+            ignoreTileUpdatesThreadLocal.set(false); // ShreddedPaper - use thread local for ignoreTileUpdates
++            ignoreBlockEntityUpdatesThreadLocal.set(false); // ShreddedPaper - use thread local for ignoreTileUpdates
              container.setChanged();
              return true;
          }
@@ -914,6 +914,27 @@ index 01ed25d1f895d94485b5fecd98476534cbb26930..db313765ce0b937986ebf58fedfce5e9
          }
          if (!result) {
              applyCooldown(hopper);
+@@ -533,7 +533,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+         Container sourceContainer = getSourceContainer(level, hopper, blockPos, blockState);
+         if (sourceContainer != null) {
+             Direction direction = Direction.DOWN;
+-            skipPullModeEventFire = skipHopperEvents; // Paper - Perf: Optimize Hoppers
++            skipPullModeEventFireThreadLocal.set(skipHopperEvents); // Paper - Perf: Optimize Hoppers
+ 
+             for (int i : getSlots(sourceContainer, direction)) {
+                 if (tryTakeInItemFromSlot(hopper, sourceContainer, i, direction, level)) { // Spigot
+@@ -682,9 +682,9 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+                     stack = stack.split(destination.getMaxStackSize());
+                 }
+                 // Spigot end
+-                ignoreBlockEntityUpdates = true; // Paper - Perf: Optimize Hoppers
++                ignoreBlockEntityUpdatesThreadLocal.set(true); // Paper - Perf: Optimize Hoppers // ShreddedPaper - thread local
+                 destination.setItem(slot, stack);
+-                ignoreBlockEntityUpdates = false; // Paper - Perf: Optimize Hoppers
++                ignoreBlockEntityUpdatesThreadLocal.set(false); // Paper - Perf: Optimize Hoppers // ShreddedPaper - thread local
+                 stack = leftover; // Paper - Make hoppers respect inventory max stack size
+                 flag = true;
+             } else if (canMergeItems(item, stack)) {
 diff --git a/net/minecraft/world/level/block/entity/SculkCatalystBlockEntity.java b/net/minecraft/world/level/block/entity/SculkCatalystBlockEntity.java
 index 0a94670dc20bb9c521b0395633eb100393895f6a..50fac737f5bbf8e4db4fe79fb585248589dbfd2e 100644
 --- a/net/minecraft/world/level/block/entity/SculkCatalystBlockEntity.java
@@ -1105,19 +1126,27 @@ index 7bbeed6c998c91e68376d3f17a510d68e3cd0b27..0c896b7dbac35363a4e4c05db79e0db6
      public final List<MapItemSavedData.HoldingPlayer> carriedBy = Lists.newArrayList();
      public final Map<Player, MapItemSavedData.HoldingPlayer> carriedByPlayers = Maps.newHashMap();
 diff --git a/net/minecraft/world/level/storage/DimensionDataStorage.java b/net/minecraft/world/level/storage/DimensionDataStorage.java
-index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..d9908142bd1951d1cf0eab53a00b7ffe31991fff 100644
+index 1ff0b19a077333ad9da9cab7f5a891eeaa2109a9..6fd7c335ef1a7208c47dbabcef383487637deb17 100644
 --- a/net/minecraft/world/level/storage/DimensionDataStorage.java
 +++ b/net/minecraft/world/level/storage/DimensionDataStorage.java
-@@ -39,7 +39,7 @@ import org.slf4j.Logger;
+@@ -18,6 +18,7 @@ import java.util.Map;
+ import java.util.Optional;
+ import java.util.Map.Entry;
+ import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.ConcurrentHashMap;
+ import javax.annotation.Nullable;
+ import net.minecraft.SharedConstants;
+ import net.minecraft.Util;
+@@ -39,7 +40,7 @@ import org.slf4j.Logger;
  public class DimensionDataStorage implements AutoCloseable {
      private static final Logger LOGGER = LogUtils.getLogger();
      private final SavedData.Context context;
 -    public final Map<SavedDataType<?>, Optional<SavedData>> cache = new HashMap<>();
-+    public final Map<SavedDataType<?>, Optional<SavedData>> cache = new ConcurrentMap<>();  // ShreddedPaper - thread-safe
++    public final Map<SavedDataType<?>, Optional<SavedData>> cache = new ConcurrentHashMap<>();  // ShreddedPaper - thread-safe
      private final DataFixer fixerUpper;
      private final HolderLookup.Provider registries;
      private final Path dataFolder;
-@@ -57,25 +57,28 @@ public class DimensionDataStorage implements AutoCloseable {
+@@ -57,25 +58,28 @@ public class DimensionDataStorage implements AutoCloseable {
      }
  
      public <T extends SavedData> T computeIfAbsent(SavedDataType<T> type) {

@@ -78,7 +78,7 @@ index 975a2e4ea1f84e81fa3526395b43cb8157a06243..2d8345371aaf78e7d864c4bf70a048f0
  
      @Override
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
-index 7964905786ed4cf2b31e7b0d74ad7a6bf9c52851..9aa3b2dedcf304d03b86de972db6015024141c55 100644
+index 7964905786ed4cf2b31e7b0d74ad7a6bf9c52851..4c788b53c1396f171ee692e0b99efb7a5977a1b2 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/ChunkSystemServerLevel.java
 @@ -56,9 +56,11 @@ public interface ChunkSystemServerLevel extends ChunkSystemLevel {
@@ -91,10 +91,9 @@ index 7964905786ed4cf2b31e7b0d74ad7a6bf9c52851..9aa3b2dedcf304d03b86de972db60150
  
 -    public ReferenceList<LevelChunk> moonrise$getTickingChunks();
 +    // public ReferenceList<LevelChunk> moonrise$getTickingChunks();
- 
--    public ReferenceList<LevelChunk> moonrise$getEntityTickingChunks();
-+    // public ReferenceList<LevelChunk> moonrise$getEntityTickingChunks();
 +    // ShreddedPaper end - unused
+ 
+     public ReferenceList<LevelChunk> moonrise$getEntityTickingChunks();
  }
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 new file mode 100644
@@ -405,23 +404,21 @@ index 2882cd829d4d8e1f8615f085f6908efcdf68ac62..b098feae6fa0dec1840d88b6bbf0a994
          profiler.popPush("customSpawners");
          if (_boolean) {
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index a04547852854eb1c1fa077c62cc25063e6124289..b76250adaa58e18e20b42812af5fde8556d078c1 100644
+index a04547852854eb1c1fa077c62cc25063e6124289..3231cdd81dc40b7f3a8bca941ef1e0bbaa938b82 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -301,9 +301,9 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -301,8 +301,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      private long tickedBlocksOrFluids;
      private final ca.spottedleaf.moonrise.common.misc.NearbyPlayers nearbyPlayers = new ca.spottedleaf.moonrise.common.misc.NearbyPlayers((ServerLevel)(Object)this);
      private static final LevelChunk[] EMPTY_LEVEL_CHUNKS = new LevelChunk[0];
 -    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> loadedChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
 -    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> tickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
--    private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> entityTickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
 +    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> loadedChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);  // ShreddedPaper - unused
 +    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> tickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS); // ShreddedPaper - unused
-+    // private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> entityTickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);   // ShreddedPaper - unused
+     private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> entityTickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
  
      @Override
-     public final LevelChunk moonrise$getFullChunkIfLoaded(final int chunkX, final int chunkZ) {
-@@ -465,20 +465,22 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -465,15 +465,17 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
          return this.nearbyPlayers;
      }
  
@@ -443,16 +440,7 @@ index a04547852854eb1c1fa077c62cc25063e6124289..b76250adaa58e18e20b42812af5fde85
 +    // public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getTickingChunks() {
 +    //     return this.tickingChunks;
 +    // }
- 
--    @Override
--    public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getEntityTickingChunks() {
--        return this.entityTickingChunks;
--    }
-+    // @Override
-+    // public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getEntityTickingChunks() {
-+    //     return this.entityTickingChunks;
-+    // }
 +    // ShreddedPaper unused - unused
  
      @Override
-     public final boolean moonrise$areChunksLoaded(final int fromX, final int fromZ, final int toX, final int toZ) {
+     public final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> moonrise$getEntityTickingChunks() {

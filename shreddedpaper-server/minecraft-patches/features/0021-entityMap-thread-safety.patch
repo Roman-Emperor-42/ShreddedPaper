@@ -6,7 +6,7 @@ Subject: [PATCH] entityMap-thread-safety
 
 diff --git a/io/multipaper/shreddedpaper/util/Int2ObjectMapWrapper.java b/io/multipaper/shreddedpaper/util/Int2ObjectMapWrapper.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..b691411acd204ebff077674d2f3929dcd0ed0f8d
+index 0000000000000000000000000000000000000000..b0c1d90d82bee057e5aa635d52babd787a79a680
 --- /dev/null
 +++ b/io/multipaper/shreddedpaper/util/Int2ObjectMapWrapper.java
 @@ -0,0 +1,262 @@
@@ -274,7 +274,7 @@ index 0000000000000000000000000000000000000000..b691411acd204ebff077674d2f3929dc
 +}
 \ No newline at end of file
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index 2e28dab78b50ac6b712ce9cb2f320fd3a7949915..09865457db71912058acc00be40bff5c54c4a283 100644
+index 82b452f61e2e7db1a11d5ef8734335e10b920bbd..efcbf46407839329523c511d65aa069912b8b0cd 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
 @@ -7,6 +7,7 @@ import com.google.common.collect.Queues;
@@ -336,7 +336,7 @@ index 2e28dab78b50ac6b712ce9cb2f320fd3a7949915..09865457db71912058acc00be40bff5c
  
                      this.level.getChunkSource().tickingRegions.addTrackedEntity(entity); // ShreddedPaper
 -                    this.entityMap.put(entity.getId(), trackedEntity);
-+                    this.entityConcurrentMap.put(entity.getId(), playerchunkmap_entitytracker); // ShreddedPaper - use entityConcurrentMap
++                    this.entityConcurrentMap.put(entity.getId(), trackedEntity); // ShreddedPaper - use entityConcurrentMap
                      // Paper start - optimise entity tracker
                      if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity() != null) {
                          throw new IllegalStateException("Entity is already tracked");
@@ -377,7 +377,7 @@ index 2e28dab78b50ac6b712ce9cb2f320fd3a7949915..09865457db71912058acc00be40bff5c
              }
          }
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 0afbbca15bf8939e528a63caba583e850da1b56a..337bbc879b570dd7fa64e311287b0e082cb3d5b5 100644
+index 499294632319170f6c7654e2d754f2b7bd10ea46..1af76ae4f804b5c497c3d2f84c0d56f0dd2f6aba 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -708,7 +708,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess

@@ -5,7 +5,7 @@ Subject: [PATCH] NearbyPlayers
 
 
 diff --git a/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java b/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
-index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aade2aaac5 100644
+index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..6527219c8561e5bd0a142e726c9c2c20f48bf295 100644
 --- a/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
 +++ b/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
 @@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
@@ -38,7 +38,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
 +            if (this.players.putIfAbsent(player, newTrackers) != null) {
 +                throw new IllegalStateException("Already have player " + player);
 +            }
-+        }; // ShreddedPaper
++        }); // ShreddedPaper
  
          final ChunkPos chunk = player.chunkPosition();
  
@@ -60,7 +60,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
          if (players == null) {
              throw new IllegalStateException("Don't have player " + player);
          }
-@@ -127,31 +132,31 @@ public final class NearbyPlayers {
+@@ -127,31 +132,35 @@ public final class NearbyPlayers {
      }
  
      public TrackedChunk getChunk(final ChunkPos pos) {
@@ -75,31 +75,35 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
  
      public TrackedChunk getChunk(final int chunkX, final int chunkZ) {
 -        return this.byChunk.get(CoordinateUtils.getChunkKey(chunkX, chunkZ));
-+        return byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(chunkX,chunkZ)); // ShreddedPaper
++        return byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(chunkX,chunkZ))); // ShreddedPaper
      }
  
      public ReferenceList<ServerPlayer> getPlayers(final BlockPos pos, final NearbyMapType type) {
 -        return this.directByChunk[type.ordinal()].get(CoordinateUtils.getChunkKey(pos));
 +        final TrackedChunk chunk = byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(pos))); // ShreddedPaper
++        return chunk == null ? null : chunk.players[type.ordinal()];
      }
  
      public ReferenceList<ServerPlayer> getPlayers(final ChunkPos pos, final NearbyMapType type) {
 -        return this.directByChunk[type.ordinal()].get(CoordinateUtils.getChunkKey(pos));
 +        final TrackedChunk chunk = byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(pos))); // ShreddedPaper
++        return chunk == null ? null : chunk.players[type.ordinal()];
      }
  
      public ReferenceList<ServerPlayer> getPlayersByChunk(final int chunkX, final int chunkZ, final NearbyMapType type) {
 -        return this.directByChunk[type.ordinal()].get(CoordinateUtils.getChunkKey(chunkX, chunkZ));
 +        final TrackedChunk chunk = byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(chunkX, chunkZ))); // ShreddedPaper
++        return chunk == null ? null : chunk.players[type.ordinal()];
      }
  
      public ReferenceList<ServerPlayer> getPlayersByBlock(final int blockX, final int blockZ, final NearbyMapType type) {
 -        return this.directByChunk[type.ordinal()].get(CoordinateUtils.getChunkKey(blockX >> 4, blockZ >> 4));
 +        final TrackedChunk chunk = byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(blockX >> 4, blockZ >> 4))); // ShreddedPaper
++        return chunk == null ? null : chunk.players[type.ordinal()];
      }
  
      public static final class TrackedChunk {
-@@ -181,7 +186,7 @@ public final class NearbyPlayers {
+@@ -181,7 +190,7 @@ public final class NearbyPlayers {
              return this.players[type.ordinal()];
          }
  
@@ -108,7 +112,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
              ++this.updateCount;
  
              final int idx = type.ordinal();
-@@ -199,7 +204,7 @@ public final class NearbyPlayers {
+@@ -199,7 +208,7 @@ public final class NearbyPlayers {
              }
          }
  
@@ -117,7 +121,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
              ++this.updateCount;
  
              final int idx = type.ordinal();
-@@ -233,26 +238,46 @@ public final class NearbyPlayers {
+@@ -233,26 +242,46 @@ public final class NearbyPlayers {
          protected void addCallback(final ServerPlayer parameter, final int chunkX, final int chunkZ) {
              final long chunkKey = CoordinateUtils.getChunkKey(chunkX, chunkZ);
  
@@ -170,7 +174,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
              if (chunk == null) {
                  throw new IllegalStateException("Chunk should exist at " + new ChunkPos(chunkKey));
              }
-@@ -261,13 +286,20 @@ public final class NearbyPlayers {
+@@ -261,13 +290,20 @@ public final class NearbyPlayers {
              chunk.removePlayer(parameter, type);
              type.removeFrom(parameter, NearbyPlayers.this.world, chunkX, chunkZ);
  
@@ -197,7 +201,7 @@ index 1b8193587814225c2ef2c5d9e667436eb50ff6c5..56bdb25a6bcc414b860039ec045158aa
      }
  }
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index 09865457db71912058acc00be40bff5c54c4a283..8d77a256b884ded34a58e1bd79a2c79a4d061996 100644
+index efcbf46407839329523c511d65aa069912b8b0cd..57a01288bcf1bf5e2b694ca4856bb0915e88d505 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
 @@ -263,7 +263,9 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider

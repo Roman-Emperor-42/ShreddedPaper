@@ -44,7 +44,7 @@ index 1d164c5c121c6a47afe61bfd23bf74cb9664eb61..8fd6c341671eef2edfa95824f9d91aa7
          }
      }
 diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
-index 729b90d982fe5b487ed1d5552a15d3b7d5035a8a..52d0a20e5a591d9aa6d86af41cf40143f695d9da 100644
+index 729b90d982fe5b487ed1d5552a15d3b7d5035a8a..054217727626193a8f402762fb5d7d8cf417b717 100644
 --- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
 +++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
 @@ -554,15 +554,15 @@ public class CraftBlock implements Block {
@@ -63,7 +63,7 @@ index 729b90d982fe5b487ed1d5552a15d3b7d5035a8a..52d0a20e5a591d9aa6d86af41cf40143
              SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - thread local for treeType
 -            List<BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
 -            world.capturedBlockStates.clear();
-+            List<BlockState> blocks = new ArrayList<>(world.capturedBlockStates.get().values()); // ShreddedPaper - thread local
++            List<BlockState> states = new ArrayList<>(world.capturedBlockStates.get().values()); // ShreddedPaper - thread local
 +            world.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
              StructureGrowEvent structureEvent = null;
  

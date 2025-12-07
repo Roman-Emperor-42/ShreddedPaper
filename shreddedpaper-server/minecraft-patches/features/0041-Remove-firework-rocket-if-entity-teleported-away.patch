@@ -5,7 +5,7 @@ Subject: [PATCH] Remove-firework-rocket-if-entity-teleported-away
 
 
 diff --git a/net/minecraft/world/entity/projectile/FireworkRocketEntity.java b/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
-index d8dc196ef92e97f831cf97cd1536a46f81f9d5d1..b99d305df9055e2791b6c6f0bee9f909848b441a 100644
+index d8dc196ef92e97f831cf97cd1536a46f81f9d5d1..4b2b2e6b0fcc8ee807daa7c59ba7f8f0130a512b 100644
 --- a/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
 +++ b/net/minecraft/world/entity/projectile/FireworkRocketEntity.java
 @@ -1,5 +1,6 @@
@@ -28,7 +28,7 @@ index d8dc196ef92e97f831cf97cd1536a46f81f9d5d1..b99d305df9055e2791b6c6f0bee9f909
                      this.attachedToEntity.getZ() + handHoldingItemAngle.z
                  );
 +                // ShreddedPaper start - remove firework rocket if entity teleported away
-+                if (!TickThread.isTickThreadFor((ServerLevel) this.level(), new Vec3(this.attachedToEntity.getX() + vec3d.x, this.attachedToEntity.getY() + vec3d.y, this.attachedToEntity.getZ() + vec3d.z))) {
++                if (!TickThread.isTickThreadFor((ServerLevel) this.level(), new Vec3(this.attachedToEntity.getX() + handHoldingItemAngle.x, this.attachedToEntity.getY() + handHoldingItemAngle.y, this.attachedToEntity.getZ() + handHoldingItemAngle.z))) {
 +                    this.discard();
 +                    return;
 +                }

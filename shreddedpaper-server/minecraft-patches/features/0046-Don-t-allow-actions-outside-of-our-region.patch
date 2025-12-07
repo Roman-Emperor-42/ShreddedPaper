@@ -4,28 +4,6 @@ Date: Mon, 1 Dec 2025 01:59:53 -0600
 Subject: [PATCH] Don-t-allow-actions-outside-of-our-region
 
 
-diff --git a/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java b/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
-index 56bdb25a6bcc414b860039ec045158aade2aaac5..833a223bfdde19c1c2255bf8bc6cbc6469d6055b 100644
---- a/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
-+++ b/ca/spottedleaf/moonrise/common/misc/NearbyPlayers.java
-@@ -81,7 +81,7 @@ public final class NearbyPlayers {
-             if (this.players.putIfAbsent(player, newTrackers) != null) {
-                 throw new IllegalStateException("Already have player " + player);
-             }
--        }; // ShreddedPaper
-+        }); // ShreddedPaper
- 
-         final ChunkPos chunk = player.chunkPosition();
- 
-@@ -140,7 +140,7 @@ public final class NearbyPlayers {
-     }
- 
-     public TrackedChunk getChunk(final int chunkX, final int chunkZ) {
--        return byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(chunkX,chunkZ)); // ShreddedPaper
-+        return byChunkLock.optimisticRead(() -> this.byChunk.get(CoordinateUtils.getChunkKey(chunkX,chunkZ))); // ShreddedPaper
-     }
- 
-     public ReferenceList<ServerPlayer> getPlayers(final BlockPos pos, final NearbyMapType type) {
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java b/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
 index 32f240b659868ddb289e85a44f06863b9c5e2ffa..2f89851d59a832a35d71352910e56165fdf3131b 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java

@@ -5,7 +5,7 @@ Subject: [PATCH] TrackedEntity
 
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
-index cc248b69627dd6cd1fa3ca53d82e7dd4df94a28f..f4e090635be94b74da3c64e91b2b9e7b10ec6ebf 100644
+index 40b3ba048cdf1dc08d2c7d2fc0b229438a0ff0c7..85a3fea714fa20832bf51ba9cb98dfd32d81d394 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegion.java
 @@ -14,6 +14,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
@@ -148,7 +148,7 @@ index fe63d7a2b3a6cf02d565fea701f5ca4282632d14..1024bb18edf2368e71eecbc53c63d462
  }
 \ No newline at end of file
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..2e28dab78b50ac6b712ce9cb2f320fd3a7949915 100644
+index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..82b452f61e2e7db1a11d5ef8734335e10b920bbd 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
 @@ -959,6 +959,8 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
@@ -181,7 +181,7 @@ index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..2e28dab78b50ac6b712ce9cb2f320fd3
  
      public void broadcast(Entity entity, Packet<?> packet) {
 -        ChunkMap.TrackedEntity trackedEntity = this.entityMap.get(entity.getId());
-+        ChunkMap.TrackedEntity playerchunkmap_entitytracker = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
++        ChunkMap.TrackedEntity trackedEntity = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
          if (trackedEntity != null) {
              trackedEntity.broadcast(packet);
          }
@@ -189,12 +189,12 @@ index 432371e05af8b4b85d3e953c3ece407ade9c0cc2..2e28dab78b50ac6b712ce9cb2f320fd3
  
      protected void broadcastAndSend(Entity entity, Packet<?> packet) {
 -        ChunkMap.TrackedEntity trackedEntity = this.entityMap.get(entity.getId());
-+        ChunkMap.TrackedEntity playerchunkmap_entitytracker = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
++        ChunkMap.TrackedEntity trackedEntity = entity.moonrise$getTrackedEntity(); // (ChunkMap.TrackedEntity) this.entityMap.get(entity.getId()); // ShreddedPaper - don't use map
          if (trackedEntity != null) {
              trackedEntity.broadcastAndSend(packet);
          }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d8dbc32234aa8a2aed95820ae79d0f792d446233..90642366ba1d252c217ddfc4fab83761883cc396 100644
+index 4fa93f3088e2af4864f37fa1afcb61025ecf12d5..a78c64ed937c51027d25e0e8c08df1142412eeea 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -2887,6 +2887,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -206,7 +206,7 @@ index d8dbc32234aa8a2aed95820ae79d0f792d446233..90642366ba1d252c217ddfc4fab83761
          }
      }
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 438620c93e1db1440defdad3fc05bcdb518886d7..0afbbca15bf8939e528a63caba583e850da1b56a 100644
+index cc7336f6af8b6fcc08e00d8a35534bbe2109e296..499294632319170f6c7654e2d754f2b7bd10ea46 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -121,7 +121,6 @@ import net.minecraft.world.level.block.state.BlockState;
