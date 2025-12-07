@@ -253,7 +253,7 @@ index c84906e2491829232718b5485e8b463f40a8b1b0..78ae83eed5d0ee8fb43f79fe9c2f1886
          } catch (Exception var2) {
              if (var2 instanceof ClosedChannelException) {
 diff --git a/net/minecraft/server/level/ChunkHolder.java b/net/minecraft/server/level/ChunkHolder.java
-index 656041c9539b6834b4d37b353eb6b810a7763ff4..b8efdfa6c3d711f8d5be0c220f0fe6ff562a4f47 100644
+index 656041c9539b6834b4d37b353eb6b810a7763ff4..a5fe77936bd44cb5d046533aea1cdc9d482f8b43 100644
 --- a/net/minecraft/server/level/ChunkHolder.java
 +++ b/net/minecraft/server/level/ChunkHolder.java
 @@ -1,5 +1,7 @@
@@ -269,7 +269,7 @@ index 656041c9539b6834b4d37b353eb6b810a7763ff4..b8efdfa6c3d711f8d5be0c220f0fe6ff
  
      public boolean blockChanged(BlockPos pos) {
 +        if (!this.newChunkHolder.world.getServer().forceTicks && !TickThread.isShutdownThread() && !this.newChunkHolder.world.chunkScheduler.getRegionLocker().hasWriteLock(RegionPos.forBlockPos(pos))) { // ShreddedPaper
-+            TickThread.failedTickThreadCheck("Block change is not write locked", "world=" + this.newChunkHolder.world.convertable.getLevelId() + ", pos=" + pos + ", newstate=" + this.getFullChunkNow().getBlockState(pos)); // ShreddedPaper
++            TickThread.failedTickThreadCheck("Block change is not write locked", "world=" + this.newChunkHolder.world.serverLevelData.getLevelName() + ", pos=" + pos + ", newstate=" + this.getFullChunkNow().getBlockState(pos)); // ShreddedPaper
 +        } // ShreddedPaper
          LevelChunk tickingChunk = this.playersSentChunkTo.size() == 0 ? null : this.getChunkToSend(); // Paper - rewrite chunk system
          if (tickingChunk == null) {
