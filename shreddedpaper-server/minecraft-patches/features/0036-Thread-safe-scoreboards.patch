@@ -50,7 +50,7 @@ index 4398151f8daff7617111cf5361e9df4111d4aca4..0358741ab0ba67b2ba6d5a96b88ec535
      private Component playerPrefix = CommonComponents.EMPTY;
      private Component playerSuffix = CommonComponents.EMPTY;
 diff --git a/net/minecraft/world/scores/Scoreboard.java b/net/minecraft/world/scores/Scoreboard.java
-index 04c48a95634dd3f0f9aeb0e6235c5ce780fe39dd..ce7655791785d1707dc0cd2bab5a9aa5095cfe12 100644
+index 04c48a95634dd3f0f9aeb0e6235c5ce780fe39dd..922c44e633f63d0ef03eb19239b6017500c41688 100644
 --- a/net/minecraft/world/scores/Scoreboard.java
 +++ b/net/minecraft/world/scores/Scoreboard.java
 @@ -17,6 +17,7 @@ import java.util.EnumMap;
@@ -92,7 +92,7 @@ index 04c48a95634dd3f0f9aeb0e6235c5ce780fe39dd..ce7655791785d1707dc0cd2bab5a9aa5
  
      @Nullable
      public PlayerTeam getPlayerTeam(String teamName) {
-+        if (name == null) return null; // ShreddedPaper
++        if (teamName == null) return null; // ShreddedPaper
          return this.teamsByName.get(teamName);
      }
  

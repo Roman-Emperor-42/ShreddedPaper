@@ -68,10 +68,10 @@ index 52973ab15daeddab1b646965fa222ebbf053f048..1ce313571c54ea3adc47aec87926ab70
              return;
          }
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index c1b3e3e9414cce29d341af06e7d148383d71e1c5..9f28251e0d9a5ed3e3679a3f000251c25c156434 100644
+index 6136ff0bb6f04c06d20ccac780584c9c6b7f4ce4..60763a668d5be382d39b71807803b767a0e284ca 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -2107,7 +2107,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -2108,7 +2108,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
      private void unregisterEntity(Entity other) {
          // Paper end
          ChunkMap tracker = ((ServerLevel) this.getHandle().level()).getChunkSource().chunkMap;
@@ -80,7 +80,7 @@ index c1b3e3e9414cce29d341af06e7d148383d71e1c5..9f28251e0d9a5ed3e3679a3f000251c2
          if (entry != null) {
              entry.removePlayer(this.getHandle());
          }
-@@ -2204,7 +2204,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -2205,7 +2205,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
              if (original != null) otherPlayer.setUUID(original); // Paper - uuid override
          }
  

@@ -190,7 +190,7 @@ index ce66412e09b8fc471f94dc8cd8c1054a68347a05..55603f6b8a7130ac7b6113590e070998
              }
          );
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
-index f3f10ef60f8d8c190bea29b5166ed7dae2beb349..c621f314066b75a81da2a04ebdf0bc719ddc6a6e 100644
+index 257525ad0b9b137f8eb8ddf03b24398ea7799c48..099dca2fea8156d37c6c058b4a04d67ca0d66e7b 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
 @@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
@@ -201,7 +201,7 @@ index f3f10ef60f8d8c190bea29b5166ed7dae2beb349..c621f314066b75a81da2a04ebdf0bc71
  import net.minecraft.nbt.CompoundTag;
  import net.minecraft.network.chat.Component;
  import net.minecraft.server.MinecraftServer;
-@@ -1143,6 +1144,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+@@ -1144,6 +1145,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
  
          ServerLevel world = ((CraftWorld)locationClone.getWorld()).getHandle();
          CompletableFuture<Boolean> ret = new java.util.concurrent.CompletableFuture<>();
@@ -209,7 +209,7 @@ index f3f10ef60f8d8c190bea29b5166ed7dae2beb349..c621f314066b75a81da2a04ebdf0bc71
  
          // ShreddedPaper start - run sync if possible
          ChunkPos fromChunkPos = this.getHandle().chunkPosition();
-@@ -1152,13 +1154,13 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+@@ -1153,13 +1155,13 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
                  && this.getHandle().level().hasChunk(fromChunkPos.x, fromChunkPos.z)
                  && world.hasChunk(toChunkPos.x, toChunkPos.z)) {
              try {
@@ -225,7 +225,7 @@ index f3f10ef60f8d8c190bea29b5166ed7dae2beb349..c621f314066b75a81da2a04ebdf0bc71
              }
              return ret;
          }
-@@ -1175,13 +1177,13 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+@@ -1176,13 +1178,13 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
                          chunkCache.addTicketAtLevel(TicketType.POST_TELEPORT, chunk.getPos(), 33);
                      }
                      try {

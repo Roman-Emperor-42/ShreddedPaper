@@ -775,7 +775,7 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..55bcd96a2862644f1378c5ddef781e8f
      }
  
 diff --git a/net/minecraft/world/level/portal/TeleportTransition.java b/net/minecraft/world/level/portal/TeleportTransition.java
-index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..057b1379077190d1a23e46b210ea944efce0688b 100644
+index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..ca673cab2a77da2b9312813244fcc364dd4a2be5 100644
 --- a/net/minecraft/world/level/portal/TeleportTransition.java
 +++ b/net/minecraft/world/level/portal/TeleportTransition.java
 @@ -8,6 +8,9 @@ import net.minecraft.server.level.ServerPlayer;
@@ -819,7 +819,7 @@ index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..057b1379077190d1a23e46b210ea944e
  
 +    public static CompletableFuture<TeleportTransition> ofSharedSpawnPos(ServerLevel worldserver, Entity entity, TeleportTransition.PostTeleportTransition TeleportTransition_a, PlayerTeleportEvent.TeleportCause cause) {
 +        return entity.adjustSpawnLocation(worldserver, worldserver.getSharedSpawnPos()).thenApply(blockPos -> {
-+            return new TeleportTransition(worldserver, blockPos.getBottomCenter(), Vec3.ZERO, worldserver.getSharedSpawnAngle(), 0.0F, false, TeleportTransition_a, cause); // Paper - MC-200092 - fix spawn pos yaw being ignored
++            return new TeleportTransition(worldserver, blockPos.getBottomCenter(), Vec3.ZERO, worldserver.getSharedSpawnAngle(), 0.0F, Set.of(), TeleportTransition_a, cause); // Paper - MC-200092 - fix spawn pos yaw being ignored
 +        });
 +    }
 +    // ShreddedPaper end - make async
@@ -830,3 +830,12 @@ index 6087d91294d3a3118bb8b3f05d81d3ed8d327182..057b1379077190d1a23e46b210ea944e
      }
  
      public static TeleportTransition missingRespawnBlock(ServerLevel level, Entity entity, TeleportTransition.PostTeleportTransition postTeleportTransition) {
+@@ -101,7 +115,7 @@ public record TeleportTransition(
+     }
+ 
+     private static Vec3 findAdjustedSharedSpawnPos(ServerLevel level, Entity entity) {
+-        return entity.adjustSpawnLocation(level, level.getSharedSpawnPos()).getBottomCenter();
++        return entity.adjustSpawnLocation(level, level.getSharedSpawnPos()).thenApply(BlockPos::getBottomCenter).join();
+     }
+ 
+     public TeleportTransition withRotation(float yRot, float xRot) {

@@ -68,20 +68,38 @@ index 476eefebace887064b728f08af40c746b6f70787..52973ab15daeddab1b646965fa222ebb
                      for (final net.minecraft.world.level.chunk.ChunkAccess chunk : list) {
                          chunkCache.addTicketAtLevel(TicketType.POST_TELEPORT, chunk.getPos(), 33);
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index 4e24a177aed7eda0899b4a1a1e308f02a16c5718..c1b3e3e9414cce29d341af06e7d148383d71e1c5 100644
+index 4e24a177aed7eda0899b4a1a1e308f02a16c5718..6136ff0bb6f04c06d20ccac780584c9c6b7f4ce4 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -1534,7 +1534,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -1,5 +1,6 @@
+ package org.bukkit.craftbukkit.entity;
+ 
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.destroystokyo.paper.event.player.PlayerSetSpawnEvent;
+ import com.google.common.base.Preconditions;
+ import com.google.common.collect.ImmutableList;
+@@ -1512,8 +1513,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         // Grab the new To Location dependent on whether the event was cancelled.
+         to = event.getTo();
+         // Grab the To and From World Handles.
+-        ServerLevel fromWorld = ((CraftWorld) from.getWorld()).getHandle();
+-        ServerLevel toWorld = ((CraftWorld) to.getWorld()).getHandle();
++        ServerLevel fromWorld = (ServerLevel) ((CraftWorld) from.getWorld()).getHandle();
++        ServerLevel toWorld = (ServerLevel) ((CraftWorld) to.getWorld()).getHandle();
+ 
+         // Close any foreign inventory
+         if (this.getHandle().containerMenu != this.getHandle().inventoryMenu && !allFlags.contains(io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_OPEN_INVENTORY)) { // Paper
+@@ -1534,7 +1535,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
          } else {
              entity.portalProcess = null; // SPIGOT-7785: there is no need to carry this over as it contains the old world/location and we might run into trouble if there is a portal in the same spot in both worlds
              // The respawn reason should never be used if the passed location is non null.
 -            this.server.getHandle().respawn(entity, true, Entity.RemovalReason.CHANGED_DIMENSION, null, to);
-+            if (!TickThread.isTickThreadFor(entity.serverLevel(), entity.position()) || !TickThread.isTickThreadFor(toWorld, CraftLocation.toBlockPosition(to))) throw new UnsupportedOperationException("Cannot respawn player asynchronously"); // ShreddedPaper - make sure following will be run on this thread
++            if (!TickThread.isTickThreadFor(entity.level(), entity.position()) || !TickThread.isTickThreadFor(toWorld, CraftLocation.toBlockPosition(to))) throw new UnsupportedOperationException("Cannot respawn player asynchronously"); // ShreddedPaper - make sure following will be run on this thread
 +            this.server.getHandle().respawnAsync(entity, true, Entity.RemovalReason.CHANGED_DIMENSION, null, to).join(); // Paper // ShreddedPaper - will be run on this thread
          }
          return true;
      }
-@@ -3369,7 +3370,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -3369,7 +3371,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
          @Override
          public void respawn() {
              if (CraftPlayer.this.getHealth() <= 0 && CraftPlayer.this.isOnline()) {

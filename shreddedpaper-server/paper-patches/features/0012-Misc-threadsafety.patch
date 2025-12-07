@@ -59,10 +59,10 @@ index fc4fa99a993a017676da2be3cb254399d421bce1..602e22a604f5d57631041e9e76d9e424
          return true;
      }
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index 9f28251e0d9a5ed3e3679a3f000251c25c156434..efa2b08c16439fe141f63d4a5b6dd16f8a6d145b 100644
+index 60763a668d5be382d39b71807803b767a0e284ca..70b2b0cfafdab322244b16f4c3f257895bad917c 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -3500,19 +3500,19 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -3501,19 +3501,19 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
      // Paper start - Add chunk view API
      @Override
      public Set<java.lang.Long> getSentChunkKeys() {

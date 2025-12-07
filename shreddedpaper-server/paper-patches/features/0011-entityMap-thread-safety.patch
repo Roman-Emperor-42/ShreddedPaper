@@ -5,24 +5,64 @@ Subject: [PATCH] entityMap-thread-safety
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
-index 1ce313571c54ea3adc47aec87926ab704239084c..f3f10ef60f8d8c190bea29b5166ed7dae2beb349 100644
+index 1ce313571c54ea3adc47aec87926ab704239084c..257525ad0b9b137f8eb8ddf03b24398ea7799c48 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
-@@ -780,7 +780,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+@@ -33,6 +33,7 @@ import net.minecraft.world.entity.boss.EnderDragonPart;
+ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+ import net.minecraft.world.entity.projectile.AbstractArrow;
+ import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.portal.TeleportTransition;
+ import net.minecraft.world.level.storage.TagValueOutput;
+ import net.minecraft.world.level.storage.ValueInput;
+@@ -780,10 +781,10 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
          Preconditions.checkArgument(player != null, "Player cannot be null");
  
          ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
 -        ChunkMap.TrackedEntity entityTracker = this.getHandle().moonrise$getTrackedEntity(); // world.getChunkSource().chunkMap.entityMap.get(this.getEntityId()); // ShreddedPaper - don't use map
+-        if (entityTracker == null) return false;
 +        ChunkMap.TrackedEntity tracker = world == null ? null : this.getHandle().moonrise$getTrackedEntity(); // ShreddedPaper - don't use map
-         if (entityTracker == null) return false;
++        if (tracker == null) return false;
  
-         return entityTracker.seenBy.contains(((CraftPlayer) player).getHandle().connection);
-@@ -1260,7 +1260,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+-        return entityTracker.seenBy.contains(((CraftPlayer) player).getHandle().connection);
++        return tracker.seenBy.contains(((CraftPlayer) player).getHandle().connection);
+     }
+ 
+     @Override
+@@ -1040,7 +1041,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     public org.bukkit.entity.Entity copy(Location location) {
+         Preconditions.checkArgument(location.getWorld() != null, "Location has no world");
+ 
+-        Entity copy = this.copy(((CraftWorld) location.getWorld()).getHandle());
++        Entity copy = this.copy((Level) ((CraftWorld) location.getWorld()).getHandle());
+         Preconditions.checkArgument(copy != null, "Error creating new entity.");
+ 
+         copy.setPos(location.getX(), location.getY(), location.getZ());
+@@ -1260,13 +1261,13 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
      @Override
      public Set<org.bukkit.entity.Player> getTrackedPlayers() {
          ServerLevel world = (net.minecraft.server.level.ServerLevel)this.entity.level();
 -        ChunkMap.TrackedEntity tracker = world == null ? null : world.getChunkSource().chunkMap.entityMap.get(this.entity.getId());
+-        if (tracker == null) {
 +        ChunkMap.TrackedEntity entityTracker = this.getHandle().moonrise$getTrackedEntity(); // ShreddedPaper - don't use map
-         if (tracker == null) {
++        if (entityTracker == null) {
              return java.util.Collections.emptySet();
          }
+ 
+-        Set<org.bukkit.entity.Player> set = new java.util.HashSet<>(tracker.seenBy.size());
+-        for (net.minecraft.server.network.ServerPlayerConnection connection : tracker.seenBy) {
++        Set<org.bukkit.entity.Player> set = new java.util.HashSet<>(entityTracker.seenBy.size());
++        for (net.minecraft.server.network.ServerPlayerConnection connection : entityTracker.seenBy) {
+             set.add(connection.getPlayer().getBukkitEntity().getPlayer());
+         }
+         return set;
+@@ -1276,7 +1277,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     public boolean spawnAt(Location location, CreatureSpawnEvent.SpawnReason reason) {
+         Preconditions.checkNotNull(location, "location cannot be null");
+         Preconditions.checkNotNull(reason, "reason cannot be null");
+-        this.entity.setLevel(((CraftWorld) location.getWorld()).getHandle());
++        this.entity.setLevel((Level) ((CraftWorld) location.getWorld()).getHandle());
+         this.entity.setPos(location.getX(), location.getY(), location.getZ());
+         this.entity.setRot(location.getYaw(), location.getPitch());
+         final boolean spawned = !this.entity.valid && this.entity.level().addFreshEntity(this.entity, reason);
