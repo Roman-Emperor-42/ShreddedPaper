@@ -27,7 +27,7 @@ index 56bdb25a6bcc414b860039ec045158aade2aaac5..833a223bfdde19c1c2255bf8bc6cbc64
  
      public ReferenceList<ServerPlayer> getPlayers(final BlockPos pos, final NearbyMapType type) {
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java b/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
-index 0accca9c10dbc7e6841def7741c237e98ebfa55f..05fa48b60ea97e12453ecd8be3fe6a9a99fa2a49 100644
+index 32f240b659868ddb289e85a44f06863b9c5e2ffa..2f89851d59a832a35d71352910e56165fdf3131b 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java
 @@ -836,7 +836,7 @@ public final class RegionizedPlayerChunkLoader {
@@ -38,7 +38,7 @@ index 0accca9c10dbc7e6841def7741c237e98ebfa55f..05fa48b60ea97e12453ecd8be3fe6a9a
 +                    // ShreddedPaper start - run on region's thread with write lock
                      Runnable postProcessingRunOnThread = () -> {
                          // not yet post-processed, need to do this so that tile entities can properly be sent to clients
-                         chunk.postProcessGeneration();
+                         chunk.postProcessGeneration(player.level());
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
 index 2106f2d45c120b391fe0fab3ae54a91fdc1ef1b3..6081defe767762b19a5b7deda65effe162c9b9d7 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java

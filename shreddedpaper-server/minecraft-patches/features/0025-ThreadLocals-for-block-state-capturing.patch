@@ -34,7 +34,7 @@ index 9d29912c82d2031122987b2c76c7d1a0b19b168f..b942dc0cee13040dd09739ee5112af48
                      if (treeType != null) {
                          structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, states);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 1964db60389d802aac5541c63f164f98753d3a5a..62efc671c7d833bcef091ef46f8642322efb6074 100644
+index 0ef0196238b53cc46d02b900ad71dd96465cc39a..4a4db32cd6b4bf381ec5543ae701f173a4b3df61 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1651,8 +1651,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -89,10 +89,41 @@ index d638821595138ef972163925136eb57207b31719..f668b0778e1bce40271284fefd470f10
                      org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, state, this.player, itemsToDrop); // Paper - capture all item additions to the world
                  }
 diff --git a/net/minecraft/world/item/ItemStack.java b/net/minecraft/world/item/ItemStack.java
-index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee696e163d 100644
+index 9f15344d6f822d7003bb00132e4f37933e659047..81a75c852ea50bf02065dd7f94277417b969c289 100644
 --- a/net/minecraft/world/item/ItemStack.java
 +++ b/net/minecraft/world/item/ItemStack.java
-@@ -378,29 +378,31 @@ public final class ItemStack implements DataComponentHolder {
+@@ -10,12 +10,14 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import io.netty.handler.codec.DecoderException;
+ import io.netty.handler.codec.EncoderException;
+ import java.util.List;
++import java.util.Objects;
+ import java.util.Optional;
+ import java.util.function.BiConsumer;
+ import java.util.function.BiFunction;
+ import java.util.function.Consumer;
+ import java.util.function.Predicate;
+ import java.util.function.UnaryOperator;
++import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+ import javax.annotation.Nullable;
+ import net.minecraft.ChatFormatting;
+@@ -87,10 +89,15 @@ import net.minecraft.world.item.equipment.Equippable;
+ import net.minecraft.world.level.ItemLike;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.Spawner;
++import net.minecraft.world.level.block.SaplingBlock;
++import net.minecraft.world.level.block.SignBlock;
++import net.minecraft.world.level.block.entity.SignBlockEntity;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.block.state.pattern.BlockInWorld;
+ import org.apache.commons.lang3.function.TriConsumer;
+ import org.apache.commons.lang3.mutable.MutableBoolean;
++import org.bukkit.TreeType;
++import org.bukkit.craftbukkit.block.CraftBlockState;
+ import org.slf4j.Logger;
+ 
+ public final class ItemStack implements DataComponentHolder {
+@@ -378,29 +385,31 @@ public final class ItemStack implements DataComponentHolder {
              ServerLevel serverLevel = (ServerLevel) context.getLevel();
  
              if (!(item instanceof BucketItem/* || item instanceof SolidBucketItem*/)) { // if not bucket // Paper - Fix cancelled powdered snow bucket placement
@@ -106,8 +137,8 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
              }
              InteractionResult interactionResult;
              try {
-+                world.capturedTileEntities.get().clear(); // ShreddedPaper - clear beforehand
-+                world.capturedBlockStates.get().clear(); // ShreddedPaper - clear beforehand
++                serverLevel.capturedTileEntities.get().clear(); // ShreddedPaper - clear beforehand
++                serverLevel.capturedBlockStates.get().clear(); // ShreddedPaper - clear beforehand
                  interactionResult = item.useOn(context);
              } finally {
 -                serverLevel.captureBlockStates = false;
@@ -119,7 +150,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
              this.restorePatch(previousPatch);
 -            if (interactionResult.consumesAction() && serverLevel.captureTreeGeneration && !serverLevel.capturedBlockStates.isEmpty()) {
 -                serverLevel.captureTreeGeneration = false;
-+            if (enuminteractionresult.consumesAction() && serverLevel.captureTreeGeneration.get() && serverLevel.capturedBlockStates.get().size() > 0) { // ShreddedPaper - thread local
++            if (interactionResult.consumesAction() && serverLevel.captureTreeGeneration.get() && serverLevel.capturedBlockStates.get().size() > 0) { // ShreddedPaper - thread local
 +                serverLevel.captureTreeGeneration.set(false); // ShreddedPaper - thread local
                  TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - thread local for treeType
                  SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - thread local for treeType
@@ -131,7 +162,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
                  org.bukkit.event.world.StructureGrowEvent structureEvent = null;
                  if (treeType != null) {
                      boolean isBonemeal = this.getItem() == Items.BONE_MEAL;
-@@ -428,12 +430,12 @@ public final class ItemStack implements DataComponentHolder {
+@@ -428,12 +437,12 @@ public final class ItemStack implements DataComponentHolder {
  
                  SignItem.openSignThreadLocal.remove(); // SPIGOT-6758 - Reset on early return // ShreddedPaper - thread local for openSign                return interactionResult;
              }
@@ -142,21 +173,21 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
                  org.bukkit.event.block.BlockPlaceEvent placeEvent = null;
 -                List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(serverLevel.capturedBlockStates.values());
 -                serverLevel.capturedBlockStates.clear();
-+                List<BlockState> blocks = new java.util.ArrayList<>(serverLevel.capturedBlockStates.get().values()); // ShreddedPaper - thread local
++                List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(serverLevel.capturedBlockStates.get().values()); // ShreddedPaper - thread local
 +                serverLevel.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
                  if (blocks.size() > 1) {
                      placeEvent = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockMultiPlaceEvent(serverLevel, player, hand, blocks, clickedPos);
                  } else if (blocks.size() == 1 && item != Items.POWDER_SNOW_BUCKET) { // Paper - Fix cancelled powdered snow bucket placement
-@@ -444,7 +446,7 @@ public final class ItemStack implements DataComponentHolder {
+@@ -444,7 +453,7 @@ public final class ItemStack implements DataComponentHolder {
                      interactionResult = InteractionResult.FAIL; // cancel placement
                      // PAIL: Remove this when MC-99075 fixed
                      player.containerMenu.forceHeldSlot(hand);
 -                    serverLevel.capturedTileEntities.clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot
-+                    world.capturedTileEntities.get().clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot // ShreddedPaper - thread local
++                    serverLevel.capturedTileEntities.get().clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot // ShreddedPaper - thread local
                      // revert back all captured blocks
                      for (org.bukkit.block.BlockState blockstate : blocks) {
                          ((org.bukkit.craftbukkit.block.CraftBlockState) blockstate).revertPlace();
-@@ -459,7 +461,7 @@ public final class ItemStack implements DataComponentHolder {
+@@ -459,7 +468,7 @@ public final class ItemStack implements DataComponentHolder {
                          this.setCount(newCount);
                      }
  
@@ -165,7 +196,20 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
                          serverLevel.setBlockEntity(e.getValue());
                      }
  
-@@ -530,8 +532,8 @@ public final class ItemStack implements DataComponentHolder {
+@@ -497,9 +506,9 @@ public final class ItemStack implements DataComponentHolder {
+                     // SPIGOT-4678
+                     if (this.item instanceof SignItem && SignItem.openSignThreadLocal.get() != null) { // ShreddedPaper - thread local for openSign
+                         try {
+-                            if (world.getBlockEntity(SignItem.openSignThreadLocal.get()) instanceof SignBlockEntity tileentitysign) { // ShreddedPaper - thread local for openSign
+-                                if (world.getBlockState(SignItem.openSignThreadLocal.get()).getBlock() instanceof SignBlock blocksign) { // ShreddedPaper - thread local for openSign
+-                                    signBlock.openTextEdit(player, blockEntity, true, io.papermc.paper.event.player.PlayerOpenSignEvent.Cause.PLACE); // CraftBukkit // Paper - Add PlayerOpenSignEvent
++                            if (serverLevel.getBlockEntity(SignItem.openSignThreadLocal.get()) instanceof SignBlockEntity tileentitysign) { // ShreddedPaper - thread local for openSign
++                                if (serverLevel.getBlockState(SignItem.openSignThreadLocal.get()).getBlock() instanceof SignBlock blocksign) { // ShreddedPaper - thread local for openSign
++                                    blocksign.openTextEdit(player, tileentitysign, true, io.papermc.paper.event.player.PlayerOpenSignEvent.Cause.PLACE); // CraftBukkit // Paper - Add PlayerOpenSignEvent
+                                 }
+                             }
+                         } finally {
+@@ -530,8 +539,8 @@ public final class ItemStack implements DataComponentHolder {
                      player.awardStat(Stats.ITEM_USED.get(item));
                  }
              }
