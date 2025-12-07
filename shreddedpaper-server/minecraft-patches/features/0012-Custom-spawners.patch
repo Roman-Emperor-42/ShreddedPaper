@@ -5,7 +5,7 @@ Subject: [PATCH] Custom-spawners
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 6d5a250f11090eb3d6ae308de84d140c09de928e..e6ae6fd09647095a5f21dbe988172030a613b3af 100644
+index 44dfb68fb375d29e2d1b55a3fcbf96e92a59eacb..4b229fceaf6c062d6730ee3b090d9e52fe11046b 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -903,7 +903,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -13,7 +13,7 @@ index 6d5a250f11090eb3d6ae308de84d140c09de928e..e6ae6fd09647095a5f21dbe988172030
      public void tickCustomSpawners(boolean spawnEnemies, boolean spawnFriendlies) {
          for (CustomSpawner customSpawner : this.customSpawners) {
 -            customSpawner.tick(this, spawnEnemies, spawnFriendlies);
-+            customSpawner.tick(this, spawnMonsters, spawnAnimals); // ShreddedPaper - ensure return value remains unused
++            customSpawner.tick(this, spawnEnemies, spawnFriendlies); // ShreddedPaper - ensure return value remains unused
          }
      }
  

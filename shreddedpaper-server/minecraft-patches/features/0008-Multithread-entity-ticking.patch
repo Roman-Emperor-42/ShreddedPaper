@@ -200,7 +200,7 @@ index b098feae6fa0dec1840d88b6bbf0a9945df468b3..e58f3716210ef463b307c9884ded6884
          // Paper end - Optional per player mob spawns
          this.lastSpawnState = spawnState;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d0977f2ab127e47a4b2c011cd453c0ee1af81694..1fc302c8734d31ebe854906f33723f4e80f41746 100644
+index b76250adaa58e18e20b42812af5fde8556d078c1..5035ba31c54c58440a2604d323aae7fb8dbc8898 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -180,7 +180,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -278,7 +278,7 @@ index d0977f2ab127e47a4b2c011cd453c0ee1af81694..1fc302c8734d31ebe854906f33723f4e
          if (passengerEntity.isRemoved() || passengerEntity.getVehicle() != ridingEntity) {
              passengerEntity.stopRiding();
 -        } else if (passengerEntity instanceof Player || this.entityTickList.contains(passengerEntity)) {
-+        } else if (passengerEntity instanceof Player || passenger.isTicking()) { // ShreddedPaper - use a different method to check if passenger is ticking
++        } else if (passengerEntity instanceof Player || passengerEntity.isTicking()) { // ShreddedPaper - use a different method to check if passenger is ticking
              passengerEntity.setOldPosAndRot();
              passengerEntity.tickCount++;
              passengerEntity.totalEntityAge++; // Paper - age-like counter for all entities
