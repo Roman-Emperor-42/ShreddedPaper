@@ -138,7 +138,7 @@ index 2a1eb3d01ef53c552b748e6d2b9b1b1d407c1b7c..beb4c7d37fee33b2670efb6715aae5b6
  
              region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 5b32749d88f07e4c5113bbb4599bddfe86ffb865..cdbbd49d9dc8b23c9fe5128bc55a80acd71aa1d7 100644
+index d25b53e4d24f711a7541fdf7858793b2d86fc1f8..e3adc0b6a91ec759486a5a76de6e4c827c7ca0fe 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1,5 +1,6 @@
@@ -171,8 +171,8 @@ index 5b32749d88f07e4c5113bbb4599bddfe86ffb865..cdbbd49d9dc8b23c9fe5128bc55a80ac
          this.uuid = org.bukkit.craftbukkit.util.WorldUUID.getOrCreate(levelStorageAccess.levelDirectory.path().toFile());
          this.players = new CopyOnWriteArrayList<>(); // ShreddedPaper - thread-safe (players should not be changing worlds often, thus copy-on-write is sufficient)
          // CraftBukkit end
-+        this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
-+        this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, this.getProfilerSupplier()); // ShreddedPaper
++        this.blockTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, Profiler::get); // ShreddedPaper
++        this.fluidTicks = new LevelTicksRegionProxy<>(this::isPositionTickingWithEntitiesLoaded, Profiler::get); // ShreddedPaper
          this.tickTime = tickTime;
          this.server = server;
          // Purpur start - Allow toggling special MobSpawners per world
