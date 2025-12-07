@@ -382,19 +382,6 @@ index f2c11ce12d0c8dd62f5e77bdbd4e3508a08d6db7..0ef0196238b53cc46d02b900ad71dd96
                  return mapData;
              }
  
-diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index df00c7b2aee8603312b185dacb30915e900a2c11..cf2ee6196526e5d05bc7db64001cba86622602f4 100644
---- a/net/minecraft/server/level/ServerPlayer.java
-+++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -2900,6 +2900,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
-             for (MobEffectInstance mobEffectInstance : livingEntity.getActiveEffects()) {
-                 this.connection.send(new ClientboundRemoveMobEffectPacket(vehicle.getId(), mobEffectInstance.getEffect()));
-             }
-+
-+            if (entity.moonrise$getTrackedEntity() != null) entity.moonrise$getTrackedEntity().serverEntity.sendChanges(); // ShreddedPaper - send changes now
-         }
- 
-         if (vehicle != null) {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 index 37ed11d6e9822e82ba15e9378ed9f14f39e14d83..ec41f3615aab794055866576d00488a1160808e9 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
