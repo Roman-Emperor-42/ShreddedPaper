@@ -177,7 +177,7 @@ index 9f15344d6f822d7003bb00132e4f37933e659047..a7a947c3893faf2e63af73d1cc6240ee
  
              return interactionResult;
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index d79d96d8778c56cd01a29598b3fd85d7c27cac05..9fb189e167464d13a939bffcdcba2e3c55c79943 100644
+index ba6f64cdd43a7ff8f081bc0971d57cf63c0aad5b..18705fb75522b5c3bda5915a366be98123622a0d 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
@@ -307,16 +307,16 @@ index d79d96d8778c56cd01a29598b3fd85d7c27cac05..9fb189e167464d13a939bffcdcba2e3c
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1690,7 +1690,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1691,7 +1691,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      public BlockEntity getBlockEntity(BlockPos pos) {
          // Paper start - Perf: Optimize capturedTileEntities lookup
          net.minecraft.world.level.block.entity.BlockEntity blockEntity;
 -        if (!this.capturedTileEntities.isEmpty() && (blockEntity = this.capturedTileEntities.get(pos)) != null) {
-+        if (!this.capturedTileEntities.get().isEmpty() && (blockEntity = this.capturedTileEntities.get().get(blockposition)) != null) { // ShreddedPaper - thread local
++        if (!this.capturedTileEntities.get().isEmpty() && (blockEntity = this.capturedTileEntities.get().get(pos)) != null) { // ShreddedPaper - thread local
              return blockEntity;
          }
          // Paper end - Perf: Optimize capturedTileEntities lookup
-@@ -1707,8 +1707,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1708,8 +1708,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
          BlockPos blockPos = blockEntity.getBlockPos();
          if (!this.isOutsideBuildHeight(blockPos)) {
              // CraftBukkit start

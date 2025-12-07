@@ -116,7 +116,7 @@ index e6ae6fd09647095a5f21dbe988172030a613b3af..65e02292c786a950e26a36a6faddb0e1
      }
  
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..927cf50e3e108a4fe09e3182e43ae5c403dc76b0 100644
+index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..14644debd9df1c0b96168afb638a1266f101b071 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -7,6 +7,7 @@ import java.util.Collection;
@@ -157,7 +157,7 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..927cf50e3e108a4fe09e3182e43ae5c4
      public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions
      public java.util.ArrayDeque<net.minecraft.world.level.block.RedstoneTorchBlock.Toggle> redstoneUpdateInfos; // Paper - Faster redstone torch rapid clock removal; Move from Map in BlockRedstoneTorch to here
  
-@@ -1486,43 +1489,55 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+@@ -1486,43 +1489,56 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
      }
  
      public void addBlockEntityTicker(TickingBlockEntity ticker) {
@@ -212,8 +212,8 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..927cf50e3e108a4fe09e3182e43ae5c4
 +            var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
 +            toRemove.add(null); // Paper - Fix MC-117075
 +            // ShreddedPaper start - use local variable for tile tick position
-+            for (int tileTickPosition = 0; tileTickPosition < this.blockEntityTickers.size(); tileTickPosition++) { // Paper - Disable tick limiters
-+                TickingBlockEntity tickingblockentity = this.blockEntityTickers.get(tileTickPosition);
++            for (int tileTickPosition = 0; tileTickPosition < blockEntityTickers.size(); tileTickPosition++) { // Paper - Disable tick limiters
++                TickingBlockEntity tickingblockentity = blockEntityTickers.get(tileTickPosition);
 +                // ShreddedPaper end
 +                // Spigot end
 +
@@ -223,7 +223,8 @@ index 5271da3016d2dad9432fb3b7a4eb9ca5bdc244bb..927cf50e3e108a4fe09e3182e43ae5c4
 +                    tickingblockentity.tick();
 +                    // Paper start - execute chunk tasks during tick
 +                    if ((++tilesThisCycle & 7) == 0) {
-+                        net.minecraft.server.MinecraftServer.getServer().executeMidTickTasks(); // Paper - execute chunk tasks during tick
++                        ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel)(Level)(Object)this).moonrise$midTickTasks();
++                        //net.minecraft.server.MinecraftServer.getServer().executeMidTickTasks(); // Paper - execute chunk tasks during tick
 +                    }
 +                    // Paper end - execute chunk tasks during tick
                  }
