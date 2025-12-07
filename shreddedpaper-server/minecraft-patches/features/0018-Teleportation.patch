@@ -337,7 +337,7 @@ index d3843eca43982455f6c47b4e3ecd11e7c59cf38c..a65df37877bb3fc22153a9c226dde416
  
          if (vehicle != null) {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 0cad6bc5f95ae643c63afe73a2662c9ac844e6d6..37ed11d6e9822e82ba15e9378ed9f14f39e14d83 100644
+index 95de62bb6c0e9d944612fcd998efe40217a79737..37914e98904811ab62fcbd5c9acf9e1b3fb04634 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -2232,8 +2232,7 @@ public class ServerGamePacketListenerImpl
@@ -346,7 +346,7 @@ index 0cad6bc5f95ae643c63afe73a2662c9ac844e6d6..37ed11d6e9822e82ba15e9378ed9f14f
                  if (entity != null) {
 -                    this.player.teleportTo(serverLevel, entity.getX(), entity.getY(), entity.getZ(), Set.of(), entity.getYRot(), entity.getXRot(), true, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE); // CraftBukkit
 -                    return;
-+                    this.player.getBukkitEntity().teleportAsync(new Location(worldserver.getWorld(), entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot()), org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE); // CraftBukkit // ShreddedPaper - use teleportAsync                    return;
++                    this.player.getBukkitEntity().teleportAsync(new Location(serverLevel.getWorld(), entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot()), org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE); // CraftBukkit // ShreddedPaper - use teleportAsync                    return;
                  }
              }
          }
@@ -382,7 +382,7 @@ index 0cad6bc5f95ae643c63afe73a2662c9ac844e6d6..37ed11d6e9822e82ba15e9378ed9f14f
 +                        this.player = player;
 +                        if (this.server.isHardcore()) {
 +                            this.player.setGameMode(GameType.SPECTATOR, org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.HARDCORE_DEATH, null); // Paper - Expand PlayerGameModeChangeEvent
-+                            ((GameRules.BooleanValue) this.player.level().getGameRules().getRule(GameRules.RULE_SPECTATORSGENERATECHUNKS)).set(false, this.player.serverLevel()); // CraftBukkit - per-world
++                            ((GameRules.BooleanValue) this.player.level().getGameRules().getRule(GameRules.RULE_SPECTATORSGENERATECHUNKS)).set(false, this.player.level()); // CraftBukkit - per-world
 +                        }
 +                    });
 +                    // ShreddedPaper end - async respawn
@@ -633,7 +633,7 @@ index bae842012b02634e6f51f5df2b55c293e54f9e9f..cc7336f6af8b6fcc08e00d8a35534bbe
          if (!this.preserveMotion) {
              this.deltaMovement = Vec3.ZERO;
 diff --git a/net/minecraft/world/entity/projectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
-index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c29729239da64b8e 100644
+index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..55bcd96a2862644f1378c5ddef781e8f3c47fa28 100644
 --- a/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
 +++ b/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
 @@ -4,6 +4,10 @@ import java.util.UUID;
@@ -647,7 +647,15 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c2972923
  import net.minecraft.core.particles.ParticleTypes;
  import net.minecraft.server.level.ServerLevel;
  import net.minecraft.server.level.ServerPlayer;
-@@ -115,63 +119,72 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -27,6 +31,7 @@ import net.minecraft.world.level.portal.TeleportTransition;
+ import net.minecraft.world.phys.EntityHitResult;
+ import net.minecraft.world.phys.HitResult;
+ import net.minecraft.world.phys.Vec3;
++import org.bukkit.event.entity.EntityRemoveEvent;
+ 
+ public class ThrownEnderpearl extends ThrowableItemProjectile {
+     private long ticketTimer = 0L;
+@@ -115,63 +120,72 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
  
          if (this.level() instanceof ServerLevel serverLevel && !this.isRemoved()) {
              Entity owner = this.getOwner();
@@ -686,7 +694,7 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c2972923
 +                                return;
 +                            }
 +                            // CraftBukkit end
-+                            if (this.random.nextFloat() < worldserver.purpurConfig.enderPearlEndermiteChance && worldserver.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) { // Purpur // ShreddedPaper - this.level may be null
++                            if (this.random.nextFloat() < serverLevel.purpurConfig.enderPearlEndermiteChance && serverLevel.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) { // Purpur // ShreddedPaper - this.level may be null
 +                                Endermite endermite = EntityType.ENDERMITE.create(serverLevel, EntitySpawnReason.TRIGGERED);
 +                                if (endermite != null) {
 +                                    endermite.setPlayerSpawned(true); // Purpur - Add back player spawned endermite API
@@ -724,7 +732,7 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c2972923
 +                            if (serverPlayer1 != null) {
 +                                serverPlayer1.resetFallDistance();
 +                                serverPlayer1.resetCurrentImpulseContext();
-+                                serverPlayer1.hurt(this.damageSources().fall().customEventDamager(this), worldserver.purpurConfig.enderPearlDamage); // CraftBukkit // Paper - fix DamageSource API // Purpur // ShreddedPaper - this.level may be null
++                                serverPlayer1.hurt(this.damageSources().fall().eventEntityDamager(this), serverLevel.purpurConfig.enderPearlDamage); // CraftBukkit // Paper - fix DamageSource API // Purpur // ShreddedPaper - this.level may be null
 +                            }
 +
 +                            this.playSound(serverLevel, vec3);
@@ -754,11 +762,11 @@ index ebc7db0fc6e8fb8f4bd19945e61287b2ff61cdbc..d57f3547ff59b9bb3200e578c2972923
 -                this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.HIT); // CraftBukkit - add Bukkit remove cause
 +            }; // ShreddedPaper - run on thread
 +            // ShreddedPaper start - run on thread
-+            if (TickThread.isTickThreadFor(entity) && TickThread.isTickThreadFor(this)) {
++            if (TickThread.isTickThreadFor(owner) && TickThread.isTickThreadFor(this)) {
 +                runOnThread.run();
              } else {
 -                this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.HIT); // CraftBukkit - add Bukkit remove cause
-+                ShreddedPaperRegionScheduler.scheduleAcrossLevels(worldserver, RegionPos.forChunk(this.chunkPosition()), (ServerLevel) entity.level(), RegionPos.forChunk(entity.chunkPosition()), runOnThread);
++                ShreddedPaperRegionScheduler.scheduleAcrossLevels(serverLevel, RegionPos.forChunk(this.chunkPosition()), (ServerLevel) owner.level(), RegionPos.forChunk(owner.chunkPosition()), runOnThread);
              }
 +            // ShreddedPaper end - run on thread
 +            this.discard(EntityRemoveEvent.Cause.HIT); // CraftBukkit - add Bukkit remove cause

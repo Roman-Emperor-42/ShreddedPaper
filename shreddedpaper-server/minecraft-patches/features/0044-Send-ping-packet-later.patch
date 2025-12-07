@@ -16,21 +16,8 @@ index f07d59fa033c3ab19bffd9a260797d6364c02a21..a7b3ce551a9e7199b136103595840542
              serverPlayer.connection.resumeFlushing();
          }
  
-diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index a167771494f4115db017de4d7ea1a5af21a21f8c..feb6501be09f27e7d2d97f217bb01d741f977906 100644
---- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-+++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-@@ -286,7 +286,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
-         this.disconnect(DISCONNECT_UNEXPECTED_QUERY, io.papermc.paper.connection.DisconnectionReason.INVALID_COOKIE); // Paper - kick event cause
-     }
- 
--    protected void keepConnectionAlive() {
-+    public void keepConnectionAlive() {
-         Profiler.get().push("keepAlive");
-         long millis = Util.getMillis();
-         // Paper start - improve keepalives
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index d8d3a858f299828659ed4b4538e5127b790892ca..d968a253e70a6dfe176f1aec54ea243c1823795b 100644
+index ab1896fe5434cfa1e535d7c41363b2e6fca27967..289c9ed9ac090427dff753acc1aa84f0f8b6d9ce 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -403,7 +403,7 @@ public class ServerGamePacketListenerImpl

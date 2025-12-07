@@ -564,7 +564,7 @@ index 577bb59afb4e059523e68af6c3515d64f0b9e559..d3843eca43982455f6c47b4e3ecd11e7
      private boolean noCollisionNoLiquid(ServerLevel level, AABB collisionBox) {
          return level.noCollision(this, collisionBox, true);
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index 436f753d00f3854c481c95e4ddacfd9fac9932d4..45f7934850fb6855e064ef74d43ebdb9a236b9ef 100644
+index 436f753d00f3854c481c95e4ddacfd9fac9932d4..e1da3597e9d258e75aa4ce320607affb8b4b1f38 100644
 --- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 @@ -1,9 +1,13 @@
@@ -581,27 +581,124 @@ index 436f753d00f3854c481c95e4ddacfd9fac9932d4..45f7934850fb6855e064ef74d43ebdb9
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
  import net.minecraft.ReportedException;
-@@ -317,7 +321,9 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
-             io.papermc.paper.util.KeepAlive.PendingKeepAlive oldest = this.keepAlive.pendingKeepAlives.peek();
-             if (oldest != null && (currTime - oldest.txTimeNS()) > java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(KEEPALIVE_LIMIT)) {
-                 LOGGER.info("{} was kicked due to keepalive timeout!", this.playerProfile().getName());
--                this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
-+                ShreddedPaper.runSync(this.player, () -> { // ShreddedPaper - run on player's thread
-+                            this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
-+                });
-                 // Paper end - improve keepalives
+@@ -25,6 +29,7 @@ import net.minecraft.network.protocol.common.ServerboundResourcePackPacket;
+ import net.minecraft.network.protocol.cookie.ServerboundCookieResponsePacket;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ClientInformation;
++import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.util.VisibleForDebug;
+ import net.minecraft.util.profiling.Profiler;
+ import org.slf4j.Logger;
+@@ -120,18 +125,18 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
              }
+             return;
+         } else
+-        // Purpur end - Alternative Keepalive Handling
+-        if (pending != null && pending.challengeId() == packet.getId()) {
+-            this.keepAlive.pendingKeepAlives.remove(pending);
++            // Purpur end - Alternative Keepalive Handling
++            if (pending != null && pending.challengeId() == packet.getId()) {
++                this.keepAlive.pendingKeepAlives.remove(pending);
+ 
+-            io.papermc.paper.util.KeepAlive.KeepAliveResponse response = new io.papermc.paper.util.KeepAlive.KeepAliveResponse(pending.txTimeNS(), now);
++                io.papermc.paper.util.KeepAlive.KeepAliveResponse response = new io.papermc.paper.util.KeepAlive.KeepAliveResponse(pending.txTimeNS(), now);
+ 
+-            this.keepAlive.pingCalculator1m.update(response);
+-            this.keepAlive.pingCalculator5s.update(response);
++                this.keepAlive.pingCalculator1m.update(response);
++                this.keepAlive.pingCalculator5s.update(response);
+ 
+-            this.latency = this.keepAlive.pingCalculator5s.getAvgLatencyMS();
+-            return;
+-        }
++                this.latency = this.keepAlive.pingCalculator5s.getAvgLatencyMS();
++                return;
++            }
+ 
+         for (java.util.Iterator<io.papermc.paper.util.KeepAlive.PendingKeepAlive> itr = this.keepAlive.pendingKeepAlives.iterator(); itr.hasNext();) {
+             io.papermc.paper.util.KeepAlive.PendingKeepAlive ka = itr.next();
+@@ -234,7 +239,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         } else {
+             bridge.removeChannel(channel);
          }
-@@ -390,7 +396,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+-    // Paper end
++        // Paper end
+     }
+ 
+     @Override
+@@ -282,7 +287,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         this.disconnect(DISCONNECT_UNEXPECTED_QUERY, io.papermc.paper.connection.DisconnectionReason.INVALID_COOKIE); // Paper - kick event cause
+     }
+ 
+-    protected void keepConnectionAlive() {
++    public void keepConnectionAlive() {
+         Profiler.get().push("keepAlive");
+         long millis = Util.getMillis();
+         // Paper start - improve keepalives
+@@ -302,25 +307,31 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+                 }
+             }
+         } else
+-        // Purpur end - Alternative Keepalive Handling
+-        if (this.checkIfClosed(millis) && !this.processedDisconnect) {
+-            long currTime = System.nanoTime();
++            // Purpur end - Alternative Keepalive Handling
++            if (this.checkIfClosed(millis) && !this.processedDisconnect) {
++                long currTime = System.nanoTime();
+ 
+-            if ((currTime - this.keepAlive.lastKeepAliveTx) >= java.util.concurrent.TimeUnit.SECONDS.toNanos(1L)) {
+-                this.keepAlive.lastKeepAliveTx = currTime;
++                if ((currTime - this.keepAlive.lastKeepAliveTx) >= java.util.concurrent.TimeUnit.SECONDS.toNanos(1L)) {
++                    this.keepAlive.lastKeepAliveTx = currTime;
+ 
+-                io.papermc.paper.util.KeepAlive.PendingKeepAlive pka = new io.papermc.paper.util.KeepAlive.PendingKeepAlive(currTime, millis);
+-                this.keepAlive.pendingKeepAlives.add(pka);
+-                this.send(new ClientboundKeepAlivePacket(pka.challengeId()));
+-            }
++                    io.papermc.paper.util.KeepAlive.PendingKeepAlive pka = new io.papermc.paper.util.KeepAlive.PendingKeepAlive(currTime, millis);
++                    this.keepAlive.pendingKeepAlives.add(pka);
++                    this.send(new ClientboundKeepAlivePacket(pka.challengeId()));
++                }
+ 
+-            io.papermc.paper.util.KeepAlive.PendingKeepAlive oldest = this.keepAlive.pendingKeepAlives.peek();
+-            if (oldest != null && (currTime - oldest.txTimeNS()) > java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(KEEPALIVE_LIMIT)) {
+-                LOGGER.info("{} was kicked due to keepalive timeout!", this.playerProfile().getName());
+-                this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
+-                // Paper end - improve keepalives
++                io.papermc.paper.util.KeepAlive.PendingKeepAlive oldest = this.keepAlive.pendingKeepAlives.peek();
++                if (oldest != null && (currTime - oldest.txTimeNS()) > java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(KEEPALIVE_LIMIT)) {
++                    LOGGER.info("{} was kicked due to keepalive timeout!", this.playerProfile().getName());
++                    if (this instanceof ServerGamePacketListenerImpl gameListener) {
++                        ShreddedPaper.runSync(gameListener.player, () -> { // ShreddedPaper - run on player's thread
++                            this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT); // Paper - kick event cause
++                        });
++                    } else {
++                        this.disconnect(TIMEOUT_DISCONNECTION_MESSAGE, io.papermc.paper.connection.DisconnectionReason.TIMEOUT);
++                    }
++                    // Paper end - improve keepalives
++                }
+             }
+-        }
+ 
+         Profiler.get().pop();
+     }
+@@ -390,7 +401,14 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
          if (this.processedDisconnect) {
              return;
          }
 -        if (!this.cserver.isPrimaryThread()) {
-+        if (!TickThread.isTickThreadFor(this.player)) { // ShreddedPaper - run on player's thread
++
++        ServerPlayer player = null;
++        if (this instanceof ServerGamePacketListenerImpl gameListener) {
++            player = gameListener.player;
++        }
++
++
++        if (player != null && !TickThread.isTickThreadFor(player)) { // ShreddedPaper - run on player's thread
              org.bukkit.craftbukkit.util.Waitable waitable = new org.bukkit.craftbukkit.util.Waitable() {
                  @Override
                  protected Object evaluate() {
-@@ -399,9 +405,15 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+@@ -399,9 +417,15 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
                  }
              };
  
@@ -609,18 +706,27 @@ index 436f753d00f3854c481c95e4ddacfd9fac9932d4..45f7934850fb6855e064ef74d43ebdb9
 -
 +            // ShreddedPaper start - run on player's thread
 +            if (TickThread.isTickThread()) {
-+                this.player.serverLevel().chunkSource.tickingRegions.execute(RegionPos.forChunk(this.player.chunkPosition()), waitable);
++                player.level().chunkSource.tickingRegions.execute(RegionPos.forChunk(player.chunkPosition()), waitable);
 +            } else {
-+                ShreddedPaper.runSync(this.player, waitable); // this.server.processQueue.add(waitable);
++                ShreddedPaper.runSync(player, waitable); // this.server.processQueue.add(waitable);
 +            }
 +            // ShreddedPaper end - run on player's thread
              try {
-+                if (TickThread.isTickThread()) this.player.serverLevel().chunkSource.mainThreadProcessor.managedBlock(waitable::isDone); // ShreddedPaper - don't block when waiting
++                if (TickThread.isTickThread()) player.level().chunkSource.mainThreadProcessor.managedBlock(waitable::isDone); // ShreddedPaper - don't block when waiting
                  waitable.get();
              } catch (InterruptedException e) {
                  Thread.currentThread().interrupt();
+@@ -416,7 +440,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         if (this instanceof ServerGamePacketListenerImpl serverGamePacketListener) {
+             net.kyori.adventure.text.Component rawLeaveMessage = net.kyori.adventure.text.Component.translatable("multiplayer.player.left", net.kyori.adventure.text.format.NamedTextColor.YELLOW, io.papermc.paper.configuration.GlobalConfiguration.get().messages.useDisplayNameInQuitMessage ? serverGamePacketListener.player.getBukkitEntity().displayName() : net.kyori.adventure.text.Component.text(serverGamePacketListener.player.getScoreboardName())); // Paper - Adventure
+ 
+-            net.minecraft.server.level.ServerPlayer player = serverGamePacketListener.player;
++            player = serverGamePacketListener.player;
+             org.bukkit.event.player.PlayerKickEvent.Cause cause = disconnectionDetails.disconnectionReason().orElseThrow().game().orElse(org.bukkit.event.player.PlayerKickEvent.Cause.UNKNOWN);
+             org.bukkit.event.player.PlayerKickEvent event = new org.bukkit.event.player.PlayerKickEvent(
+                     player.getBukkitEntity(),
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index d6e96a191469c8b263031da18a2e519032dd79d7..0cad6bc5f95ae643c63afe73a2662c9ac844e6d6 100644
+index d6e96a191469c8b263031da18a2e519032dd79d7..95de62bb6c0e9d944612fcd998efe40217a79737 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -2256,10 +2256,11 @@ public class ServerGamePacketListenerImpl
@@ -632,7 +738,7 @@ index d6e96a191469c8b263031da18a2e519032dd79d7..0cad6bc5f95ae643c63afe73a2662c9a
 -        final net.kyori.adventure.text.Component quitMessage = details.quitMessage().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).orElse(null);
 -        this.removePlayerFromWorld(quitMessage);
 +        player.getBukkitEntity().taskScheduler.schedule(e -> { // ShreddedPaper - run on player's thread
-+            ServerGamePacketListenerImpl.LOGGER.info("{} lost connection: {}", this.player.getName().getString(), info.reason().getString());        // Paper start - Fix kick event leave message not being sent
++            ServerGamePacketListenerImpl.LOGGER.info("{} lost connection: {}", this.player.getName().getString(), details.reason().getString());        // Paper start - Fix kick event leave message not being sent
 +            final net.kyori.adventure.text.Component quitMessage = details.quitMessage().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).orElse(null);
 +            this.removePlayerFromWorld(quitMessage);
 +            }, e -> LOGGER.error("Failed to run disconnect task for player {}", player.getName().getString(), new Exception("Disconnect task retired")), 1); // ShreddedPaper - run on player's thread
@@ -643,7 +749,7 @@ index d6e96a191469c8b263031da18a2e519032dd79d7..0cad6bc5f95ae643c63afe73a2662c9a
  
      @Override
      public void handleChatCommand(ServerboundChatCommandPacket packet) {
-+        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel()); // ShreddedPaper - run commands in sync
++        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.level()); // ShreddedPaper - run commands in sync
          this.tryHandleChat(packet.command(), () -> {
              // CraftBukkit start - SPIGOT-7346: Prevent disconnected players from executing commands
              if (this.player.hasDisconnected()) {
