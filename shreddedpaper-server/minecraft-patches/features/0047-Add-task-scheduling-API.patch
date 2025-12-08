@@ -162,7 +162,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..2d2531c1f75cdc23d4df027a40312f00
              throw new IllegalStateException("Cannot update ticket level while unloading chunks or updating entity manager");
          }
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
-index 2336f2211b2bfb09d25b08eb3cdf498acff4d00a..9a9eb5456e2c68b873e56cbc6cd49232d8f80909 100644
+index 2336f2211b2bfb09d25b08eb3cdf498acff4d00a..8414a04bd15db7feaf8d9872a90e397194bb8e6c 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkTaskScheduler.java
 @@ -855,9 +855,17 @@ public final class ChunkTaskScheduler {
@@ -197,7 +197,7 @@ index 2336f2211b2bfb09d25b08eb3cdf498acff4d00a..9a9eb5456e2c68b873e56cbc6cd49232
 +            return existing.getInternalTaskQueue().queueRunnable(run, priority);
 +        }
 +        // Create the region, then enqueue onto the region queue
-+        return this.mainThreadExecutor.queueRunnable(() -> {
++        return this.mainThreadExecutor.createTask(() -> {
 +            final LevelChunkRegion created = world.chunkSource.tickingRegions.getOrCreate(regionPos);
 +            created.getInternalTaskQueue().queueRunnable(run, priority);
 +            }, priority);
@@ -302,7 +302,7 @@ index 72e0ca437f3ef8740332792d2838f8dfd8697df4..b1e43d47400a90699a3096bd8c822cf6
          int j = 1; // Inhabited time increment in ticks
          boolean flag = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !level.players().isEmpty(); // Should run mob spawning code
 diff --git a/net/minecraft/server/level/ChunkHolder.java b/net/minecraft/server/level/ChunkHolder.java
-index f39768869086a7ace940c4d064c3f95cefe51333..8b93dd5b5daf49c9df3c287b2e89ac3cca005fa2 100644
+index 55b1c7360ef25e3d9ae7d57796a13099a61d05f7..949dc868086de3ae3d67278ee36cb557d86018fc 100644
 --- a/net/minecraft/server/level/ChunkHolder.java
 +++ b/net/minecraft/server/level/ChunkHolder.java
 @@ -2,6 +2,7 @@ package net.minecraft.server.level;
@@ -372,7 +372,7 @@ index aa0160c06527cc81da679d98eb96e3079744f4d8..5db3a8a48d89c4a7f3931ff7082cc9cc
      // Paper end - chunk tick iteration optimisations
  
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 39765562872e712a86edc194fd286a18418f5930..b158f158a7e95648c034b4c85f70464c2bbee1ab 100644
+index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..67c0c59c3c834c5c37f407ac1822a09da166f70e 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -88,6 +88,13 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p

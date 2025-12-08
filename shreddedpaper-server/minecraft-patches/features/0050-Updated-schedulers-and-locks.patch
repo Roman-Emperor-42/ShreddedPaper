@@ -5,7 +5,7 @@ Subject: [PATCH] Updated-schedulers-and-locks
 
 
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
-index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a5520e0b51c 100644
+index 6081defe767762b19a5b7deda65effe162c9b9d7..4bceb339591907874c226a985a43902d99616055 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
 @@ -1,6 +1,7 @@
@@ -16,27 +16,37 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
  import ca.spottedleaf.concurrentutil.lock.ReentrantAreaLock;
  import ca.spottedleaf.concurrentutil.map.ConcurrentLong2ReferenceChainedHashTable;
  import ca.spottedleaf.concurrentutil.util.Priority;
-@@ -122,6 +123,13 @@ public final class ChunkHolderManager {
+@@ -65,6 +66,9 @@ import java.util.concurrent.locks.LockSupport;
+ import java.util.function.Predicate;
+ import java.util.function.Supplier;
+ 
++import static ca.spottedleaf.concurrentutil.util.Priority.HIGHEST;
++import static ca.spottedleaf.concurrentutil.util.Priority.NORMAL;
++
+ public final class ChunkHolderManager {
+ 
+     private static final Logger LOGGER = LogUtils.getClassLogger();
+@@ -122,6 +126,13 @@ public final class ChunkHolderManager {
      }
  
      public boolean processTicketUpdates(final int chunkX, final int chunkZ) {
 +        if (!TickThread.isTickThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.processTicketUpdates(chunkX, chunkZ),
-+                    PrioritisedExecutor.Priority.HIGHEST
++                    HIGHEST
 +            );
 +            return false;
 +        }
          final int ticketShift = ThreadedTicketLevelPropagator.SECTION_SHIFT;
          final int ticketMask = (1 << ticketShift) - 1;
          final List<ChunkProgressionTask> scheduledTasks = new ArrayList<>();
-@@ -574,12 +582,35 @@ public final class ChunkHolderManager {
+@@ -574,12 +585,35 @@ public final class ChunkHolderManager {
  
      public <T> boolean addTicketAtLevel(final TicketType type, final ChunkPos chunkPos, final int level,
                                          final T identifier) {
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
-+                    () -> this.addTicketAtLevel(type, chunkPos, level, identifier), PrioritisedExecutor.Priority.NORMAL);
++                    () -> this.addTicketAtLevel(type, chunkPos, level, identifier), NORMAL);
 +            return false;
 +        }
          return this.addTicketAtLevel(type, CoordinateUtils.getChunkKey(chunkPos), level, identifier);
@@ -52,7 +62,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.addTicketAtLevel(type, chunkX, chunkZ, level, identifier),
-+                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.NORMAL
++                    NORMAL
 +            );
 +            return;
 +        }
@@ -62,35 +72,35 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
 +
 +    private boolean ensureMainThreadOrEnqueue(final Runnable r) {
 +        if (!this.world.getServer().isSameThread()) {
-+            this.taskScheduler.scheduleChunkTask(r, PrioritisedExecutor.Priority.NORMAL);
++            this.taskScheduler.scheduleChunkTask(r, NORMAL);
 +            return false;
 +        }
 +        return true;
      }
  
      private void addExpireCount(final int chunkX, final int chunkZ) {
-@@ -619,6 +650,13 @@ public final class ChunkHolderManager {
+@@ -619,6 +653,13 @@ public final class ChunkHolderManager {
      // supposed to return true if the ticket was added and did not replace another
      // but, we always return false if the ticket cannot be added
      public <T> boolean addTicketAtLevel(final TicketType type, final long chunk, final int level, final T identifier) {
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.addTicketAtLevel(type, chunk, level, identifier),
-+                    PrioritisedExecutor.Priority.NORMAL
++                    NORMAL
 +            );
 +            return false;
 +        }
          return this.addTicketAtLevel(type, chunk, level, identifier, true);
      }
  
-@@ -721,17 +759,41 @@ public final class ChunkHolderManager {
+@@ -721,17 +762,41 @@ public final class ChunkHolderManager {
      }
  
      public <T> boolean removeTicketAtLevel(final TicketType type, final ChunkPos chunkPos, final int level, final T identifier) {
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.removeTicketAtLevel(type, chunkPos, level, identifier),
-+                    PrioritisedExecutor.Priority.NORMAL
++                    NORMAL
 +            );
 +            return false;
 +        }
@@ -105,7 +115,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.removeTicketAtLevel(type, chunk, level, identifier),
-+                    PrioritisedExecutor.Priority.NORMAL
++                    NORMAL
 +            );
 +            return false;
 +        }
@@ -118,7 +128,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
 +        if (!this.world.getServer().isSameThread()) {
 +            this.taskScheduler.scheduleChunkTask(
 +                    () -> this.removeTicketAtLevel(type, chunkX, chunkZ, level, identifier),
-+                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.NORMAL
++                    NORMAL
 +            );
 +            return;
 +        }
@@ -129,7 +139,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
      <T> boolean removeTicketAtLevel(final TicketType type, final long chunk, final int level, final T identifier, final boolean lock) {
          if (level > MAX_TICKET_LEVEL) {
              return false;
-@@ -797,7 +859,9 @@ public final class ChunkHolderManager {
+@@ -797,7 +862,9 @@ public final class ChunkHolderManager {
      // atomic with respect to all add/remove/addandremove ticket calls for the given chunk
      public <T, V> boolean addIfRemovedTicket(final long chunk, final TicketType addType, final int addLevel, final T addIdentifier,
                                               final TicketType removeType, final int removeLevel, final V removeIdentifier) {
@@ -140,7 +150,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
          try {
              if (this.removeTicketAtLevel(removeType, chunk, removeLevel, removeIdentifier, false)) {
                  this.addTicketAtLevel(addType, chunk, addLevel, addIdentifier, false);
-@@ -810,7 +874,8 @@ public final class ChunkHolderManager {
+@@ -810,7 +877,8 @@ public final class ChunkHolderManager {
      }
  
      public <T> void removeAllTicketsFor(final TicketType ticketType, final int ticketLevel, final T ticketIdentifier) {
@@ -150,7 +160,16 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
              return;
          }
  
-@@ -1459,9 +1524,10 @@ public final class ChunkHolderManager {
+@@ -1317,7 +1385,7 @@ public final class ChunkHolderManager {
+                         stage2.add(state);
+                     }
+                 } finally {
+-                    this.taskScheduler.schedulingLockArea.unlock(scheduleLock);
++                    this.taskScheduler.schedulingLockArea.unlock(ticketLock);
+                 }
+ 
+ 
+@@ -1459,9 +1527,10 @@ public final class ChunkHolderManager {
      }
  
      public void performTicketUpdates(final Collection<TicketOperation<?, ?>> operations) {
@@ -163,7 +182,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..364b287bbe8d0c16d0cc9bafe69c7a55
      }
  
      private final ThreadLocal<Boolean> BLOCK_TICKET_UPDATES = ThreadLocal.withInitial(() -> {
-@@ -1479,6 +1545,11 @@ public final class ChunkHolderManager {
+@@ -1479,6 +1548,11 @@ public final class ChunkHolderManager {
      }
  
      public boolean processTicketUpdates() {
