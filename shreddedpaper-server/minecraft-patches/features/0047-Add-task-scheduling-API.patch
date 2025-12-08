@@ -322,7 +322,7 @@ index 55b1c7360ef25e3d9ae7d57796a13099a61d05f7..949dc868086de3ae3d67278ee36cb557
                  this.changedBlocksPerSection[sectionIndex] = new ShortOpenHashSet();
              }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index aa0160c06527cc81da679d98eb96e3079744f4d8..5db3a8a48d89c4a7f3931ff7082cc9ccbeabc84f 100644
+index be3b4da90ef3817008e71fdaf51fadc685400b65..5eab2ea0f0ea31fce56f787cb684a1bba046a344 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -22,6 +22,7 @@ import javax.annotation.Nullable;
@@ -371,8 +371,17 @@ index aa0160c06527cc81da679d98eb96e3079744f4d8..5db3a8a48d89c4a7f3931ff7082cc9cc
      }
      // Paper end - chunk tick iteration optimisations
  
+@@ -873,4 +876,8 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+             // Paper end - rewrite chunk system
+         }
+     }
++
++    public static record ChunkAndHolder(LevelChunk chunk, ChunkHolder holder) { // Paper - rewrite chunk system - public
++
++    }
+ }
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..67c0c59c3c834c5c37f407ac1822a09da166f70e 100644
+index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..a695ba2d85cdcdb2981ce7dfa549a474d9b4ff6f 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -88,6 +88,13 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
@@ -389,3 +398,34 @@ index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..67c0c59c3c834c5c37f407ac1822a09d
      // CraftBukkit start
      public boolean mustNotSave;
      public boolean needsDecoration;
+@@ -98,21 +105,27 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+     // Paper end
+     // Paper start - rewrite chunk system
+     private boolean postProcessingDone;
+-    private ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder chunkAndHolder;
++    private ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder getChunkHolder;
++    private net.minecraft.server.level.ServerChunkCache.ChunkAndHolder chunkAndHolder;
++
+ 
+     @Override
+     public final boolean moonrise$isPostProcessingDone() {
+         return this.postProcessingDone;
+     }
+ 
++    public final net.minecraft.server.level.ServerChunkCache.ChunkAndHolder moonrise$getChunkAndHolder() {
++        return this.chunkAndHolder;
++    }
++
+     @Override
+     public final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder moonrise$getChunkHolder() {
+-        return this.chunkAndHolder;
++        return this.getChunkHolder;
+     }
+ 
+     @Override
+     public final void moonrise$setChunkHolder(final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder holder) {
+-        this.chunkAndHolder = holder;
++        this.getChunkHolder = holder;
+     }
+     // Paper end - rewrite chunk system
+     // Paper start - get block chunk optimisation

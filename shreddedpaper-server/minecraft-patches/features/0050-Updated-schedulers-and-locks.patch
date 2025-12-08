@@ -308,6 +308,55 @@ index 3341cecffda83fce4aae7cf93aed570c4cdae7f7..f55d957ae23b1dc844fb05d649b7d35d
      }
  
      public void addTickingEntity(Entity entity) {
+diff --git a/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java b/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java
+index 410801379638a353e421fdc3cb282e7141414d37..c27eebcef0bf8bd06432df8dee53e965bf17285e 100644
+--- a/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java
++++ b/io/multipaper/shreddedpaper/threading/PerThreadNeighborUpdater.java
+@@ -5,9 +5,9 @@ import net.minecraft.core.Direction;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.redstone.NeighborUpdater;
+-import org.jetbrains.annotations.NotNull;
+-import org.jetbrains.annotations.Nullable;
++import net.minecraft.world.level.redstone.Orientation;
+ 
++import javax.annotation.Nullable;
+ import java.util.function.Supplier;
+ 
+ public class PerThreadNeighborUpdater implements NeighborUpdater {
+@@ -23,22 +23,22 @@ public class PerThreadNeighborUpdater implements NeighborUpdater {
+     }
+ 
+     @Override
+-    public void shapeUpdate(@NotNull Direction direction, @NotNull BlockState neighborState, @NotNull BlockPos pos, @NotNull BlockPos neighborPos, int flags, int maxUpdateDepth) {
+-        getOrCreate().shapeUpdate(direction, neighborState, pos, neighborPos, flags, maxUpdateDepth);
++    public void shapeUpdate(Direction direction, BlockState state, BlockPos pos, BlockPos neighborPos, int flags, int recursionLevel) {
++        getOrCreate().shapeUpdate(direction, state, pos, neighborPos, flags, recursionLevel);
+     }
+ 
+     @Override
+-    public void neighborChanged(@NotNull BlockPos pos, @NotNull Block sourceBlock, @NotNull BlockPos sourcePos) {
+-        getOrCreate().neighborChanged(pos, sourceBlock, sourcePos);
++    public void neighborChanged(BlockPos pos, Block neighborBlock, @Nullable Orientation orientation) {
++        getOrCreate().neighborChanged(pos, neighborBlock, orientation);
+     }
+ 
+     @Override
+-    public void neighborChanged(@NotNull BlockState state, @NotNull BlockPos pos, @NotNull Block sourceBlock, @NotNull BlockPos sourcePos, boolean notify) {
+-        getOrCreate().neighborChanged(state, pos, sourceBlock, sourcePos, notify);
++    public void neighborChanged(BlockState state, BlockPos pos, Block neighborBlock, @Nullable Orientation orientation, boolean movedByPiston) {
++        getOrCreate().neighborChanged(state, pos, neighborBlock, orientation, movedByPiston);
+     }
+ 
+     @Override
+-    public void updateNeighborsAtExceptFromFacing(@NotNull BlockPos pos, @NotNull Block sourceBlock, @Nullable Direction except) {
+-        getOrCreate().updateNeighborsAtExceptFromFacing(pos, sourceBlock, except);
++    public void updateNeighborsAtExceptFromFacing(BlockPos pos, Block block, @Nullable Direction facing, @Nullable Orientation orientation) {
++        getOrCreate().updateNeighborsAtExceptFromFacing(pos, block, facing, orientation);
+     }
+-}
+\ No newline at end of file
++}
 diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
 index dddfcc9ee2f92e994d231086ea449b096293544a..8584bfb330d2730d73a022a6d03f4904993bdae7 100644
 --- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
