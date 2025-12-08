@@ -5,7 +5,7 @@ Subject: [PATCH] Thread-safe-random
 
 
 diff --git a/net/minecraft/world/level/levelgen/LegacyRandomSource.java b/net/minecraft/world/level/levelgen/LegacyRandomSource.java
-index c67168517774a0ad9ca43422a79ef14a8ea0c2e8..53ad9071cd456251cf473de962571b0eed8e1f7a 100644
+index c67168517774a0ad9ca43422a79ef14a8ea0c2e8..1513b6a5bce6926a102877ef0e0c6baba8d823c4 100644
 --- a/net/minecraft/world/level/levelgen/LegacyRandomSource.java
 +++ b/net/minecraft/world/level/levelgen/LegacyRandomSource.java
 @@ -30,6 +30,10 @@ public class LegacyRandomSource implements BitRandomSource {
@@ -29,7 +29,7 @@ index c67168517774a0ad9ca43422a79ef14a8ea0c2e8..53ad9071cd456251cf473de962571b0e
 +            oldseed = this.seed.get();
 +            nextseed = oldseed * 25214903917L + 11L & 281474976710655L;
 +        } while (!this.seed.compareAndSet(oldseed, nextseed));
-+        if (true) return (int)(nextseed >> 48 - bits);
++        if (true) return (int)(nextseed >> 48 - size);
 +        // ShreddedPaper end
          long l = this.seed.get();
          long l1 = l * 25214903917L + 11L & 281474976710655L;

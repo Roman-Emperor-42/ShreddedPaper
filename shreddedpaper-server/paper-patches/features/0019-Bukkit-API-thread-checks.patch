@@ -20,23 +20,17 @@ index 15a3c2436b04f0e1b2a538682183ff3ce9c0573e..2483ff8dbc207d11ffe28eea106bd348
      public void scheduleChunkLoad(final ServerLevel level, final int chunkX, final int chunkZ, final ChunkStatus toStatus,
                                    final boolean addTicket, final Priority priority, final Consumer<ChunkAccess> onComplete);
 diff --git a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java b/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
-index a127e982e6ee1bf035ce343a6751c8894d4d93c9..5cea6007ce2e0957be60723eb83140432da23f9c 100644
+index a127e982e6ee1bf035ce343a6751c8894d4d93c9..427698ee890c09fbf70bd8ed4700870759e560ad 100644
 --- a/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
 +++ b/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java
-@@ -138,10 +138,11 @@ public class BukkitCommandNode extends LiteralCommandNode<CommandSourceStack> {
+@@ -137,6 +137,7 @@ public class BukkitCommandNode extends LiteralCommandNode<CommandSourceStack> {
+ 
              if (sender instanceof final Player player) {
                  TabCompleteEvent tabEvent = new org.bukkit.event.server.TabCompleteEvent(player, builder.getInput(), results.value() != null ? results.value() : new ArrayList<>(), true, pos); // Paper - AsyncTabCompleteEvent // ShreddedPaper
++                if (!tabEvent.callEvent()) {
                      results.value(null); // ShreddedPaper
--                } else {
--                    results.value(tabEvent.getCompletions()); // ShreddedPaper
-                 }
-+            else {
-+                    results.value(tabEvent.getCompletions()); // ShreddedPaper
-             }
-+
-             // Paper end
-             if (results.value() == null) { // ShreddedPaper
-                 return builder.buildFuture();
+                 } else {
+                     results.value(tabEvent.getCompletions()); // ShreddedPaper
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d12172855611 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
@@ -144,7 +138,7 @@ index 8fd6c341671eef2edfa95824f9d91aa7d235c016..034da58f5b85b07ff70de16892ee5154
  
      @Override
 diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
-index 52d0a20e5a591d9aa6d86af41cf40143f695d9da..a7ea588053747c13e6fbd36cde05032ebbb13a18 100644
+index 054217727626193a8f402762fb5d7d8cf417b717..5489f90184d3ea844f687afd5c7bdc7e45cbc8dc 100644
 --- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
 +++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
 @@ -1,5 +1,6 @@

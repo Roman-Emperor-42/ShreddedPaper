@@ -6,7 +6,7 @@ Subject: [PATCH] Level-ticks
 
 diff --git a/io/multipaper/shreddedpaper/region/LevelTicksRegionProxy.java b/io/multipaper/shreddedpaper/region/LevelTicksRegionProxy.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..480e9ff2406ccf8769f9819ffa6b94a0dd942489
+index 0000000000000000000000000000000000000000..26201dd18d6cb2b79fc722c370b45d2cc3e62088
 --- /dev/null
 +++ b/io/multipaper/shreddedpaper/region/LevelTicksRegionProxy.java
 @@ -0,0 +1,111 @@
@@ -39,13 +39,13 @@ index 0000000000000000000000000000000000000000..480e9ff2406ccf8769f9819ffa6b94a0
 +    private final SimpleStampedLock regionsLock = new SimpleStampedLock();
 +
 +    public LevelTicksRegionProxy(LongPredicate tickingFutureReadyPredicate, Supplier<ProfilerFiller> profilerGetter) {
-+        super(tickingFutureReadyPredicate, profilerGetter);
++        super(tickingFutureReadyPredicate);
 +        this.tickingFutureReadyPredicate = tickingFutureReadyPredicate;
 +        this.profilerGetter = profilerGetter;
 +    }
 +
 +    private LevelTicks<T> createRegionLevelTicks() {
-+        return new LevelTicks<>(tickingFutureReadyPredicate, profilerGetter);
++        return new LevelTicks<>(tickingFutureReadyPredicate);
 +    }
 +
 +    public Optional<LevelTicks<T>> get(BlockPos pos) {
@@ -138,7 +138,7 @@ index 2a1eb3d01ef53c552b748e6d2b9b1b1d407c1b7c..beb4c7d37fee33b2670efb6715aae5b6
  
              region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d25b53e4d24f711a7541fdf7858793b2d86fc1f8..e3adc0b6a91ec759486a5a76de6e4c827c7ca0fe 100644
+index 78d9d5dd6c0806ddb26ea2f9b9cdfa3fe056d5cd..8d695e8bcc687c692932a9e40d57641d750a49f0 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1,5 +1,6 @@

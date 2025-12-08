@@ -86,7 +86,7 @@ index 60763a668d5be382d39b71807803b767a0e284ca..70b2b0cfafdab322244b16f4c3f25789
      }
      // Paper end
 diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
-index b4ee0f809c1524c74eca74ee6bc471a3051d92a6..f0b5ca380e3a17908a6d0518cec7e2252ad6750d 100644
+index b4ee0f809c1524c74eca74ee6bc471a3051d92a6..366bc7ccfd89ad532e906a5b487b8f2872ee9a17 100644
 --- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
 +++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
 @@ -828,8 +828,7 @@ public class CraftEventFactory {
@@ -104,7 +104,7 @@ index b4ee0f809c1524c74eca74ee6bc471a3051d92a6..f0b5ca380e3a17908a6d0518cec7e225
          snapshot.setData(state);
  
 -        BlockSpreadEvent event = new BlockSpreadEvent(snapshot.getBlock(), CraftBlock.at(world, CraftEventFactory.sourceBlockOverride != null ? CraftEventFactory.sourceBlockOverride : source), snapshot);
-+        BlockSpreadEvent event = new BlockSpreadEvent(state.getBlock(), CraftBlock.at(world, CraftEventFactory.sourceBlockOverrideThreadLocal.get() != null ? CraftEventFactory.sourceBlockOverrideThreadLocal.get() : source), state); // ShreddedPaper - use thread local
++        BlockSpreadEvent event = new BlockSpreadEvent(snapshot.getBlock(), CraftBlock.at(world, CraftEventFactory.sourceBlockOverrideThreadLocal.get() != null ? CraftEventFactory.sourceBlockOverrideThreadLocal.get() : source), snapshot); // ShreddedPaper - use thread local
          if (event.callEvent()) {
              boolean result = snapshot.place(flags);
              return !checkSetResult || result;

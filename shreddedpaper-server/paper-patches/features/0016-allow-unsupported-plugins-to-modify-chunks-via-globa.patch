@@ -5,7 +5,7 @@ Subject: [PATCH] allow-unsupported-plugins-to-modify-chunks-via-globa
 
 
 diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
-index ebccb79ad627f55ba81ed323d3dc91927725661f..0f1739515f4697762cb3d7a469fb8739025a5b1f 100644
+index c9424c7b28430cc5460997603e2dc4a47b35d988..b574d5c66323e1ac1302d825436474d51a479767 100644
 --- a/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
 +++ b/src/main/java/ca/spottedleaf/moonrise/common/util/TickThread.java
 @@ -1,5 +1,8 @@
@@ -17,7 +17,7 @@ index ebccb79ad627f55ba81ed323d3dc91927725661f..0f1739515f4697762cb3d7a469fb8739
  import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
  import net.minecraft.core.BlockPos;
  import net.minecraft.server.MinecraftServer;
-@@ -55,6 +58,16 @@ public class TickThread extends Thread {
+@@ -56,6 +59,16 @@ public class TickThread extends Thread {
      }
      // ShreddedPaper end
  

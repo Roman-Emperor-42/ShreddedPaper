@@ -57,10 +57,10 @@ index 40b3ba048cdf1dc08d2c7d2fc0b229438a0ff0c7..85a3fea714fa20832bf51ba9cb98dfd3
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 642119ed3c15072b663e6de001236f0db9e9d33f..9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3 100644
+index 493eb3f800e0c65c81835d628802df6b1513be6f..63268becc3b468809a2068911511907666e9b8bf 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-@@ -88,6 +88,43 @@ public class LevelChunkRegionMap {
+@@ -90,6 +90,43 @@ public class LevelChunkRegionMap {
              getOrCreate(toRegion).addTickingEntity(entity);
          }
      }

@@ -5,7 +5,7 @@ Subject: [PATCH] Run-unsupported-plugins-in-sync
 
 
 diff --git a/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java b/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
-index 4a693643a3c51670c3425b8e9c2ab1f0a8e77e48..edca507ec1ced053e12029d19952bd08d8df4836 100644
+index 4a693643a3c51670c3425b8e9c2ab1f0a8e77e48..50c6c25e0affda64e0ffa601001550c89ea2fde1 100644
 --- a/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
 +++ b/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
 @@ -6,6 +6,7 @@ import com.mojang.brigadier.context.CommandContext;
@@ -16,7 +16,7 @@ index 4a693643a3c51670c3425b8e9c2ab1f0a8e77e48..edca507ec1ced053e12029d19952bd08
  import io.papermc.paper.command.brigadier.CommandSourceStack;
  import io.papermc.paper.command.brigadier.Commands;
  import io.papermc.paper.plugin.configuration.PluginMeta;
-@@ -57,8 +58,18 @@ public class PaperPluginsCommand {
+@@ -57,12 +58,22 @@ public class PaperPluginsCommand {
                                        performance issues.
                                        """));
  
@@ -35,6 +35,11 @@ index 4a693643a3c51670c3425b8e9c2ab1f0a8e77e48..edca507ec1ced053e12029d19952bd08
 +    private static final Component NON_FOLIA_PLUGIN_STAR = Component.text('⁺', TextColor.color(255, 212, 42)).hoverEvent(NON_FOLIA_PLUGIN_INFO); // ShreddedPaper
      private static final Component PLUGIN_TICK = Component.text("- ", NamedTextColor.DARK_GRAY);
      private static final Component PLUGIN_TICK_EMPTY = Component.text(" ");
+ 
+-    private static final Component INFO_ICON_SERVER_PLUGIN = INFO_ICON_START.hoverEvent(SERVER_PLUGIN_INFO).clickEvent(ClickEvent.openUrl("https://docs.papermc.io/paper/adding-plugins"));
++    private static final Component INFO_ICON_SERVER_PLUGIN = NON_FOLIA_PLUGIN_STAR.hoverEvent(SERVER_PLUGIN_INFO).clickEvent(ClickEvent.openUrl("https://docs.papermc.io/paper/adding-plugins"));
+ 
+     private static final Type JAVA_PLUGIN_PROVIDER_TYPE = new TypeToken<PluginProvider<JavaPlugin>>() {}.getType();
  
 @@ -110,6 +121,12 @@ public class PaperPluginsCommand {
              builder.append(LEGACY_PLUGIN_STAR);

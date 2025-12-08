@@ -5,7 +5,7 @@ Subject: [PATCH] Raids
 
 
 diff --git a/net/minecraft/world/entity/raid/Raid.java b/net/minecraft/world/entity/raid/Raid.java
-index b3a29ce523fb5de71589c7c17598bba17622f988..00fd65a68a866dae07edf00a735809f19b7b05fb 100644
+index b3a29ce523fb5de71589c7c17598bba17622f988..3b9c61affaaef76ea61fa1194c3a18ccb9ba8878 100644
 --- a/net/minecraft/world/entity/raid/Raid.java
 +++ b/net/minecraft/world/entity/raid/Raid.java
 @@ -24,6 +24,7 @@ import net.minecraft.core.UUIDUtil;
@@ -29,16 +29,19 @@ index b3a29ce523fb5de71589c7c17598bba17622f988..00fd65a68a866dae07edf00a735809f1
 +                                    // winners.add(entityplayer.getBukkitEntity()); // CraftBukkit // ShreddedPaper - don't run on right thread
                                  }
 +                                }); // ShreddedPaper - run on right thread
-+                                if (entityliving instanceof ServerPlayer entityplayer) winners.add(entityplayer.getBukkitEntity()); // ShreddedPaper - this doesn't need to be run on right thread
++                                if (livingEntity instanceof ServerPlayer entityplayer) winners.add(entityplayer.getBukkitEntity()); // ShreddedPaper - this doesn't need to be run on right thread
                              }
                          }
                          org.bukkit.craftbukkit.event.CraftEventFactory.callRaidFinishEvent(level, this, winners); // CraftBukkit
 diff --git a/net/minecraft/world/entity/raid/Raids.java b/net/minecraft/world/entity/raid/Raids.java
-index fc5c1acec3cc2afed40589be6f8e159c3426c08e..af86631ed722610112ee18cf9fae16be556033cb 100644
+index fc5c1acec3cc2afed40589be6f8e159c3426c08e..46ca0d4a16746b461f2c0b87716187e80a795694 100644
 --- a/net/minecraft/world/entity/raid/Raids.java
 +++ b/net/minecraft/world/entity/raid/Raids.java
-@@ -9,6 +9,8 @@ import java.util.Iterator;
+@@ -7,8 +7,11 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
+ import java.util.Iterator;
  import java.util.List;
++import java.util.Map;
  import java.util.OptionalInt;
  import javax.annotation.Nullable;
 +
@@ -46,7 +49,7 @@ index fc5c1acec3cc2afed40589be6f8e159c3426c08e..af86631ed722610112ee18cf9fae16be
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Holder;
  import net.minecraft.nbt.CompoundTag;
-@@ -29,7 +31,7 @@ import net.minecraft.world.phys.Vec3;
+@@ -29,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  
  public class Raids extends SavedData {
      private static final String RAID_FILE_ID = "raids";
@@ -55,13 +58,21 @@ index fc5c1acec3cc2afed40589be6f8e159c3426c08e..af86631ed722610112ee18cf9fae16be
      public static final Codec<Raids> CODEC = RecordCodecBuilder.create(
          instance -> instance.group(
                  Raids.RaidWithId.CODEC
-@@ -97,16 +99,19 @@ public class Raids extends SavedData {
+@@ -93,20 +96,26 @@ public class Raids extends SavedData {
+             });
+         }
+         // Purpur end - Raid cooldown setting
+-        Iterator<Raid> iterator = this.raidMap.values().iterator();
++        Iterator<Map.Entry<Integer, Raid>> iterator = this.raidMap.entrySet().iterator();
  
          while (iterator.hasNext()) {
-             Raid raid = iterator.next();
+-            Raid raid = iterator.next();
 -            if (level.getGameRules().getBoolean(GameRules.RULE_DISABLE_RAIDS)) {
 -                raid.stop();
 -            }
++            Map.Entry<Integer, Raid> entry = iterator.next();
++            Integer raidId = entry.getKey();
++            Raid raid = entry.getValue();
  
 -            if (raid.isStopped()) {
 -                iterator.remove();
@@ -69,13 +80,14 @@ index fc5c1acec3cc2afed40589be6f8e159c3426c08e..af86631ed722610112ee18cf9fae16be
 -            } else {
 -                raid.tick(level);
 -            }
-+            ShreddedPaper.runSync((ServerLevel) raid.getLevel(), raid.getCenter(), () -> { // ShreddedPaper - run on right thread
++
++            ShreddedPaper.runSync(level, raid.getCenter(), () -> { // ShreddedPaper - run on right thread
 +                if (level.getGameRules().getBoolean(GameRules.RULE_DISABLE_RAIDS)) {
 +                    raid.stop();
 +                }
 +
 +                if (raid.isStopped()) {
-+                    this.raidMap.remove(raid.getId(), raid); // iterator.remove(); // ShreddedPaper - run on right thread
++                    this.raidMap.remove(raidId, raid); // iterator.remove(); // ShreddedPaper - run on right thread
 +                    this.setDirty();
 +                } else {
 +                    raid.tick(level);

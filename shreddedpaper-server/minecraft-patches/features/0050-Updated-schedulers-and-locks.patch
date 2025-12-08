@@ -219,7 +219,7 @@ index 96ccb8f657d755b2e58a8dd0cda00ca0df4886b2..8f61a5cb8f28ffbf49ddaba52afe6c64
  
          // See Vanilla ChunkPyramid#LOADING_PYRAMID.FULL for what this function should be doing
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 46016eff3481f60f06ed99033472994160edddff..7b808ec7251a495bf85daece2fd6f63eb0c65cd9 100644
+index 3341cecffda83fce4aae7cf93aed570c4cdae7f7..f55d957ae23b1dc844fb05d649b7d35da2f3aa6e 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 @@ -12,9 +12,11 @@ import net.minecraft.world.level.chunk.LevelChunk;
@@ -234,7 +234,7 @@ index 46016eff3481f60f06ed99033472994160edddff..7b808ec7251a495bf85daece2fd6f63e
  import java.util.concurrent.Executor;
  import java.util.function.Consumer;
  
-@@ -28,11 +30,32 @@ public class LevelChunkRegionMap {
+@@ -30,11 +32,32 @@ public class LevelChunkRegionMap {
      }
  
      public LevelChunkRegion getOrCreate(RegionPos regionPos) {
@@ -271,7 +271,7 @@ index 46016eff3481f60f06ed99033472994160edddff..7b808ec7251a495bf85daece2fd6f63e
      }
  
      public LevelChunkRegion get(RegionPos regionPos) {
-@@ -58,9 +81,24 @@ public class LevelChunkRegionMap {
+@@ -60,9 +83,24 @@ public class LevelChunkRegionMap {
      }
  
      public void forEach(Consumer<LevelChunkRegion> consumer) {

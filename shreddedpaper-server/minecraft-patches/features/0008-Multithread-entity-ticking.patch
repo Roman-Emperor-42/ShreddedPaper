@@ -183,24 +183,8 @@ index 0000000000000000000000000000000000000000..fe63d7a2b3a6cf02d565fea701f5ca42
 +    }
 +}
 \ No newline at end of file
-diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index b098feae6fa0dec1840d88b6bbf0a9945df468b3..e58f3716210ef463b307c9884ded6884b06f7463 100644
---- a/net/minecraft/server/level/ServerChunkCache.java
-+++ b/net/minecraft/server/level/ServerChunkCache.java
-@@ -562,9 +562,9 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
-                 }
-                 // Paper end - per player mob spawning backoff
-             }
--            spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, this.level.getAllEntities(), this::getFullChunk, null, true);
-+            spawnState = NaturalSpawner.createState(mapped, this.level.getAllEntities(), this::getFullChunk, null, true);
-         } else {
--            spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, this.level.getAllEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
-+            spawnState = NaturalSpawner.createState(mapped, this.level.getAllEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
-         }
-         // Paper end - Optional per player mob spawns
-         this.lastSpawnState = spawnState;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index b76250adaa58e18e20b42812af5fde8556d078c1..5035ba31c54c58440a2604d323aae7fb8dbc8898 100644
+index 3231cdd81dc40b7f3a8bca941ef1e0bbaa938b82..0c29eeb9e6fb739aa0571bd0db83da26648c2601 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -180,7 +180,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe

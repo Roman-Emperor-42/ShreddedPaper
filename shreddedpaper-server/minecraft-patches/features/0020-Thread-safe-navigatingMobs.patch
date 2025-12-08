@@ -53,7 +53,7 @@ index 85a3fea714fa20832bf51ba9cb98dfd32d81d394..daef360dcd0c133e9941ffdf0884ffff
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a24fa0c776 100644
+index 63268becc3b468809a2068911511907666e9b8bf..24a451a107d4146274cdb70b74739b45be65d21d 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 @@ -1,11 +1,14 @@
@@ -71,7 +71,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
  import io.multipaper.shreddedpaper.util.SimpleStampedLock;
  
  import java.util.ArrayList;
-@@ -94,6 +97,10 @@ public class LevelChunkRegionMap {
+@@ -96,6 +99,10 @@ public class LevelChunkRegionMap {
              throw new IllegalStateException("Entity is already tracked " + entity);
          }
  
@@ -82,7 +82,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
          entity.previousTrackedChunkPosRegion = entity.chunkPosition();
          getOrCreate(RegionPos.forChunk(entity.chunkPosition())).addTrackedEntity(entity);
      }
-@@ -103,6 +110,10 @@ public class LevelChunkRegionMap {
+@@ -105,6 +112,10 @@ public class LevelChunkRegionMap {
              throw new IllegalStateException("Entity is not being tracked " + entity);
          }
  
@@ -93,7 +93,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
          getOrCreate(RegionPos.forChunk(entity.previousTrackedChunkPosRegion)).removeTrackedEntity(entity);
          entity.previousTrackedChunkPosRegion = null;
      }
-@@ -117,6 +128,11 @@ public class LevelChunkRegionMap {
+@@ -119,6 +130,11 @@ public class LevelChunkRegionMap {
          RegionPos fromRegion = RegionPos.forChunk(entity.previousTrackedChunkPosRegion);
          RegionPos toRegion = RegionPos.forChunk(newChunkPos);
  
@@ -105,7 +105,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
          if (!fromRegion.equals(toRegion)) {
              entity.previousTrackedChunkPosRegion = newChunkPos;
              getOrCreate(fromRegion).removeTrackedEntity(entity);
-@@ -176,4 +192,28 @@ public class LevelChunkRegionMap {
+@@ -178,4 +194,28 @@ public class LevelChunkRegionMap {
              getOrCreate(toRegion).addPlayer(player);
          }
      }
@@ -136,7 +136,7 @@ index 9f2e0f8a62a2ad7e0cb42331460edcfbf25d1cb3..6203c83adc4e99896780387da3d9d2a2
  }
 \ No newline at end of file
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index 7dd80eb345e1042a8180fe7cf400dc674a017f39..aa0160c06527cc81da679d98eb96e3079744f4d8 100644
+index bc72c2781658daa4a0dccacdfc2d4b5bbc41812b..be3b4da90ef3817008e71fdaf51fadc685400b65 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -446,6 +446,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
@@ -148,7 +148,7 @@ index 7dd80eb345e1042a8180fe7cf400dc674a017f39..aa0160c06527cc81da679d98eb96e307
      }
  
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index e7f94759951f2f899c1d857373c9345ebec3c624..3aadb54385a3e194042ac30acd21b15b8a315145 100644
+index a78c64ed937c51027d25e0e8c08df1142412eeea..8d3a4b7890bf67786e833808f6bae91d642305f5 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -196,7 +196,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe

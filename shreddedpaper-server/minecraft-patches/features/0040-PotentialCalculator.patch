@@ -5,7 +5,7 @@ Subject: [PATCH] PotentialCalculator
 
 
 diff --git a/net/minecraft/world/level/PotentialCalculator.java b/net/minecraft/world/level/PotentialCalculator.java
-index c9ff08679ba711bb86477ad39526cf9a41f5f315..676a5456f215e66d08140d9084646fe61503a6e1 100644
+index c9ff08679ba711bb86477ad39526cf9a41f5f315..b825d96de5b8a0c5f1c9ad07026ce81c99117f41 100644
 --- a/net/minecraft/world/level/PotentialCalculator.java
 +++ b/net/minecraft/world/level/PotentialCalculator.java
 @@ -9,7 +9,7 @@ public class PotentialCalculator {
@@ -13,7 +13,7 @@ index c9ff08679ba711bb86477ad39526cf9a41f5f315..676a5456f215e66d08140d9084646fe6
      public void addCharge(BlockPos pos, double charge) {
          if (charge != 0.0) {
 -            this.charges.add(new PotentialCalculator.PointCharge(pos, charge));
-+            this.charges.add(new PotentialCalculator.PointCharge(pos, mass)); // ShreddedPaper - doesn't need a lock, if a value isn't added it's not a big deal
++            this.charges.add(new PotentialCalculator.PointCharge(pos, charge)); // ShreddedPaper - doesn't need a lock, if a value isn't added it's not a big deal
          }
      }
  

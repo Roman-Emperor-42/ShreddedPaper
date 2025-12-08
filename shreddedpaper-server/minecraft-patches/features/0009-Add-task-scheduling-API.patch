@@ -401,18 +401,22 @@ index e0830d6499ad3e0eae95b0609cb4bcd7a884d68f..7e127acdb080b7365aa3cce4b9cbcae8
  }
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-index c4eaa6482ede82bb313808ac1c6d3d6b3e5c2186..93312c509bbe7dc2be680cab9aa2571eec252505 100644
+index c4eaa6482ede82bb313808ac1c6d3d6b3e5c2186..3d9a6e3f37fc18fca7bd38d413a2edb3e72c5f07 100644
 --- a/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
 +++ b/io/multipaper/shreddedpaper/region/LevelChunkRegionMap.java
-@@ -9,6 +9,7 @@ import io.multipaper.shreddedpaper.util.SimpleStampedLock;
+@@ -9,8 +9,11 @@ import io.multipaper.shreddedpaper.util.SimpleStampedLock;
  
  import java.util.ArrayList;
  import java.util.List;
 +import java.util.concurrent.Executor;
  import java.util.function.Consumer;
  
++import static ca.spottedleaf.concurrentutil.util.Priority.NORMAL;
++
  public class LevelChunkRegionMap {
-@@ -86,4 +87,35 @@ public class LevelChunkRegionMap {
+     private final ServerLevel level;
+     private final SimpleStampedLock regionsLock = new SimpleStampedLock();
+@@ -86,4 +89,35 @@ public class LevelChunkRegionMap {
              getOrCreate(toRegion).addTickingEntity(entity);
          }
      }
@@ -436,7 +440,7 @@ index c4eaa6482ede82bb313808ac1c6d3d6b3e5c2186..93312c509bbe7dc2be680cab9aa2571e
 +      * tasks must be read-only. Eg loading a chunk, saving data, sending packets, etc.
 +     */
 +    public void execute(RegionPos regionPos, Runnable task) {
-+        getOrCreate(regionPos).getInternalTaskQueue().queueRunnable(task);
++        getOrCreate(regionPos).getInternalTaskQueue().queueRunnable(task, NORMAL);
 +    }
 +
 +    /**
@@ -1168,7 +1172,7 @@ index 688abb1b597e9515a109675f1363518391ea6f73..2ed71de827b5c02155e46475c30e7534
      // Paper end - rewrite chunk system
  
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc674a017f39 100644
+index b098feae6fa0dec1840d88b6bbf0a9945df468b3..bc72c2781658daa4a0dccacdfc2d4b5bbc41812b 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -1,5 +1,6 @@
@@ -1193,7 +1197,7 @@ index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc67
  
      public CompletableFuture<ChunkResult<ChunkAccess>> getChunkFuture(int x, int z, ChunkStatus chunkStatus, boolean requireChunk) {
 -        boolean flag = Thread.currentThread() == this.mainThread;
-+        boolean flag = TickThread.isTickThreadFor(this.level, chunkX, chunkZ); // ShreddedPaper - regions
++        boolean flag = TickThread.isTickThreadFor(this.level, x, z); // ShreddedPaper - regions
          CompletableFuture<ChunkResult<ChunkAccess>> chunkFutureMainThread;
          if (flag) {
              chunkFutureMainThread = this.getChunkFutureMainThread(x, z, chunkStatus, requireChunk);
@@ -1231,7 +1235,7 @@ index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc67
 +                    if (TickThread.isShutdownThread()) {
 +                        // We're trying to shut down the server, just execute all the tasks
 +                        region.getInternalTaskQueue().executeTask();
-+                    } else if (!region.getInternalTaskQueue().haveAllTasksExecuted()) {
++                    } else {  // if (!region.getInternalTaskQueue().haveAllTasksExecuted())
 +                        // We're the main thread, try executing chunk tasks for regions not being ticked
 +                        level.chunkScheduler.getRegionLocker().tryReadOnlyLockNow(region.getRegionPos(), () -> {
 +                            region.getInternalTaskQueue().executeTask();
@@ -1251,7 +1255,7 @@ index e58f3716210ef463b307c9884ded6884b06f7463..7dd80eb345e1042a8180fe7cf400dc67
              // Paper end - rewrite chunk system
          }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 4fe515c47634d62009d5f9fe5063e53b02187cad..58971c05eafd165b3d923bcf0f61f1c62f05cacc 100644
+index 0c29eeb9e6fb739aa0571bd0db83da26648c2601..b57e44a69cf0741a2a9d69a1d11ed2ded631be32 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -164,6 +164,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
