@@ -665,7 +665,7 @@ index 719128ab0cbc97bf4e5e752e8e0eb6a4d29d5989..29d192bd10504772cae655f7d21fa29a
 \ No newline at end of file
 +}
 diff --git a/net/minecraft/world/level/block/EndPortalBlock.java b/net/minecraft/world/level/block/EndPortalBlock.java
-index 997831c2b916899da8518c1415233812e6ec16b8..773c7e9c3bda866c952321eeb73497bfd3d034a4 100644
+index 997831c2b916899da8518c1415233812e6ec16b8..0d112b892bb75d02933bd58cf9415ec1b94400ab 100644
 --- a/net/minecraft/world/level/block/EndPortalBlock.java
 +++ b/net/minecraft/world/level/block/EndPortalBlock.java
 @@ -27,6 +27,7 @@ import net.minecraft.world.level.portal.TeleportTransition;
@@ -676,7 +676,7 @@ index 997831c2b916899da8518c1415233812e6ec16b8..773c7e9c3bda866c952321eeb73497bf
  
  public class EndPortalBlock extends BaseEntityBlock implements Portal {
      public static final MapCodec<EndPortalBlock> CODEC = simpleCodec(EndPortalBlock::new);
-@@ -105,10 +106,10 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {
+@@ -105,10 +106,14 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {
                  f = level1.getSharedSpawnAngle();
                  set = Relative.union(Relative.DELTA, Relative.ROTATION);
                  if (entity instanceof ServerPlayer serverPlayer) {
@@ -685,7 +685,11 @@ index 997831c2b916899da8518c1415233812e6ec16b8..773c7e9c3bda866c952321eeb73497bf
                  }
  
 -                bottomCenter = entity.adjustSpawnLocation(level1, blockPos).getBottomCenter();
-+                bottomCenter = entity.adjustSpawnLocation(level1, blockPos).get().getBottomCenter();
++                try {
++                    bottomCenter = entity.adjustSpawnLocation(level1, blockPos).get().getBottomCenter();
++                }
++                catch (Exception ignored) {
++                }
              }
  
              // CraftBukkit start

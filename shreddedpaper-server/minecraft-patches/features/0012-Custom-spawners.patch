@@ -18,7 +18,7 @@ index 8d695e8bcc687c692932a9e40d57641d750a49f0..c8d0524da9779a23cc219989723f94aa
      }
  
 diff --git a/net/minecraft/world/entity/ai/village/VillageSiege.java b/net/minecraft/world/entity/ai/village/VillageSiege.java
-index 69825fc6941047723919a6079ce4a0b9d1a06006..5e70b1f52e49c70e070259f9c7f0a95a412d5335 100644
+index 69825fc6941047723919a6079ce4a0b9d1a06006..f8d4e8fdf6397883d725c66bb8e2e6e3bdc2551b 100644
 --- a/net/minecraft/world/entity/ai/village/VillageSiege.java
 +++ b/net/minecraft/world/entity/ai/village/VillageSiege.java
 @@ -8,6 +8,7 @@ import net.minecraft.tags.BiomeTags;
@@ -37,7 +37,7 @@ index 69825fc6941047723919a6079ce4a0b9d1a06006..5e70b1f52e49c70e070259f9c7f0a95a
  
  public class VillageSiege implements CustomSpawner {
      private static final Logger LOGGER = LogUtils.getLogger();
-@@ -89,18 +91,20 @@ public class VillageSiege implements CustomSpawner {
+@@ -89,18 +91,19 @@ public class VillageSiege implements CustomSpawner {
      private void trySpawn(ServerLevel level) {
          Vec3 vec3 = this.findRandomSpawnPos(level, new BlockPos(this.spawnX, this.spawnY, this.spawnZ));
          if (vec3 != null) {
@@ -58,7 +58,6 @@ index 69825fc6941047723919a6079ce4a0b9d1a06006..5e70b1f52e49c70e070259f9c7f0a95a
 +                try {
 +                    zombie = new Zombie(level);
 +                    zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(new BlockPos((int) vec3.x, (int) vec3.y, (int) vec3.z)), EntitySpawnReason.EVENT, (SpawnGroupData) null); // ShreddedPaper - use zombie's planned position, not 0,0            } catch (Exception var5) {
-+                    return;
 +                } catch (Exception exception) {
 +                    VillageSiege.LOGGER.warn("Failed to create zombie for village siege at {}", vec3, exception);
 +                    com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(exception); // Paper - ServerExceptionEvent
