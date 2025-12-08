@@ -128,7 +128,7 @@ index d8aae267a038446333abfffa6fa95a92644db546..c7f3dc61405222fad1509e28155d682a
          if (this.getHolder() == null) return;
  
 diff --git a/src/main/java/org/spigotmc/WatchdogThread.java b/src/main/java/org/spigotmc/WatchdogThread.java
-index 5c6e37bd57c3e50e53b34f7c1c1510d5b14007e0..03674f06231fdaaa6bf76f6684463190e221f30e 100644
+index 5c6e37bd57c3e50e53b34f7c1c1510d5b14007e0..5f5f41d2e3ea3ffeeac3d31d7f08dd9c918e974b 100644
 --- a/src/main/java/org/spigotmc/WatchdogThread.java
 +++ b/src/main/java/org/spigotmc/WatchdogThread.java
 @@ -5,8 +5,12 @@ import io.papermc.paper.configuration.GlobalConfiguration;
@@ -150,7 +150,7 @@ index 5c6e37bd57c3e50e53b34f7c1c1510d5b14007e0..03674f06231fdaaa6bf76f6684463190
                  WatchdogThread.dumpThread(ManagementFactory.getThreadMXBean().getThreadInfo(MinecraftServer.getServer().serverThread.threadId(), Integer.MAX_VALUE), logger);
 +                // ShreddedPaper start - Dump stuck worker threads
 +                for (ThreadInfo worker : getStuckTickWorkerThreads()) {
-+                    WatchdogThread.dumpThread( worker, log );
++                    WatchdogThread.dumpThread( worker, logger );
 +                }
 +                // ShreddedPaper end - Dump stuck worker threads
                  logger.log(Level.SEVERE, "------------------------------");

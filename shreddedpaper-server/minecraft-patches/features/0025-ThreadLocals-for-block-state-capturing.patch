@@ -5,15 +5,45 @@ Subject: [PATCH] ThreadLocals-for-block-state-capturing
 
 
 diff --git a/net/minecraft/core/dispenser/DispenseItemBehavior.java b/net/minecraft/core/dispenser/DispenseItemBehavior.java
-index 9d29912c82d2031122987b2c76c7d1a0b19b168f..b942dc0cee13040dd09739ee5112af4881a91742 100644
+index 9d29912c82d2031122987b2c76c7d1a0b19b168f..46b26b98ca4843ccc859bdadbb8186b1768fff42 100644
 --- a/net/minecraft/core/dispenser/DispenseItemBehavior.java
 +++ b/net/minecraft/core/dispenser/DispenseItemBehavior.java
-@@ -400,20 +400,20 @@ public interface DispenseItemBehavior {
+@@ -33,20 +33,7 @@ import net.minecraft.world.item.alchemy.Potions;
+ import net.minecraft.world.level.GameRules;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.LevelAccessor;
+-import net.minecraft.world.level.block.BaseFireBlock;
+-import net.minecraft.world.level.block.BeehiveBlock;
+-import net.minecraft.world.level.block.Blocks;
+-import net.minecraft.world.level.block.BucketPickup;
+-import net.minecraft.world.level.block.CampfireBlock;
+-import net.minecraft.world.level.block.CandleBlock;
+-import net.minecraft.world.level.block.CandleCakeBlock;
+-import net.minecraft.world.level.block.CarvedPumpkinBlock;
+-import net.minecraft.world.level.block.DispenserBlock;
+-import net.minecraft.world.level.block.RespawnAnchorBlock;
+-import net.minecraft.world.level.block.ShulkerBoxBlock;
+-import net.minecraft.world.level.block.SkullBlock;
+-import net.minecraft.world.level.block.TntBlock;
+-import net.minecraft.world.level.block.WitherSkullBlock;
++import net.minecraft.world.level.block.*;
+ import net.minecraft.world.level.block.entity.BeehiveBlockEntity;
+ import net.minecraft.world.level.block.entity.BlockEntity;
+ import net.minecraft.world.level.block.entity.SkullBlockEntity;
+@@ -55,6 +42,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+ import net.minecraft.world.level.block.state.properties.RotationSegment;
+ import net.minecraft.world.level.gameevent.GameEvent;
+ import net.minecraft.world.phys.AABB;
++import org.bukkit.TreeType;
+ import org.slf4j.Logger;
+ 
+ public interface DispenseItemBehavior {
+@@ -400,20 +388,20 @@ public interface DispenseItemBehavior {
                      return result;
                  }
                  // Paper end - Call BlockDispenseEvent
 -                level.captureTreeGeneration = true; // CraftBukkit
-+                worldserver.captureTreeGeneration.set(true); // ShreddedPaper - thread local
++                level.captureTreeGeneration.set(true); // ShreddedPaper - thread local
                  if (!BoneMealItem.growCrop(item, level, blockPos) && !BoneMealItem.growWaterPlant(item, level, blockPos, null)) {
                      this.setSuccess(false);
                  } else if (!level.isClientSide) {
@@ -21,20 +51,21 @@ index 9d29912c82d2031122987b2c76c7d1a0b19b168f..b942dc0cee13040dd09739ee5112af48
                  }
                  // CraftBukkit start
 -                level.captureTreeGeneration = false;
+-                if (!level.capturedBlockStates.isEmpty()) {
 +                level.captureTreeGeneration.set(false); // ShreddedPaper - thread loca
-                 if (!level.capturedBlockStates.isEmpty()) {
++                if (!level.capturedBlockStates.get().isEmpty()) {
                      TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - thread local for treeType
                      SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - thread local for treeType
                      org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(blockPos, level.getWorld());
 -                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStates.values());
 -                    level.capturedBlockStates.clear();
-+                    List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStates.get().values()); // ShreddedPaper - thread local
++                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStates.get().values()); // ShreddedPaper - thread local
 +                    level.capturedBlockStates.get().clear(); // ShreddedPaper - thread local
                      org.bukkit.event.world.StructureGrowEvent structureEvent = null;
                      if (treeType != null) {
                          structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, states);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 0ef0196238b53cc46d02b900ad71dd96465cc39a..4a4db32cd6b4bf381ec5543ae701f173a4b3df61 100644
+index 618e8d3f0c74081d42193800349641c94fc26a11..c0e4053b2cdb79a198062d4373f00e9d3561cdb1 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -1651,8 +1651,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe

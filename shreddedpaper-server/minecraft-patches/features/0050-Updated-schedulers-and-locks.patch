@@ -195,7 +195,7 @@ index 6081defe767762b19a5b7deda65effe162c9b9d7..4bceb339591907874c226a985a43902d
              throw new IllegalStateException("Cannot update ticket level while unloading chunks or updating entity manager");
          }
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/task/ChunkFullTask.java b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/task/ChunkFullTask.java
-index 96ccb8f657d755b2e58a8dd0cda00ca0df4886b2..8f61a5cb8f28ffbf49ddaba52afe6c649b6b5a1a 100644
+index 96ccb8f657d755b2e58a8dd0cda00ca0df4886b2..27b8f63145213d3527b2aa864f670eced7e5fd29 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/task/ChunkFullTask.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/task/ChunkFullTask.java
 @@ -4,6 +4,7 @@ import ca.spottedleaf.concurrentutil.executor.PrioritisedExecutor;
@@ -206,12 +206,21 @@ index 96ccb8f657d755b2e58a8dd0cda00ca0df4886b2..8f61a5cb8f28ffbf49ddaba52afe6c64
  import ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel;
  import ca.spottedleaf.moonrise.patches.chunk_system.level.chunk.ChunkSystemLevelChunk;
  import ca.spottedleaf.moonrise.patches.chunk_system.level.poi.ChunkSystemPoiManager;
-@@ -45,6 +46,11 @@ public final class ChunkFullTask extends ChunkProgressionTask implements Runnabl
+@@ -22,6 +23,8 @@ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import java.lang.invoke.VarHandle;
+ 
++import static ca.spottedleaf.concurrentutil.util.Priority.NORMAL;
++
+ public final class ChunkFullTask extends ChunkProgressionTask implements Runnable {
+ 
+     private static final Logger LOGGER = LoggerFactory.getLogger(ChunkFullTask.class);
+@@ -45,6 +48,11 @@ public final class ChunkFullTask extends ChunkProgressionTask implements Runnabl
  
      @Override
      public void run() {
 +        if (!TickThread.isTickThreadFor(this.world, this.chunkX, this.chunkZ)) {
-+            this.scheduler.scheduleChunkTask(this.chunkX, this.chunkZ, this::run, PrioritisedExecutor.Priority.NORMAL);
++            this.scheduler.scheduleChunkTask(this.chunkX, this.chunkZ, this::run, NORMAL);
 +            return;
 +        }
 +

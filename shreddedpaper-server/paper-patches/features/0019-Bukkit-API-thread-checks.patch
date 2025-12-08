@@ -32,7 +32,7 @@ index a127e982e6ee1bf035ce343a6751c8894d4d93c9..427698ee890c09fbf70bd8ed47008707
                  } else {
                      results.value(tabEvent.getCompletions()); // ShreddedPaper
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
-index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d12172855611 100644
+index 400e632208d133a3f49fc7f14bceb48a1026769b..6365f230512a27cc47cffde913988454d0e0dea9 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 @@ -1,5 +1,6 @@
@@ -55,7 +55,7 @@ index 400e632208d133a3f49fc7f14bceb48a1026769b..7b0613792d3c0a58ad40f40c3fd0d121
      }
  
      public ChunkAccess getHandle(ChunkStatus chunkStatus) {
-+        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.worldServer, this.x, this.z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.worldServer.convertable.getLevelId() + ", chunkpos=[" + this.x + "," + this.z + "]"); // ShreddedPaper - regions
++        if (ShreddedPaperTickThread.isShreddedPaperTickThread() && !TickThread.isTickThreadFor(this.level, this.x, this.z)) TickThread.failedTickThreadCheck("Cannot get chunk from a region that is not ours!", "world=" + this.level.levelStorageAccess.getLevelId() + ", chunkpos=[" + this.x + "," + this.z + "]"); // ShreddedPaper - regions
          // Paper start - chunk system
          net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
          if (full != null) {
