@@ -4,6 +4,240 @@ Date: Sat, 6 Dec 2025 02:02:11 -0600
 Subject: [PATCH] Updated-schedulers-and-locks
 
 
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/list/ReferenceList.java b/src/main/java/ca/spottedleaf/moonrise/common/list/ReferenceList.java
+index 2e876b918672e8ef3b5197b7e6b1597247fdeaa1..128d239bdeba9a0649fad736f5bb6307ed14e7fb 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/list/ReferenceList.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/list/ReferenceList.java
+@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+ import java.util.Arrays;
+ import java.util.Iterator;
+ import java.util.NoSuchElementException;
++import java.util.concurrent.locks.ReentrantReadWriteLock;
+ 
+ public final class ReferenceList<E> implements Iterable<E> {
+ 
+@@ -12,6 +13,7 @@ public final class ReferenceList<E> implements Iterable<E> {
+     private final Reference2IntOpenHashMap<E> referenceToIndex;
+     private E[] references;
+     private int count;
++    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+ 
+     public ReferenceList() {
+         this((E[])EMPTY_LIST);
+@@ -30,80 +32,130 @@ public final class ReferenceList<E> implements Iterable<E> {
+     }
+ 
+     public ReferenceList<E> copy() {
+-        return new ReferenceList<>(this.references.clone(), this.count, this.referenceToIndex.clone());
++        lock.readLock().lock();
++        try {
++            return new ReferenceList<>(this.references.clone(), this.count, this.referenceToIndex.clone());
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public int size() {
+-        return this.count;
++        lock.readLock().lock();
++        try {
++            return this.count;
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public boolean contains(final E obj) {
+-        return this.referenceToIndex.containsKey(obj);
++        lock.readLock().lock();
++        try {
++            return this.referenceToIndex.containsKey(obj);
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public boolean remove(final E obj) {
+-        final int index = this.referenceToIndex.removeInt(obj);
+-        if (index == Integer.MIN_VALUE) {
+-            return false;
+-        }
++        lock.writeLock().lock();
++        try {
++            final int index = this.referenceToIndex.removeInt(obj);
++            if (index == Integer.MIN_VALUE) {
++                return false;
++            }
+ 
+-        // move the object at the end to this index
+-        final int endIndex = --this.count;
+-        final E end = (E)this.references[endIndex];
+-        if (index != endIndex) {
+-            // not empty after this call
+-            this.referenceToIndex.put(end, index); // update index
+-        }
+-        this.references[index] = end;
+-        this.references[endIndex] = null;
++            // move the object at the end to this index
++            final int endIndex = --this.count;
++            final E end = (E) this.references[endIndex];
++            if (index != endIndex) {
++                // not empty after this call
++                this.referenceToIndex.put(end, index); // update index
++            }
++            this.references[index] = end;
++            this.references[endIndex] = null;
+ 
+-        return true;
++            return true;
++        } finally {
++            lock.writeLock().unlock();
++        }
+     }
+ 
+     public boolean add(final E obj) {
+-        final int count = this.count;
+-        final int currIndex = this.referenceToIndex.putIfAbsent(obj, count);
++        lock.writeLock().lock();
++        try {
++            final int count = this.count;
++            final int currIndex = this.referenceToIndex.putIfAbsent(obj, count);
+ 
+-        if (currIndex != Integer.MIN_VALUE) {
+-            return false; // already in this list
+-        }
++            if (currIndex != Integer.MIN_VALUE) {
++                return false; // already in this list
++            }
+ 
+-        E[] list = this.references;
++            E[] list = this.references;
+ 
+-        if (list.length == count) {
+-            // resize required
+-            list = this.references = Arrays.copyOf(list, (int)Math.max(4L, count * 2L)); // overflow results in negative
+-        }
++            if (list.length == count) {
++                // resize required
++                list = this.references = Arrays.copyOf(list, (int)Math.max(4L, count * 2L)); // overflow results in negative
++            }
+ 
+-        list[count] = obj;
+-        this.count = count + 1;
++            list[count] = obj;
++            this.count = count + 1;
+ 
+-        return true;
++            return true;
++        } finally {
++            lock.writeLock().unlock();
++        }
+     }
+ 
+     public E getChecked(final int index) {
+-        if (index < 0 || index >= this.count) {
+-            throw new IndexOutOfBoundsException("Index: " + index + " is out of bounds, size: " + this.count);
++        lock.readLock().lock();
++        try {
++            if (index < 0 || index >= this.count) {
++                throw new IndexOutOfBoundsException("Index: " + index + " is out of bounds, size: " + this.count);
++            }
++            return this.references[index];
++        } finally {
++            lock.readLock().unlock();
+         }
+-        return this.references[index];
+     }
+ 
+     public E getUnchecked(final int index) {
+-        return this.references[index];
++        lock.readLock().lock();
++        try {
++            return this.references[index];
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public Object[] getRawData() {
+-        return this.references;
++        lock.readLock().lock();
++        try {
++            return this.references;
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public E[] getRawDataUnchecked() {
+-        return this.references;
++        lock.readLock().lock();
++        try {
++            return this.references;
++        } finally {
++            lock.readLock().unlock();
++        }
+     }
+ 
+     public void clear() {
+-        this.referenceToIndex.clear();
+-        Arrays.fill(this.references, 0, this.count, null);
+-        this.count = 0;
++        lock.writeLock().lock();
++        try {
++            this.referenceToIndex.clear();
++            Arrays.fill(this.references, 0, this.count, null);
++            this.count = 0;
++        } finally {
++            lock.writeLock().unlock();
++        }
+     }
+ 
+     @Override
+@@ -112,14 +164,23 @@ public final class ReferenceList<E> implements Iterable<E> {
+             private E lastRet;
+             private int current;
+ 
++            {
++                lock.readLock().lock();
++            }
++
+             @Override
+             public boolean hasNext() {
+-                return this.current < ReferenceList.this.count;
++                boolean hasNext = this.current < ReferenceList.this.count;
++                if (!hasNext){
++                    lock.readLock().unlock();
++                }
++                return hasNext;
+             }
+ 
+             @Override
+             public E next() {
+                 if (this.current >= ReferenceList.this.count) {
++                    lock.readLock().unlock();
+                     throw new NoSuchElementException();
+                 }
+                 return this.lastRet = ReferenceList.this.references[this.current++];
+@@ -134,8 +195,16 @@ public final class ReferenceList<E> implements Iterable<E> {
+                 }
+                 this.lastRet = null;
+ 
+-                ReferenceList.this.remove(lastRet);
+-                --this.current;
++                lock.readLock().unlock();
++                lock.writeLock().lock();
++
++                try {
++                    ReferenceList.this.remove(lastRet);
++                    --this.current;
++                } finally {
++                    lock.writeLock().unlock();
++                    lock.readLock().lock();
++                }
+             }
+         };
+     }
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java b/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java
 index 0a10f49ee410d93e95ceb90108200a1a9d12b54b..58eb87409f19c8e4a0d19cf465fa340377d5b90a 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java
