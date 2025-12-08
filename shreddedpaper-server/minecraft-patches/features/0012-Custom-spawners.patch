@@ -5,7 +5,7 @@ Subject: [PATCH] Custom-spawners
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 44dfb68fb375d29e2d1b55a3fcbf96e92a59eacb..4b229fceaf6c062d6730ee3b090d9e52fe11046b 100644
+index 8d695e8bcc687c692932a9e40d57641d750a49f0..c8d0524da9779a23cc219989723f94aad14125de 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -903,7 +903,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -18,10 +18,18 @@ index 44dfb68fb375d29e2d1b55a3fcbf96e92a59eacb..4b229fceaf6c062d6730ee3b090d9e52
      }
  
 diff --git a/net/minecraft/world/entity/ai/village/VillageSiege.java b/net/minecraft/world/entity/ai/village/VillageSiege.java
-index 69825fc6941047723919a6079ce4a0b9d1a06006..6faa5861d883d12573472182fcce342c5be4b7e2 100644
+index 69825fc6941047723919a6079ce4a0b9d1a06006..5e70b1f52e49c70e070259f9c7f0a95a412d5335 100644
 --- a/net/minecraft/world/entity/ai/village/VillageSiege.java
 +++ b/net/minecraft/world/entity/ai/village/VillageSiege.java
-@@ -15,6 +15,7 @@ import net.minecraft.world.level.CustomSpawner;
+@@ -8,6 +8,7 @@ import net.minecraft.tags.BiomeTags;
+ import net.minecraft.util.Mth;
+ import net.minecraft.world.entity.EntitySpawnReason;
+ import net.minecraft.world.entity.EntityType;
++import net.minecraft.world.entity.SpawnGroupData;
+ import net.minecraft.world.entity.monster.Monster;
+ import net.minecraft.world.entity.monster.Zombie;
+ import net.minecraft.world.entity.player.Player;
+@@ -15,6 +16,7 @@ import net.minecraft.world.level.CustomSpawner;
  import net.minecraft.world.level.levelgen.Heightmap;
  import net.minecraft.world.phys.Vec3;
  import org.slf4j.Logger;
@@ -29,7 +37,7 @@ index 69825fc6941047723919a6079ce4a0b9d1a06006..6faa5861d883d12573472182fcce342c
  
  public class VillageSiege implements CustomSpawner {
      private static final Logger LOGGER = LogUtils.getLogger();
-@@ -89,18 +90,23 @@ public class VillageSiege implements CustomSpawner {
+@@ -89,18 +91,20 @@ public class VillageSiege implements CustomSpawner {
      private void trySpawn(ServerLevel level) {
          Vec3 vec3 = this.findRandomSpawnPos(level, new BlockPos(this.spawnX, this.spawnY, this.spawnZ));
          if (vec3 != null) {
@@ -42,22 +50,20 @@ index 69825fc6941047723919a6079ce4a0b9d1a06006..6faa5861d883d12573472182fcce342c
 -                com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(var5); // Paper - ServerExceptionEvent
 -                return;
 -            }
-+            ShreddedPaper.runSync(world, new BlockPos((int) vec3d.x, (int) vec3d.y, (int) vec3d.z), () -> { // ShreddedPaper - run on block's thread
+-
+-            zombie.snapTo(vec3.x, vec3.y, vec3.z, level.random.nextFloat() * 360.0F, 0.0F);
+-            level.addFreshEntityWithPassengers(zombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
++            ShreddedPaper.runSync(level, new BlockPos((int) vec3.x, (int) vec3.y, (int) vec3.z), () -> { // ShreddedPaper - run on block's thread
 +                Zombie zombie;
 +                try {
 +                    zombie = new Zombie(level);
-+                    entityzombie.finalizeSpawn(world, world.getCurrentDifficultyAt(new BlockPos((int) vec3d.x, (int) vec3d.y, (int) vec3d.z)), MobSpawnType.EVENT, (SpawnGroupData) null); // ShreddedPaper - use zombie's planned position, not 0,0            } catch (Exception var5) {
-+                    LOGGER.warn("Failed to create zombie for village siege at {}", vec3, var5);
-+                    com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(var5); // Paper - ServerExceptionEvent
++                    zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(new BlockPos((int) vec3.x, (int) vec3.y, (int) vec3.z)), EntitySpawnReason.EVENT, (SpawnGroupData) null); // ShreddedPaper - use zombie's planned position, not 0,0            } catch (Exception var5) {
 +                    return;
 +                } catch (Exception exception) {
-+                    VillageSiege.LOGGER.warn("Failed to create zombie for village siege at {}", vec3d, exception);
++                    VillageSiege.LOGGER.warn("Failed to create zombie for village siege at {}", vec3, exception);
 +                    com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(exception); // Paper - ServerExceptionEvent
 +                    return;
 +                }
- 
--            zombie.snapTo(vec3.x, vec3.y, vec3.z, level.random.nextFloat() * 360.0F, 0.0F);
--            level.addFreshEntityWithPassengers(zombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
 +                zombie.snapTo(vec3.x, vec3.y, vec3.z, level.random.nextFloat() * 360.0F, 0.0F);
 +                level.addFreshEntityWithPassengers(zombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
 +            }); // ShreddedPaper - run on block's thread

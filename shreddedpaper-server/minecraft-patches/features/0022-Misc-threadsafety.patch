@@ -952,18 +952,22 @@ index 0a94670dc20bb9c521b0395633eb100393895f6a..50fac737f5bbf8e4db4fe79fb5852485
  
      @Override
 diff --git a/net/minecraft/world/level/block/grower/TreeGrower.java b/net/minecraft/world/level/block/grower/TreeGrower.java
-index d23f255de9208f42125fa358a9e8194c984fe4d3..50e20614f7cebc44a0a0d70883d3ff6910cc35fa 100644
+index d23f255de9208f42125fa358a9e8194c984fe4d3..f94793032810009d1e0aeb3097514191ef43c06d 100644
 --- a/net/minecraft/world/level/block/grower/TreeGrower.java
 +++ b/net/minecraft/world/level/block/grower/TreeGrower.java
-@@ -8,7 +8,6 @@ import javax.annotation.Nullable;
- import net.minecraft.core.BlockPos;
- import net.minecraft.core.Holder;
- import net.minecraft.core.registries.Registries;
--import net.minecraft.data.worldgen.features.TreeFeatures;
- import net.minecraft.resources.ResourceKey;
- import net.minecraft.server.level.ServerLevel;
- import net.minecraft.tags.BlockTags;
-@@ -204,51 +203,51 @@ public final class TreeGrower {
+@@ -17,9 +17,11 @@ import net.minecraft.world.level.BlockGetter;
+ import net.minecraft.world.level.LevelAccessor;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.Blocks;
++import net.minecraft.world.level.block.SaplingBlock;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.chunk.ChunkGenerator;
+ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
++import org.bukkit.TreeType;
+ 
+ public final class TreeGrower {
+     private static final Map<String, TreeGrower> GROWERS = new Object2ObjectArrayMap<>();
+@@ -204,51 +206,51 @@ public final class TreeGrower {
      // CraftBukkit start
      private void setTreeType(Holder<ConfiguredFeature<?, ?>> feature) {
          if (feature.is(TreeFeatures.OAK) || feature.is(TreeFeatures.OAK_BEES_005)) {
