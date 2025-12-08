@@ -222,10 +222,10 @@ index 0000000000000000000000000000000000000000..52b82d0b9c12c0f2d1000106db4a874c
 \ No newline at end of file
 diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..75ebd5eb6f3b2cbab7960bd09402f99e45913502
+index 0000000000000000000000000000000000000000..273a3a00b26501184600fd55b0c2a710d40fcf40
 --- /dev/null
 +++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,88 @@
 +package io.multipaper.shreddedpaper.threading;
 +
 +import com.mojang.logging.LogUtils;
@@ -288,13 +288,25 @@ index 0000000000000000000000000000000000000000..75ebd5eb6f3b2cbab7960bd09402f99e
 +        int j = 1; // Inhabited time increment in ticks
 +        boolean flag = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !level.players().isEmpty(); // Should run mob spawning code
 +        ChunkPos chunkcoordintpair = chunk1.getPos();
-+        boolean flag1 = level.ticksPerSpawnCategory.getLong(org.bukkit.entity.SpawnCategory.ANIMAL) != 0L && level.getLevelData().getGameTime() % level.ticksPerSpawnCategory.getLong(org.bukkit.entity.SpawnCategory.ANIMAL) == 0L; // CraftBukkit
 +        int l = level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
 +        // End - Import the same variables as the original chunk ticking method to make copying new changes easier
 +        if (true && level.getChunkSource().chunkMap.anyPlayerCloseEnoughForSpawning(chunkcoordintpair)) { // Paper - rewrite chunk system
 +            chunk1.incrementInhabitedTime(j);
-+            if (flag && (level.getChunkSource().spawnEnemies || level.getChunkSource().spawnFriendlies) && (!gg.pufferfish.pufferfish.PufferfishConfig.enableAsyncMobSpawning || level.getChunkSource()._pufferfish_spawnCountsReady.get()) && level.getWorldBorder().isWithinBounds(chunkcoordintpair) && level.getChunkSource().chunkMap.anyPlayerCloseEnoughForSpawning(chunkcoordintpair, true)) { // Spigot
-+                NaturalSpawner.spawnForChunk(level, chunk1, spawnercreature_d, level.getChunkSource().spawnFriendlies, level.getChunkSource().spawnEnemies, flag1); // Pufferfish
++            if (flag && (level.getChunkSource().spawnEnemies || level.getChunkSource().spawnFriendlies) && level.getWorldBorder().isWithinBounds(chunkcoordintpair) && level.getChunkSource().chunkMap.anyPlayerCloseEnoughForSpawning(chunkcoordintpair, true)) { // Spigot
++                List<net.minecraft.world.entity.MobCategory> categories = new java.util.ArrayList<>();
++                if (level.getChunkSource().spawnFriendlies) {
++                    categories.add(net.minecraft.world.entity.MobCategory.CREATURE);
++                    categories.add(net.minecraft.world.entity.MobCategory.AMBIENT);
++                    categories.add(net.minecraft.world.entity.MobCategory.AXOLOTLS);
++                    categories.add(net.minecraft.world.entity.MobCategory.UNDERGROUND_WATER_CREATURE);
++                    categories.add(net.minecraft.world.entity.MobCategory.WATER_CREATURE);
++                    categories.add(net.minecraft.world.entity.MobCategory.WATER_AMBIENT);
++                }
++                if (level.getChunkSource().spawnEnemies) {
++                    categories.add(net.minecraft.world.entity.MobCategory.MONSTER);
++                }
++
++                NaturalSpawner.spawnForChunk(level, chunk1, spawnercreature_d, categories); // Pufferfish
 +            }
 +            if (true) { // Paper - rewrite chunk system
 +                level.tickChunk(chunk1, l);

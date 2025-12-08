@@ -105,7 +105,7 @@ index 493eb3f800e0c65c81835d628802df6b1513be6f..63268becc3b468809a20689115119076
       * Schedule a task to run on the given region's thread at the beginning of the next tick
       */
 diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
-index b114dd49eea93bff9a179ff0dd3808f1b6762471..7471bb8bb40b21e9f87661ffd9b4053e155e6a3b 100644
+index fec19df9d2f8cc251e193507018ed20f65975219..e13cb9c94341f8fddac6dad8e52153ca7e1ca70a 100644
 --- a/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
 +++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperChunkTicker.java
 @@ -71,6 +71,8 @@ public class ShreddedPaperChunkTicker {
@@ -118,10 +118,10 @@ index b114dd49eea93bff9a179ff0dd3808f1b6762471..7471bb8bb40b21e9f87661ffd9b4053e
  
              region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
 diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
-index fe63d7a2b3a6cf02d565fea701f5ca4282632d14..1024bb18edf2368e71eecbc53c63d4628d735ed5 100644
+index fe63d7a2b3a6cf02d565fea701f5ca4282632d14..fdcd85030e13906ce8117bbf3596cbd5ffcf4ed4 100644
 --- a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
 +++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
-@@ -1,9 +1,12 @@
+@@ -1,18 +1,18 @@
  package io.multipaper.shreddedpaper.threading;
  
  import net.minecraft.server.MinecraftServer;
@@ -135,7 +135,17 @@ index fe63d7a2b3a6cf02d565fea701f5ca4282632d14..1024bb18edf2368e71eecbc53c63d462
  
  public class ShreddedPaperEntityTicker {
      public static void tickEntity(Entity entity) {
-@@ -43,4 +46,10 @@ public class ShreddedPaperEntityTicker {
+         ServerLevel level = (ServerLevel) entity.level();
+-        entity.activatedPriorityReset = false; // Pufferfish - DAB
+         if (!entity.isRemoved()) {
+-            if (false && level.shouldDiscardEntity(entity)) { // CraftBukkit - We prevent spawning in general, so this butchering is not needed
+-                entity.discard();
+-            } else if (!level.tickRateManager().isEntityFrozen(entity)) {
++            if (!level.tickRateManager().isEntityFrozen(entity)) {
+                 //gameprofilerfiller.push("checkDespawn"); // Purpur
+                 entity.checkDespawn();
+                 //gameprofilerfiller.pop(); // Purpur
+@@ -43,4 +43,10 @@ public class ShreddedPaperEntityTicker {
              }
          }
      }
