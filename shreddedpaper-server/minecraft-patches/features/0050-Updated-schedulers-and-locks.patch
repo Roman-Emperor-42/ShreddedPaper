@@ -560,6 +560,83 @@ index 32242c3aa0c7838f0eb562547f54cc350e709fb4..4b1fb3f5561e57c21ab0568481279f1e
          // Start - Import the same variables as the original chunk ticking method to make copying new changes easier
          int j = 1; // Inhabited time increment in ticks
          boolean flag = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !level.players().isEmpty(); // Should run mob spawning code
+diff --git a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
+index fdcd85030e13906ce8117bbf3596cbd5ffcf4ed4..1ad5b435da6a5af4581882ff1385a1228d15d435 100644
+--- a/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
++++ b/io/multipaper/shreddedpaper/threading/ShreddedPaperEntityTicker.java
+@@ -4,6 +4,7 @@ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ChunkMap;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.entity.Entity;
++import net.minecraft.world.entity.Mob;
+ 
+ import java.util.Objects;
+ 
+@@ -12,33 +13,39 @@ public class ShreddedPaperEntityTicker {
+     public static void tickEntity(Entity entity) {
+         ServerLevel level = (ServerLevel) entity.level();
+         if (!entity.isRemoved()) {
+-            if (!level.tickRateManager().isEntityFrozen(entity)) {
+-                //gameprofilerfiller.push("checkDespawn"); // Purpur
+-                entity.checkDespawn();
+-                //gameprofilerfiller.pop(); // Purpur
+-                if (true || level.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) { // Paper - rewrite chunk system
+-                    Entity entity1 = entity.getVehicle();
+-                    if (entity1 != null) {
+-                        if (!entity1.isRemoved() && entity1.hasPassenger(entity)) {
+-                            return;
+-                        }
+-                        entity.stopRiding();
+-                    }
+-                    //gameprofilerfiller.push("tick"); // Purpur
+-                    // Pufferfish start - copied from this.guardEntityTick
+-                    try {
+-                        level.tickNonPassenger(entity); // Pufferfish - changed
+-                    } catch (Throwable throwable) {
+-                        if (throwable instanceof ThreadDeath) throw throwable; // Paper
+-                        // Paper start - Prevent tile entity and entity crashes
+-                        final String msg = String.format("Entity threw exception at %s:%s,%s,%s", entity.level().getWorld().getName(), entity.getX(), entity.getY(), entity.getZ());
+-                        MinecraftServer.LOGGER.error(msg, throwable);
+-                        level.getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, throwable)));
+-                        entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
+-                        // Paper end
++            synchronized (entity) {
++                if (!level.tickRateManager().isEntityFrozen(entity)) {
++                    //gameprofilerfiller.push("checkDespawn"); // Purpur
++                    if (!entity.isRemoved() && entity instanceof Mob mob) {
++                        mob.checkDespawn();
+                     }
+-                    // Pufferfish end
++                    entity.checkDespawn();
+                     //gameprofilerfiller.pop(); // Purpur
++                    if (true || level.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) { // Paper - rewrite chunk system
++                        Entity entity1 = entity.getVehicle();
++                        if (entity1 != null) {
++                            if (!entity1.isRemoved() && entity1.hasPassenger(entity)) {
++                                return;
++                            }
++                            entity.stopRiding();
++                        }
++
++                        //gameprofilerfiller.push("tick"); // Purpur
++                        // Pufferfish start - copied from this.guardEntityTick
++                        try {
++                            level.tickNonPassenger(entity); // Pufferfish - changed
++                        } catch (Throwable throwable) {
++                            if (throwable instanceof ThreadDeath) throw throwable; // Paper
++                            // Paper start - Prevent tile entity and entity crashes
++                            final String msg = String.format("Entity threw exception at %s:%s,%s,%s", entity.level().getWorld().getName(), entity.getX(), entity.getY(), entity.getZ());
++                            MinecraftServer.LOGGER.error(msg, throwable);
++                            level.getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, throwable)));
++                            entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
++                            // Paper end
++                        }
++                        // Pufferfish end
++                        //gameprofilerfiller.pop(); // Purpur
++                    }
+                 }
+             }
+         }
 diff --git a/io/multipaper/shreddedpaper/util/SimpleStampedLock.java b/io/multipaper/shreddedpaper/util/SimpleStampedLock.java
 index 719128ab0cbc97bf4e5e752e8e0eb6a4d29d5989..29d192bd10504772cae655f7d21fa29ae471bb8e 100644
 --- a/io/multipaper/shreddedpaper/util/SimpleStampedLock.java
