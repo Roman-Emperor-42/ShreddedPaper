@@ -697,10 +697,18 @@ index 9711efb088bd0da9168e9bcd0496bd7caddd2974..bfff10bc39e667008742060283a10969
                  return value;
              })
 diff --git a/net/minecraft/world/level/block/MushroomBlock.java b/net/minecraft/world/level/block/MushroomBlock.java
-index d306f5f524dc64618df94c9783c2168dc561a5e3..80b5d591a10c2c576da4a452e4fec1429e81691b 100644
+index d306f5f524dc64618df94c9783c2168dc561a5e3..ceddea5c1863f1beb9da980246c7c4686eebefa5 100644
 --- a/net/minecraft/world/level/block/MushroomBlock.java
 +++ b/net/minecraft/world/level/block/MushroomBlock.java
-@@ -93,7 +93,7 @@ public class MushroomBlock extends VegetationBlock implements BonemealableBlock
+@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+ import net.minecraft.world.phys.shapes.CollisionContext;
+ import net.minecraft.world.phys.shapes.VoxelShape;
++import org.bukkit.TreeType;
+ 
+ public class MushroomBlock extends VegetationBlock implements BonemealableBlock {
+     public static final MapCodec<MushroomBlock> CODEC = RecordCodecBuilder.mapCodec(
+@@ -93,7 +94,7 @@ public class MushroomBlock extends VegetationBlock implements BonemealableBlock
              return false;
          } else {
              level.removeBlock(pos, false);
@@ -786,10 +794,18 @@ index 1943a6aad888647953e2d9dbbeedb0bd81c6f9df..3df96cfe9f066b6ccf756cff2159fe7b
  
      public static int getColorForPower(int power) {
 diff --git a/net/minecraft/world/level/block/SaplingBlock.java b/net/minecraft/world/level/block/SaplingBlock.java
-index a22cb810622e0ae97bc2a0d6390d026d9482b783..5948c4e5e6d0cf7f59188050c51f538d66bf0201 100644
+index a22cb810622e0ae97bc2a0d6390d026d9482b783..b8d67cede98b57c549a165a584186123a3577035 100644
 --- a/net/minecraft/world/level/block/SaplingBlock.java
 +++ b/net/minecraft/world/level/block/SaplingBlock.java
-@@ -25,7 +25,7 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
+@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+ import net.minecraft.world.level.block.state.properties.IntegerProperty;
+ import net.minecraft.world.phys.shapes.CollisionContext;
+ import net.minecraft.world.phys.shapes.VoxelShape;
++import org.bukkit.TreeType;
+ 
+ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
+     public static final MapCodec<SaplingBlock> CODEC = RecordCodecBuilder.mapCodec(
+@@ -25,7 +26,7 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
      public static final IntegerProperty STAGE = BlockStateProperties.STAGE;
      private static final VoxelShape SHAPE = Block.column(12.0, 0.0, 12.0);
      protected final TreeGrower treeGrower;
@@ -798,7 +814,7 @@ index a22cb810622e0ae97bc2a0d6390d026d9482b783..5948c4e5e6d0cf7f59188050c51f538d
  
      @Override
      public MapCodec<? extends SaplingBlock> codec() {
-@@ -62,8 +62,8 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
+@@ -62,8 +63,8 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
                  this.treeGrower.growTree(level, level.getChunkSource().getGenerator(), pos, state, random);
                  level.captureTreeGeneration = false;
                  if (!level.capturedBlockStates.isEmpty()) {

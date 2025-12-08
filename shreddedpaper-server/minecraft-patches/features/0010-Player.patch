@@ -269,7 +269,7 @@ index 411e1284a208ca1a097cf6eaa92e1e0d2203d83d..c84906e2491829232718b5485e8b463f
          // Paper start - Buffer joins to world
          if (Connection.currTick != net.minecraft.server.MinecraftServer.currentTick) {
 diff --git a/net/minecraft/network/protocol/PacketUtils.java b/net/minecraft/network/protocol/PacketUtils.java
-index 4535858701b2bb232b9d2feb2af6551526232ddc..57b15953ec2e587f88390b9d41b8780b4809d96f 100644
+index 4535858701b2bb232b9d2feb2af6551526232ddc..b33e336d3fc1e24a2cf82a6ca4b9452d50650faf 100644
 --- a/net/minecraft/network/protocol/PacketUtils.java
 +++ b/net/minecraft/network/protocol/PacketUtils.java
 @@ -1,5 +1,6 @@
@@ -279,9 +279,11 @@ index 4535858701b2bb232b9d2feb2af6551526232ddc..57b15953ec2e587f88390b9d41b8780b
  import com.mojang.logging.LogUtils;
  import javax.annotation.Nullable;
  import net.minecraft.CrashReport;
-@@ -9,7 +10,9 @@ import net.minecraft.network.PacketListener;
+@@ -8,8 +9,11 @@ import net.minecraft.ReportedException;
+ import net.minecraft.network.PacketListener;
  import net.minecraft.server.RunningOnDifferentThreadException;
  import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.network.ServerCommonPacketListenerImpl;
  import net.minecraft.util.thread.BlockableEventLoop;
 +import net.minecraft.server.network.ServerGamePacketListenerImpl;
  import org.slf4j.Logger;
@@ -289,29 +291,28 @@ index 4535858701b2bb232b9d2feb2af6551526232ddc..57b15953ec2e587f88390b9d41b8780b
  
  public class PacketUtils {
      private static final Logger LOGGER = LogUtils.getLogger();
-@@ -19,6 +22,33 @@ public class PacketUtils {
+@@ -19,6 +23,32 @@ public class PacketUtils {
      }
  
      public static <T extends PacketListener> void ensureRunningOnSameThread(Packet<T> packet, T processor, BlockableEventLoop<?> executor) throws RunningOnDifferentThreadException {
 +        // ShreddedPaper start - run on player's thread
-+        if (listener instanceof ServerGamePacketListenerImpl gamePacketListener) {
++        if (processor instanceof ServerGamePacketListenerImpl gamePacketListener) {
 +            if (TickThread.isTickThreadFor(gamePacketListener.player)) return;
 +            ShreddedPaper.runSync(gamePacketListener.player, () -> {
-+                if (listener instanceof ServerCommonPacketListenerImpl serverCommonPacketListener && serverCommonPacketListener.processedDisconnect) return; // CraftBukkit - Don't handle sync packets for kicked players
-+                if (listener.shouldHandleMessage(packet)) {
-+                    co.aikar.timings.Timing timing = co.aikar.timings.MinecraftTimings.getPacketTiming(packet); // Paper - timings
++                if (processor instanceof ServerCommonPacketListenerImpl serverCommonPacketListener && serverCommonPacketListener.processedDisconnect) return; // CraftBukkit - Don't handle sync packets for kicked players
++                if (processor.shouldHandleMessage(packet)) {
 +                    try { // Paper - timings // Purpur
-+                        packet.handle(listener);
++                        packet.handle(processor);
 +                    } catch (Exception exception) {
 +                        if (exception instanceof ReportedException) {
 +                            ReportedException reportedexception = (ReportedException) exception;
 +
 +                            if (reportedexception.getCause() instanceof OutOfMemoryError) {
-+                                throw PacketUtils.makeReportedException(exception, packet, listener);
++                                throw PacketUtils.makeReportedException(exception, packet, processor);
 +                            }
 +                        }
 +
-+                        listener.onPacketError(packet, exception);
++                        processor.onPacketError(packet, exception);
 +                    }
 +                } else {
 +                    PacketUtils.LOGGER.debug("Ignoring packet due to disconnection: {}", packet);

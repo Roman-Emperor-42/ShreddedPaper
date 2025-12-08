@@ -5,7 +5,7 @@ Subject: [PATCH] World-gen
 
 
 diff --git a/net/minecraft/server/level/PlayerRespawnLogic.java b/net/minecraft/server/level/PlayerRespawnLogic.java
-index 8ad30d708f0c54f6db91662c12e72d72696f15e1..f6fd5d09d2c8814adc66298912a5b97a240314d0 100644
+index 8ad30d708f0c54f6db91662c12e72d72696f15e1..5b5281b225b450238372aa8f5ba962e14197574a 100644
 --- a/net/minecraft/server/level/PlayerRespawnLogic.java
 +++ b/net/minecraft/server/level/PlayerRespawnLogic.java
 @@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Block;
@@ -20,7 +20,7 @@ index 8ad30d708f0c54f6db91662c12e72d72696f15e1..f6fd5d09d2c8814adc66298912a5b97a
          if (i < level.getMinY()) {
              return null;
          } else {
-+            return level.chunkScheduler.getRegionLocker().lockRegion(RegionPos.forChunk(chunk), () -> { // ShreddedPaper - lock region
++            return level.chunkScheduler.getRegionLocker().lockRegion(RegionPos.forChunk(chunk.getPos()), () -> { // ShreddedPaper - lock region
              int height = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
              if (height <= i && height > chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
                  return null;

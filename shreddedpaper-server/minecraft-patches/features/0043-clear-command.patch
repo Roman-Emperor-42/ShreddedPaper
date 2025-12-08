@@ -5,7 +5,7 @@ Subject: [PATCH] clear-command
 
 
 diff --git a/net/minecraft/server/commands/ClearInventoryCommands.java b/net/minecraft/server/commands/ClearInventoryCommands.java
-index b1866fdf0bacee9ce7ef1fcad4484df5c0d4c640..b152c6efb4ffad4b91754ed97af2016c058b90cd 100644
+index b1866fdf0bacee9ce7ef1fcad4484df5c0d4c640..da9ceabe727b6e2f797a77ccc04f442591235f1b 100644
 --- a/net/minecraft/server/commands/ClearInventoryCommands.java
 +++ b/net/minecraft/server/commands/ClearInventoryCommands.java
 @@ -6,7 +6,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -29,7 +29,7 @@ index b1866fdf0bacee9ce7ef1fcad4484df5c0d4c640..b152c6efb4ffad4b91754ed97af2016c
 +            // ShreddedPaper start - run on correct thread
 +            CompletableFuture<Integer> future = new CompletableFuture<>();
 +            ShreddedPaper.ensureSync(serverPlayer, () -> {
-+                int j = serverPlayer.getInventory().clearOrCountMatchingItems(item, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
++                int j = serverPlayer.getInventory().clearOrCountMatchingItems(itemPredicate, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
 +                serverPlayer.containerMenu.broadcastChanges();
 +                serverPlayer.inventoryMenu.slotsChanged(serverPlayer.getInventory());
 +                future.complete(j);

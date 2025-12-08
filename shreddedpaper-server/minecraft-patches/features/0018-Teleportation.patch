@@ -5,7 +5,7 @@ Subject: [PATCH] Teleportation
 
 
 diff --git a/net/minecraft/server/commands/TeleportCommand.java b/net/minecraft/server/commands/TeleportCommand.java
-index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe1804bf12162 100644
+index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..438ed5ae5767a427ae741642a66beab834dfe83e 100644
 --- a/net/minecraft/server/commands/TeleportCommand.java
 +++ b/net/minecraft/server/commands/TeleportCommand.java
 @@ -1,5 +1,6 @@
@@ -25,7 +25,7 @@ index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe180
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
  import net.minecraft.commands.arguments.EntityAnchorArgument;
-@@ -25,9 +28,12 @@ import net.minecraft.world.entity.Entity;
+@@ -25,9 +28,14 @@ import net.minecraft.world.entity.Entity;
  import net.minecraft.world.entity.LivingEntity;
  import net.minecraft.world.entity.PathfinderMob;
  import net.minecraft.world.entity.Relative;
@@ -35,10 +35,12 @@ index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe180
  import net.minecraft.world.phys.Vec3;
 +import io.multipaper.shreddedpaper.region.RegionPos;
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionScheduler;
++import org.bukkit.craftbukkit.CraftWorld;
++import org.bukkit.event.player.PlayerTeleportEvent;
  
  public class TeleportCommand {
      private static final SimpleCommandExceptionType INVALID_POSITION = new SimpleCommandExceptionType(
-@@ -291,9 +297,19 @@ public class TeleportCommand {
+@@ -291,9 +299,19 @@ public class TeleportCommand {
              float f2 = Mth.wrapDegrees(f);
              float f3 = Mth.wrapDegrees(f1);
              // CraftBukkit start - Teleport event
@@ -49,18 +51,18 @@ index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe180
 -                result = player.teleportTo(level, d, d1, d2, relatives, f2, f3, true, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND);
 +                ChunkPos toPos = new ChunkPos(new BlockPos((int) x, (int) y, (int) z));
 +                Runnable task = () -> {
-+                    result.complete(player.teleportTo(world, x, y, z, movementFlags, f2, f3, PlayerTeleportEvent.TeleportCause.COMMAND));
++                    result.complete(player.teleportTo(level, x, y, z, relatives, f2, f3, false));
 +                };
-+                if (TickThread.isTickThreadFor(target) && TickThread.isTickThreadFor(world, toPos)) {
++                if (TickThread.isTickThreadFor(target) && TickThread.isTickThreadFor(level, toPos)) {
 +                    task.run();
 +                } else {
-+                    ShreddedPaperRegionScheduler.scheduleAcrossLevels((ServerLevel) target.level(), RegionPos.forChunk(target.chunkPosition()), world, RegionPos.forChunk(toPos), task);
++                    ShreddedPaperRegionScheduler.scheduleAcrossLevels((ServerLevel) target.level(), RegionPos.forChunk(target.chunkPosition()), level, RegionPos.forChunk(toPos), task);
 +                }
 +                // ShreddedPaper end - Run teleports on the correct thread
              } else {
                  org.bukkit.Location to = new org.bukkit.Location(level.getWorld(), d, d1, d2, f2, f3);
                  org.bukkit.event.entity.EntityTeleportEvent event = new org.bukkit.event.entity.EntityTeleportEvent(target.getBukkitEntity(), target.getBukkitEntity().getLocation(), to);
-@@ -303,17 +319,29 @@ public class TeleportCommand {
+@@ -303,17 +321,29 @@ public class TeleportCommand {
                  }
                  to = event.getTo(); // Paper - actually track new location
  
@@ -81,7 +83,7 @@ index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe180
 -                result = target.teleportTo(level, d, d1, d2, relatives, f2, f3, true);
 +                ChunkPos toPos = new ChunkPos(new BlockPos((int) finalX, (int) finalY, (int) finalZ));
 +                Runnable task = () -> {
-+                    result.complete(target.teleportTo(finalWorld, finalX, finalY, finalZ, movementFlags, finalF2, finalF3));
++                    result.complete(target.teleportTo(finalWorld, finalX, finalY, finalZ, relatives, finalF2, finalF3, false));
 +                };
 +                if (TickThread.isTickThreadFor(target) && TickThread.isTickThreadFor(finalWorld, toPos)) {
 +                    task.run();
@@ -98,7 +100,7 @@ index 6d8ac5f80d5267a2159a464ec331e9b3c65313e2..c70c9b30a01478460c9df89d624fe180
                  // CraftBukkit end
                  if (lookAt != null) {
                      lookAt.perform(source, target);
-@@ -327,7 +355,7 @@ public class TeleportCommand {
+@@ -327,7 +357,7 @@ public class TeleportCommand {
                  if (target instanceof PathfinderMob pathfinderMob) {
                      pathfinderMob.getNavigation().stop();
                  }

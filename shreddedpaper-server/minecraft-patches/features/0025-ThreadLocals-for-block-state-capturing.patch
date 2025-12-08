@@ -431,10 +431,10 @@ index d023c985344807db2180665a15d282fa50754299..a407300584bafd632f1a9d226ee537c7
                  level.addFreshEntity(itemEntity);
              }
 diff --git a/net/minecraft/world/level/block/SaplingBlock.java b/net/minecraft/world/level/block/SaplingBlock.java
-index 5948c4e5e6d0cf7f59188050c51f538d66bf0201..439240b0dd6679295acfed59c7053b630b323970 100644
+index b8d67cede98b57c549a165a584186123a3577035..e6635867dfb84f71fc768e90dd5c208304aef5e8 100644
 --- a/net/minecraft/world/level/block/SaplingBlock.java
 +++ b/net/minecraft/world/level/block/SaplingBlock.java
-@@ -55,18 +55,18 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
+@@ -56,18 +56,18 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
              level.setBlock(pos, state.cycle(STAGE), 260);
          } else {
              // CraftBukkit start

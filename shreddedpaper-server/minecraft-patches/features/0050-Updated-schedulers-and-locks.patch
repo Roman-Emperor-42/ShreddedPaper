@@ -640,7 +640,7 @@ index 719128ab0cbc97bf4e5e752e8e0eb6a4d29d5989..29d192bd10504772cae655f7d21fa29a
 \ No newline at end of file
 +}
 diff --git a/net/minecraft/world/level/block/EndPortalBlock.java b/net/minecraft/world/level/block/EndPortalBlock.java
-index 997831c2b916899da8518c1415233812e6ec16b8..e559c6af8045c2bf6d6647be0fcda69103fd35b7 100644
+index 997831c2b916899da8518c1415233812e6ec16b8..773c7e9c3bda866c952321eeb73497bfd3d034a4 100644
 --- a/net/minecraft/world/level/block/EndPortalBlock.java
 +++ b/net/minecraft/world/level/block/EndPortalBlock.java
 @@ -27,6 +27,7 @@ import net.minecraft.world.level.portal.TeleportTransition;
@@ -651,12 +651,16 @@ index 997831c2b916899da8518c1415233812e6ec16b8..e559c6af8045c2bf6d6647be0fcda691
  
  public class EndPortalBlock extends BaseEntityBlock implements Portal {
      public static final MapCodec<EndPortalBlock> CODEC = simpleCodec(EndPortalBlock::new);
-@@ -105,7 +106,7 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {
+@@ -105,10 +106,10 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {
                  f = level1.getSharedSpawnAngle();
                  set = Relative.union(Relative.DELTA, Relative.ROTATION);
                  if (entity instanceof ServerPlayer serverPlayer) {
 -                    return serverPlayer.findRespawnPositionAndUseSpawnBlock(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit
-+                    return entity.findRespawnPositionAndUseSpawnBlockAsync(false, DimensionTransition.DO_NOTHING, PlayerRespawnEvent.RespawnReason.END_PORTAL).join(); // CraftBukkit
++                    return serverPlayer.findRespawnPositionAndUseSpawnBlockAsync(false, TeleportTransition.DO_NOTHING, PlayerRespawnEvent.RespawnReason.END_PORTAL).join(); // CraftBukkit
                  }
  
-                 bottomCenter = entity.adjustSpawnLocation(level1, blockPos).getBottomCenter();
+-                bottomCenter = entity.adjustSpawnLocation(level1, blockPos).getBottomCenter();
++                bottomCenter = entity.adjustSpawnLocation(level1, blockPos).get().getBottomCenter();
+             }
+ 
+             // CraftBukkit start

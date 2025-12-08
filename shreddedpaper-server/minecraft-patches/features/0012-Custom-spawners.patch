@@ -71,7 +71,7 @@ index 69825fc6941047723919a6079ce4a0b9d1a06006..5e70b1f52e49c70e070259f9c7f0a95a
      }
  
 diff --git a/net/minecraft/world/entity/npc/CatSpawner.java b/net/minecraft/world/entity/npc/CatSpawner.java
-index d6ae13c19481ce33bfa0b6c9db63283009339d8c..e084986fde83c3c5a460509961a8a71b3fa89d45 100644
+index d6ae13c19481ce33bfa0b6c9db63283009339d8c..75ad2100fdd79123b0cb371b1697ee64f399d0d7 100644
 --- a/net/minecraft/world/entity/npc/CatSpawner.java
 +++ b/net/minecraft/world/entity/npc/CatSpawner.java
 @@ -28,20 +28,23 @@ public class CatSpawner implements CustomSpawner {
@@ -89,7 +89,7 @@ index d6ae13c19481ce33bfa0b6c9db63283009339d8c..e084986fde83c3c5a460509961a8a71b
 -                                this.spawnInVillage(level, blockPos);
 -                            } else if (level.structureManager().getStructureWithPieceAt(blockPos, StructureTags.CATS_SPAWN_IN).isValid()) {
 -                                this.spawnInHut(level, blockPos);
-+                    player.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++                    randomPlayer.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
 +                        RandomSource randomSource = level.random;
 +                        int i = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
 +                        int i1 = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
@@ -105,13 +105,13 @@ index d6ae13c19481ce33bfa0b6c9db63283009339d8c..e084986fde83c3c5a460509961a8a71b
                              }
                          }
 -                    }
++                        return 1; // ShreddedPaper - return value is unused, let's just say 1
 +                    }), e -> {}, 1); // ShreddedPaper - run on entity's thread
-+                    return 1; // ShreddedPaper - return value is unused, let's just say 1
                  }
              }
          }
 diff --git a/net/minecraft/world/entity/npc/WanderingTraderSpawner.java b/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
-index 352f55882ea77e8d89942e6c58ef3b4b78eec887..62e597faecc343dc86ac6cc8a2cd22caa38753b9 100644
+index 352f55882ea77e8d89942e6c58ef3b4b78eec887..a244832678d516985c365f96204180ce5c64ee3d 100644
 --- a/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
 +++ b/net/minecraft/world/entity/npc/WanderingTraderSpawner.java
 @@ -89,32 +89,35 @@ public class WanderingTraderSpawner implements CustomSpawner {
@@ -133,7 +133,7 @@ index 352f55882ea77e8d89942e6c58ef3b4b78eec887..62e597faecc343dc86ac6cc8a2cd22ca
 -                if (wanderingTrader != null) {
 -                    for (int i1 = 0; i1 < 2; i1++) {
 -                        this.tryToSpawnLlamaFor(serverLevel, wanderingTrader, 4);
-+            entityplayer.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++            randomPlayer.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
 +                BlockPos blockPos = randomPlayer.blockPosition();
 +                int i = 48;
 +                PoiManager poiManager = serverLevel.getPoiManager();
@@ -194,7 +194,7 @@ index fd3633716f574a0580744cfa5809290ecf7f6451..7eb6f80df002c9b636aaa6597961524e
 +}
 \ No newline at end of file
 diff --git a/net/minecraft/world/level/levelgen/PatrolSpawner.java b/net/minecraft/world/level/levelgen/PatrolSpawner.java
-index c2e37714bae008087b0b5086e51d675beb672ca4..d66107719ec7bb9abab2fe9f27c26778fcf849ab 100644
+index c2e37714bae008087b0b5086e51d675beb672ca4..16eae78cac5e9b1282538c832e01353dd8ad36b8 100644
 --- a/net/minecraft/world/level/levelgen/PatrolSpawner.java
 +++ b/net/minecraft/world/level/levelgen/PatrolSpawner.java
 @@ -45,49 +45,51 @@ public class PatrolSpawner implements CustomSpawner {
@@ -212,7 +212,7 @@ index c2e37714bae008087b0b5086e51d675beb672ca4..d66107719ec7bb9abab2fe9f27c26778
 -                    } else {
 -                        this.nextTick += level.paperConfig().entities.behavior.pillagerPatrols.spawnDelay.ticks + randomSource.nextInt(1200);
 -                    }
-+                    entityhuman.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
++                    player.getBukkitEntity().taskScheduler.schedule(e -> CustomSpawner.voidReturnValue(() -> { // ShreddedPaper - run on entity's thread
 +                        long days;
 +                        if (level.paperConfig().entities.behavior.pillagerPatrols.start.perPlayer) {
 +                            days = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) / 24000L; // PLAY_TIME is counting in ticks
@@ -293,8 +293,8 @@ index c2e37714bae008087b0b5086e51d675beb672ca4..d66107719ec7bb9abab2fe9f27c26778
                              }
                          }
 -                    }
++                        return 1; // ShreddedPaper - return value is unused, let's just say 1
 +                    }), e -> {}, 1); // ShreddedPaper - run on entity's thread
-+                    return 1; // ShreddedPaper - return value is unused, let's just say 1
                  }
              }
          }

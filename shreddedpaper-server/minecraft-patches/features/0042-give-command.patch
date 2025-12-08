@@ -5,7 +5,7 @@ Subject: [PATCH] give-command
 
 
 diff --git a/net/minecraft/server/commands/GiveCommand.java b/net/minecraft/server/commands/GiveCommand.java
-index 945d7c0b31fe9ac029e518af92eebd6e8018a69f..1e7f4116b06adbe1873a392759d60bf88b6be4b1 100644
+index 945d7c0b31fe9ac029e518af92eebd6e8018a69f..12995652b898e05b1304eb4816bc3cbb1799ca6d 100644
 --- a/net/minecraft/server/commands/GiveCommand.java
 +++ b/net/minecraft/server/commands/GiveCommand.java
 @@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
@@ -16,18 +16,18 @@ index 945d7c0b31fe9ac029e518af92eebd6e8018a69f..1e7f4116b06adbe1873a392759d60bf8
  import net.minecraft.commands.CommandBuildContext;
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
-@@ -68,8 +69,10 @@ public class GiveCommand {
+@@ -68,8 +69,9 @@ public class GiveCommand {
                      int min = Math.min(maxStackSize, i1);
                      i1 -= min;
                      ItemStack itemStack1 = item.createItemStack(min, false);
-+                    ShreddedPaper.ensureSync(entityplayer, () -> { // ShreddedPaper - run on player's thread
++                    ShreddedPaper.ensureSync(serverPlayer, () -> { // ShreddedPaper - run on player's thread
                      boolean flag = serverPlayer.getInventory().add(itemStack1);
-                     if (org.purpurmc.purpur.PurpurConfig.disableGiveCommandDrops) continue; // Purpur - add config option for toggling give command dropping
+-                    if (org.purpurmc.purpur.PurpurConfig.disableGiveCommandDrops) continue; // Purpur - add config option for toggling give command dropping
 +                    if (org.purpurmc.purpur.PurpurConfig.disableGiveCommandDrops) return; // Purpur - add config option for toggling give command dropping // ShreddedPaper - run on player's thread
                      if (flag && itemStack1.isEmpty()) {
                          ItemEntity itemEntity = serverPlayer.drop(itemStack, false, false, false, null); // Paper - do not fire PlayerDropItemEvent for /give command
                          if (itemEntity != null) {
-@@ -95,6 +98,7 @@ public class GiveCommand {
+@@ -95,6 +97,7 @@ public class GiveCommand {
                              itemEntity.setTarget(serverPlayer.getUUID());
                          }
                      }

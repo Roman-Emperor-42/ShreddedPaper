@@ -33,10 +33,10 @@ index b198a3de5349479e14f1097e1ce67766ccd0d68b..08d3ab91267692b5956ad4ea6ecad255
          ensureSync(serverLevel, new ChunkPos(blockPos), runnable);
      }
 diff --git a/net/minecraft/server/commands/KillCommand.java b/net/minecraft/server/commands/KillCommand.java
-index f1a41d873c2eb2f519b0cd6adfcd9ef675e65195..684480846e2c4f00364ac2b4c74dc8aa79db22f8 100644
+index f1a41d873c2eb2f519b0cd6adfcd9ef675e65195..92c02f18de66a9d22ab603a068566460ccff2383 100644
 --- a/net/minecraft/server/commands/KillCommand.java
 +++ b/net/minecraft/server/commands/KillCommand.java
-@@ -3,6 +3,9 @@ package net.minecraft.server.commands;
+@@ -3,10 +3,14 @@ package net.minecraft.server.commands;
  import com.google.common.collect.ImmutableList;
  import com.mojang.brigadier.CommandDispatcher;
  import java.util.Collection;
@@ -46,12 +46,17 @@ index f1a41d873c2eb2f519b0cd6adfcd9ef675e65195..684480846e2c4f00364ac2b4c74dc8aa
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
  import net.minecraft.commands.arguments.EntityArgument;
-@@ -24,7 +27,7 @@ public class KillCommand {
+ import net.minecraft.network.chat.Component;
++import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.entity.Entity;
+ 
+ public class KillCommand {
+@@ -24,7 +28,7 @@ public class KillCommand {
  
      private static int kill(CommandSourceStack source, Collection<? extends Entity> targets) {
          for (Entity entity : targets) {
 -            entity.kill(source.getLevel());
-+            ShreddedPaper.ensureSync(entity, Entity::kill); // ShreddedPaper - run on right thread
++            ShreddedPaper.ensureSync(entity, e -> e.kill((ServerLevel) e.level())); // ShreddedPaper - run on right thread
          }
  
          if (targets.size() == 1) {
