@@ -185,14 +185,13 @@ index a78c64ed937c51027d25e0e8c08df1142412eeea..8d3a4b7890bf67786e833808f6bae91d
              }
          }
          } // Paper - option to disable pathfinding updates
-@@ -2767,8 +2767,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2767,8 +2767,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
          @Override
          public void onTrackingStart(Entity entity) {
 -            org.spigotmc.AsyncCatcher.catchOp("entity register"); // Spigot
 -            // ServerLevel.this.getChunkSource().addEntity(entity); // Paper - ignore and warn about illegal addEntity calls instead of crashing server; moved down below valid=true
 +            TickThread.ensureTickThread(entity, "entity register"); // org.spigotmc.AsyncCatcher.catchOp("entity register"); // Spigot // ShreddedPaper
-+            ServerLevel.this.getChunkSource().addEntity(entity); // Paper - ignore and warn about illegal addEntity calls instead of crashing server; moved down below valid=true
              if (entity instanceof ServerPlayer serverPlayer) {
                  ServerLevel.this.players.add(serverPlayer);
                  if (serverPlayer.isReceivingWaypoints()) {
