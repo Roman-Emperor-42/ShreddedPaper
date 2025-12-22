@@ -90,7 +90,7 @@ Requirements:
 - You need `jdk` 21+ installed to compile (and `jre` 21+ to run)
 
 Build instructions:
-1. Patch paper with: `./gradlew applyPatches`
+1. Patch paper with: `./gradlew applyAllPatches`
 2. Build the shreddedpaper jars with: `./gradlew shadowjar createReobfPaperclipJar`
 3. Get the shreddedpaper jar from `build/libs`
 
