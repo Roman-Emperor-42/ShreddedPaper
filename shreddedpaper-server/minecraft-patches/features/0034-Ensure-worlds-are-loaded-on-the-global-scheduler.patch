@@ -17,3 +17,32 @@ index a0e962f1dadc6cef913c7be025b1f874d70efb95..f07d59fa033c3ab19bffd9a260797d63
          this.forceTicks = true;
          // CraftBukkit end
          LOGGER.info("Preparing start region for dimension {}", serverLevel.dimension().location());
+@@ -793,6 +795,12 @@ public void initWorld(ServerLevel serverLevel, ServerLevelData serverLevelData,
+         WorldBorder worldborder = serverLevel.getWorldBorder();
+         worldborder.applySettings(serverLevelData.getWorldBorder()); // CraftBukkit - move up so that WorldBorder is set during WorldInitEvent
+         this.server.getPluginManager().callEvent(new org.bukkit.event.world.WorldInitEvent(serverLevel.getWorld())); // CraftBukkit - SPIGOT-5569: Call WorldInitEvent before any chunks are generated
+-        if (!serverLevelData.isInitialized()) {
++        if (!serverLevelData.isInitialized()) {
++            final boolean previousForceTicks = this.forceTicks; // ShreddedPaper - ensure initial spawn runs on the global scheduler
++            this.forceTicks = true; // ShreddedPaper - ensure initial spawn runs on the global scheduler
+             try {
+                 setInitialSpawn(serverLevel, serverLevelData, worldOptions.generateBonusChest(), isDebugWorld);
+                 serverLevelData.setInitialized(true);
+                 if (isDebugWorld) {
+                     this.setupDebugLevel(this.worldData);
+                 }
+             } catch (Throwable var23) {
+                 CrashReport crashReport = CrashReport.forThrowable(var23, "Exception initializing level");
+ 
+                 try {
+                     serverLevel.fillReportDetails(crashReport);
+                 } catch (Throwable var22) {
+                 }
+ 
+                 throw new ReportedException(crashReport);
++            } finally {
++                this.forceTicks = previousForceTicks; // ShreddedPaper - ensure initial spawn runs on the global scheduler
+             }
+ 
+             serverLevelData.setInitialized(true);
+         }
