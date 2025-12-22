@@ -185,7 +185,7 @@ index a78c64ed937c51027d25e0e8c08df1142412eeea..8d3a4b7890bf67786e833808f6bae91d
              }
          }
          } // Paper - option to disable pathfinding updates
-@@ -2767,8 +2767,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2768,8 +2768,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
          @Override
          public void onTrackingStart(Entity entity) {
@@ -195,7 +195,7 @@ index a78c64ed937c51027d25e0e8c08df1142412eeea..8d3a4b7890bf67786e833808f6bae91d
              if (entity instanceof ServerPlayer serverPlayer) {
                  ServerLevel.this.players.add(serverPlayer);
                  if (serverPlayer.isReceivingWaypoints()) {
-@@ -2783,14 +2783,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2784,14 +2784,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
              }
  
              if (entity instanceof Mob mob) {
@@ -212,7 +212,7 @@ index a78c64ed937c51027d25e0e8c08df1142412eeea..8d3a4b7890bf67786e833808f6bae91d
              }
  
              if (entity instanceof EnderDragon enderDragon) {
-@@ -2817,7 +2817,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -2818,7 +2818,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
          @Override
          public void onTrackingEnd(Entity entity) {
