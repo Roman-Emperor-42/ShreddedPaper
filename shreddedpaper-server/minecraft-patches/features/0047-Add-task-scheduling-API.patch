@@ -398,7 +398,7 @@ index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..a695ba2d85cdcdb2981ce7dfa549a474
      // CraftBukkit start
      public boolean mustNotSave;
      public boolean needsDecoration;
-@@ -98,21 +105,27 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+@@ -98,21 +105,28 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
      // Paper end
      // Paper start - rewrite chunk system
      private boolean postProcessingDone;
@@ -426,6 +426,7 @@ index 0f071584157bd5a3f45be03b6f0a5aa7021f19c9..a695ba2d85cdcdb2981ce7dfa549a474
      public final void moonrise$setChunkHolder(final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder holder) {
 -        this.chunkAndHolder = holder;
 +        this.getChunkHolder = holder;
++        this.chunkAndHolder = holder == null ? null : new net.minecraft.server.level.ServerChunkCache.ChunkAndHolder(this, holder.vanillaChunkHolder);
      }
      // Paper end - rewrite chunk system
      // Paper start - get block chunk optimisation
