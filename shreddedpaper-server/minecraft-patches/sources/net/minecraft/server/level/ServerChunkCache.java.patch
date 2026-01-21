@@ -1,12 +1,13 @@
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
-@@ -1,8 +_,14 @@
+@@ -1,8 +_,15 @@
  package net.minecraft.server.level;
  
 +import ca.spottedleaf.moonrise.common.util.TickThread;
  import com.google.common.annotations.VisibleForTesting;
  import com.mojang.datafixers.DataFixer;
  import com.mojang.logging.LogUtils;
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
 +import io.multipaper.shreddedpaper.region.LevelChunkRegionMap;
 +import io.multipaper.shreddedpaper.region.RegionPos;
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperChangesBroadcaster;
@@ -68,7 +69,7 @@
          return this.mainThreadProcessor.pollTask();
      }
  
-@@ -474,28 +_,36 @@
+@@ -474,28 +_,37 @@
      // CraftBukkit end
  
      @Override
@@ -80,6 +81,7 @@
 +        CompletableFuture<Void> purgeStaleTicketsFuture = CompletableFuture.completedFuture(null); // ShreddedPaper - purgeStaleTickets async
          if (this.level.tickRateManager().runsNormally() || !tickChunks || this.level.spigotConfig.unloadFrozenChunks) { // Spigot
 -            this.ticketStorage.purgeStaleTickets(this.chunkMap);
++            if (this.level.getGameTime() % ShreddedPaperConfiguration.get().optimizations.purgeStaleTicketsFrequency == 0) // ShreddedPaper - purgeStaleTicketsFrequency
 +            purgeStaleTicketsFuture = purgeStaleTicketsFuture.thenRunAsync(() -> this.ticketStorage.purgeStaleTickets(this.chunkMap), this.level.levelThread); // ShreddedPaper - purgeStaleTickets async
          }
  

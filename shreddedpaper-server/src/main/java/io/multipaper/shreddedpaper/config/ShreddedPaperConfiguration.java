@@ -48,6 +48,7 @@ public class ShreddedPaperConfiguration extends ConfigurationPart {
         public boolean flushQueueInParallel = true;
         public int maximumTrackersPerEntity = 500;
         public long trackerFullUpdateFrequency = 20;
+        public long purgeStaleTicketsFrequency = 20;
         public boolean writePlayerSavesAsync = true;
         public ChunkPacketCaching chunkPacketCaching;
 

@@ -69,6 +69,9 @@ optimizations:
   # How often (in ticks) to do a full tracker update per entity. The vanilla
   # default is '1'.
   tracker-full-update-frequency: 20
+  
+  # How often (in ticks) to purge stale tickets. The papermc default is '1'.
+  purge-stale-tickets-frequency: 20
 
   # Cache full chunk packets so that we aren't recreating them every time the
   # same chunk is sent to a new player. Useful when lots of players are in the
