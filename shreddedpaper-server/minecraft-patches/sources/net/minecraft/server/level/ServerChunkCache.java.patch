@@ -68,7 +68,7 @@
          return this.mainThreadProcessor.pollTask();
      }
  
-@@ -474,7 +_,8 @@
+@@ -474,28 +_,36 @@
      // CraftBukkit end
  
      @Override
@@ -77,8 +77,13 @@
 +        CompletableFuture<Void> future = CompletableFuture.completedFuture(null); // ShreddedPaper - run async
          ProfilerFiller profilerFiller = Profiler.get();
          profilerFiller.push("purge");
++        CompletableFuture<Void> purgeStaleTicketsFuture = CompletableFuture.completedFuture(null); // ShreddedPaper - purgeStaleTickets async
          if (this.level.tickRateManager().runsNormally() || !tickChunks || this.level.spigotConfig.unloadFrozenChunks) { // Spigot
-@@ -485,17 +_,22 @@
+-            this.ticketStorage.purgeStaleTickets(this.chunkMap);
++            purgeStaleTicketsFuture = purgeStaleTicketsFuture.thenRunAsync(() -> this.ticketStorage.purgeStaleTickets(this.chunkMap), this.level.levelThread); // ShreddedPaper - purgeStaleTickets async
+         }
+ 
+         this.runDistanceManagerUpdates();
          profilerFiller.popPush("chunks");
          if (tickChunks) {
              ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)this.level).moonrise$getPlayerChunkLoader().tick(); // Paper - rewrite chunk system
@@ -88,6 +93,7 @@
 +            future = future.thenRun(() -> this.chunkMap.tick()); // ShreddedPaper - run async
          }
  
++        future = CompletableFuture.allOf(future, purgeStaleTicketsFuture); // ShreddedPaper - purgeStaleTickets async
 +        future = future.thenRun(() -> { // ShreddedPaper - run async
          profilerFiller.popPush("unload");
          this.chunkMap.tick(hasTimeLeft);
