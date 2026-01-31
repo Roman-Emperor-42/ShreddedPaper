@@ -34,6 +34,19 @@
      private ServerPlayer.@Nullable RespawnConfig respawnConfig;
      private final TextFilter textFilter;
      private boolean textFilteringEnabled;
+@@ -752,9 +_,11 @@
+ 
+         Entity camera = this.getCamera();
+         if (camera != this) {
+-            if (camera.isAlive()) {
++            if (camera.isAlive() && camera.level() == this.level()) { // ShreddedPaper - ensure telelport to camera sync
++                ShreddedPaper.ensureSync(this, camera, () -> { // ShreddedPaper - ensure telelport to camera sync
+                 this.absSnapTo(camera.getX(), camera.getY(), camera.getZ(), camera.getYRot(), camera.getXRot());
+                 this.level().getChunkSource().move(this);
++                }); // ShreddedPaper - ensure telelport to camera sync
+                 if (this.wantsToStopRiding()) {
+                     this.setCamera(this);
+                 }
 @@ -1352,39 +_,43 @@
      public record RespawnResult(TeleportTransition transition, boolean isBedSpawn, boolean isAnchorSpawn) {
      }
