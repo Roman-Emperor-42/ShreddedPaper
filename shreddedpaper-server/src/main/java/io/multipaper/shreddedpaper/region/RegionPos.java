@@ -1,6 +1,7 @@
 package io.multipaper.shreddedpaper.region;
 
 import com.mojang.logging.LogUtils;
+import io.netty.util.internal.MathUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
@@ -16,7 +17,8 @@ public class RegionPos {
     public static final int REGION_SIZE; // eg 8 (for an 8x8 region)
     public static final int REGION_SHIFT; // eg 3 (1 << 3 == 8)
     public static final int REGION_SIZE_MASK; // eg 7 (9 % 8 == 9 & 7 == 1)
-    public static final int MAX_DISTANCE_SQR;
+    public static final double MAX_DISTANCE_SQR;
+    public static final double MAX_DISTANCE;
 
     static {
         // desiredRegionSize = 7 -> shift = 3, size = 8, mask = 7
@@ -45,7 +47,8 @@ public class RegionPos {
 
         LOGGER.info("Using region size: {}, shift={}, mask={}", REGION_SIZE, REGION_SHIFT, REGION_SIZE_MASK);
 
-        MAX_DISTANCE_SQR = RegionPos.REGION_SIZE * 16 * RegionPos.REGION_SIZE * 16;
+        MAX_DISTANCE_SQR = (double) RegionPos.REGION_SIZE * 16 * RegionPos.REGION_SIZE * 16;
+        MAX_DISTANCE = Math.sqrt(MAX_DISTANCE_SQR);
     }
 
     public final int x;

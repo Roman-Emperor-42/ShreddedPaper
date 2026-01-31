@@ -1,6 +1,10 @@
 --- a/net/minecraft/world/phys/Vec3.java
 +++ b/net/minecraft/world/phys/Vec3.java
-@@ -4,6 +_,7 @@
+@@ -1,9 +_,11 @@
+ package net.minecraft.world.phys;
+ 
+ import com.mojang.serialization.Codec;
++import io.multipaper.shreddedpaper.region.RegionPos;
  import io.netty.buffer.ByteBuf;
  import java.util.EnumSet;
  import java.util.List;
@@ -8,3 +12,18 @@
  import net.minecraft.core.Direction;
  import net.minecraft.core.Position;
  import net.minecraft.core.Vec3i;
+@@ -335,4 +_,14 @@
+     public boolean isFinite() {
+         return Double.isFinite(this.x) && Double.isFinite(this.y) && Double.isFinite(this.z);
+     }
++
++    // ShreddedPaper start - cap velocity to region size
++    public Vec3 shreddedPaperCapToRegionSize() {
++        double horizontalDistanceSqr = this.horizontalDistanceSqr();
++        if (horizontalDistanceSqr > RegionPos.MAX_DISTANCE_SQR) {
++            return this.scale((RegionPos.MAX_DISTANCE - 1) / Math.sqrt(horizontalDistanceSqr)); // Subtract 1 to ensure no double precision issues causes horizontalDistance > RegionPos.MAX_DISTANCE
++        }
++        return this;
++    }
++    // ShreddedPaper end - cap velocity to region size
+ }

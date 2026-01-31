@@ -84,6 +84,15 @@
              BlockPos blockPos = this.mainSupportingBlockPos.get();
              if (!(yOffset > 1.0E-5F)) {
                  return blockPos;
+@@ -2377,7 +_,7 @@
+                 }
+                 delta = event.getKnockback();
+             }
+-            this.setDeltaMovement(this.getDeltaMovement().add(delta.getX(), delta.getY(), delta.getZ()));
++            this.setDeltaMovement(this.getDeltaMovement().add(delta.getX(), delta.getY(), delta.getZ()).shreddedPaperCapToRegionSize()); // ShreddedPaper - cap pushing delta to region size
+             // Paper end - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
+             this.needsSync = true;
+         }
 @@ -3546,7 +_,9 @@
          }
      }
@@ -127,6 +136,15 @@
              // Paper start - gateway-specific teleport event
              final org.bukkit.event.entity.EntityTeleportEvent teleEvent;
              if (this.portalProcess != null && this.portalProcess.isSamePortal(((net.minecraft.world.level.block.EndGatewayBlock) Blocks.END_GATEWAY)) && this.level.getBlockEntity(this.portalProcess.getEntryPosition()) instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity theEndGatewayBlockEntity) {
+@@ -4920,7 +_,7 @@
+             pushVector = pushVector.normalize().scale(0.0045000000000000005);
+         }
+ 
+-        this.setDeltaMovement(currMovement.add(pushVector));
++        this.setDeltaMovement(currMovement.add(pushVector).shreddedPaperCapToRegionSize()); // ShreddedPaper - cap pushing delta to region size
+ 
+         // note: inFluid = true here as pushVector != 0
+         return true;
 @@ -4996,6 +_,12 @@
  
      public void setDeltaMovement(Vec3 deltaMovement) {
@@ -134,7 +152,7 @@
 +            // ShreddedPaper start - why is something setting the entity velocity to larger than one region...
 +            if (deltaMovement.horizontalDistanceSqr() > RegionPos.MAX_DISTANCE_SQR + 1 && deltaMovement.horizontalDistanceSqr() > this.deltaMovement.horizontalDistanceSqr()) {
 +                LOGGER.warn("Velocity is being set larger than the ShreddedPaper region size: {} for entity {}", deltaMovement, this, new Exception("Velocity larger than region size, limiting velocity to region size"));
-+                deltaMovement = deltaMovement.normalize().scale(RegionPos.MAX_DISTANCE_SQR);
++                deltaMovement = deltaMovement.shreddedPaperCapToRegionSize();
 +            }
 +            // ShreddedPaper end - why is something setting the entity velocity to larger than one region...
              synchronized (this.posLock) { // Paper - detailed watchdog information
