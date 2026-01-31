@@ -1,0 +1,20 @@
+--- a/net/minecraft/server/level/TicketType.java
++++ b/net/minecraft/server/level/TicketType.java
+@@ -4,6 +_,8 @@
+ import java.lang.annotation.Retention;
+ import java.lang.annotation.RetentionPolicy;
+ import java.lang.annotation.Target;
++
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.registries.BuiltInRegistries;
+ 
+@@ -98,7 +_,7 @@
+     private final int flags;
+ 
+     public TicketType(long timeout, int flags) {
+-        this.timeout = timeout;
++        this.timeout = timeout == 0 ? 0 : Math.max(ShreddedPaperConfiguration.get().optimizations.purgeStaleTicketsFrequency + 1L, timeout); // ShreddedPaper - purgeStaleTicketsFrequency - ensure tickets live for at least 1 tick
+         this.flags = flags;
+     } // long timeout, int flags
+ 
