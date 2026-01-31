@@ -1,10 +1,11 @@
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/scheduling/ChunkHolderManager.java
-@@ -24,6 +_,10 @@
+@@ -24,6 +_,11 @@
  import com.google.gson.JsonArray;
  import com.google.gson.JsonObject;
  import com.mojang.logging.LogUtils;
 +import io.multipaper.shreddedpaper.ShreddedPaper;
++import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
 +import io.multipaper.shreddedpaper.region.LevelChunkRegion;
 +import io.multipaper.shreddedpaper.region.RegionPos;
 +import io.multipaper.shreddedpaper.util.SimpleStampedLock;
@@ -126,6 +127,22 @@
                  if (saveStat != null) {
                      if (saveStat.savedChunk()) {
                          ++savedChunk;
+@@ -803,13 +_,13 @@
+         if (removeDelay == NO_TIMEOUT_MARKER) {
+             return false;
+         }
+-        --removeDelay;
++        removeDelay -= ShreddedPaperConfiguration.get().optimizations.purgeStaleTicketsFrequency; // ShreddedPaper - purgeStaleTicketsFrequency
+         ((ChunkSystemTicket<?>)(Object)ticket).moonrise$setRemoveDelay(removeDelay);
+         return removeDelay <= 0L;
+     }
+ 
+     public void tick() {
+-        ++this.currentTick;
++        this.currentTick += ShreddedPaperConfiguration.get().optimizations.purgeStaleTicketsFrequency; // ShreddedPaper - purgeStaleTicketsFrequency
+ 
+         final int sectionShift = ((ChunkSystemServerLevel)this.world).moonrise$getRegionChunkShift();
+ 
 @@ -1129,6 +_,16 @@
          if (changedFullStatus.isEmpty()) {
              return;
