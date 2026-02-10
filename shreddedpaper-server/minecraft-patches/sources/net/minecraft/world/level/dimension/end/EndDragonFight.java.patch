@@ -24,7 +24,7 @@
 +            };
 +            while (!this.level.chunkScheduler.getRegionLocker().tryLockNow(RegionPos.forChunk(0, 0), r)) {
 +                long startBlockingTime = System.nanoTime();
-+                this.level.chunkSource.mainThreadProcessor.managedBlock(() -> System.nanoTime() - startBlockingTime < 1_000_000); // Wait for 1ms
++                this.level.chunkSource.mainThreadProcessor.managedBlock(() -> System.nanoTime() - startBlockingTime >= 1_000_000); // Wait for 1ms
 +            }
 +            // ShreddedPaper end - run on end island thread
          } else {
