@@ -20,6 +20,16 @@
  import net.minecraft.world.level.Level;
  import net.minecraft.world.level.block.Blocks;
  import net.minecraft.world.level.block.state.BlockState;
+@@ -490,7 +_,9 @@
+         for (ThrownEnderpearl thrownEnderpearl : player.getEnderPearls()) {
+             // Paper start - Allow using old ender pearl behavior
+             if (!thrownEnderpearl.level().paperConfig().misc.legacyEnderPearlBehavior) {
++                ShreddedPaper.ensureSync(thrownEnderpearl, () -> { // ShreddedPaper - run on ender pearl's thread
+                 thrownEnderpearl.setRemoved(Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT); // CraftBukkit - add Bukkit remove cause
++                }); // ShreddedPaper - run on ender pearl's thread
+             }
+             // Paper end - Allow using old ender pearl behavior
+         }
 @@ -515,8 +_,7 @@
          // CraftBukkit start
          // this.broadcastAll(new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID())));
