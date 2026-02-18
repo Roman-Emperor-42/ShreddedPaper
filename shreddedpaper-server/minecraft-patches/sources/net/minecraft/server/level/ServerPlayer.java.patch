@@ -34,6 +34,22 @@
      private ServerPlayer.@Nullable RespawnConfig respawnConfig;
      private final TextFilter textFilter;
      private boolean textFilteringEnabled;
+@@ -637,12 +_,15 @@
+         if (!optional.isEmpty()) {
+             ServerLevel level = this.level().getServer().getLevel(optional.get());
+             if (level != null) {
++                BlockPos enderpearlPos = BlockPos.containing(input.read("Pos", Vec3.CODEC).orElse(Vec3.ZERO)); // ShreddedPaper - spawn ender pearl on ender pearl thread
++                ShreddedPaper.ensureSync(level, enderpearlPos, () -> { // ShreddedPaper - spawn ender pearl on ender pearl thread
+                 Entity entity = EntityType.loadEntityRecursive(input, level, EntitySpawnReason.LOAD, entity1 -> !level.addWithUUID(entity1) ? null : entity1);
+                 if (entity != null) {
+                     placeEnderPearlTicket(level, entity.chunkPosition());
+                 } else {
+                     LOGGER.warn("Failed to spawn player ender pearl in level ({}), skipping", optional.get());
+                 }
++                }); // ShreddedPaper - spawn ender pearl on ender pearl thread
+             } else {
+                 LOGGER.warn("Trying to load ender pearl without level ({}) being loaded, skipping", optional.get());
+             }
 @@ -752,9 +_,11 @@
  
          Entity camera = this.getCamera();
