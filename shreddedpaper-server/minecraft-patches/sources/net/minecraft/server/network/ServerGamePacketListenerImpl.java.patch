@@ -69,18 +69,19 @@
                      return;
                  }
              }
-@@ -2318,12 +_,14 @@
+@@ -2318,12 +_,15 @@
              this.processedDisconnect = true;
          }
          // CraftBukkit end
-+        player.getBukkitEntity().taskScheduler.schedule(e -> { // ShreddedPaper - run on player's thread
++        final Consumer<Entity> runOnPlayersThread = e -> { // ShreddedPaper - run on player's thread
          LOGGER.info("{} lost connection: {}", this.player.getPlainTextName(), details.reason().getString());
          // Paper start - Fix kick event leave message not being sent
          final net.kyori.adventure.text.Component quitMessage = details.quitMessage().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).orElse(null);
          this.removePlayerFromWorld(quitMessage);
          // Paper end - Fix kick event leave message not being sent
          super.onDisconnect(details);
-+        }, e -> LOGGER.error("Failed to run disconnect task for player {}", player.getName().getString(), new Exception("Disconnect task retired")), 1); // ShreddedPaper - run on player's thread
++        }; // ShreddedPaper - run on player's thread
++        if (TickThread.isShutdownThread()) runOnPlayersThread.accept(this.player); else player.getBukkitEntity().taskScheduler.schedule(runOnPlayersThread, e -> LOGGER.error("Failed to run disconnect task for player {}", player.getName().getString(), new Exception("Disconnect task retired")), 1); // ShreddedPaper - run on player's thread
      }
  
      private void removePlayerFromWorld() {

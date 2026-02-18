@@ -1,5 +1,6 @@
 package io.multipaper.shreddedpaper;
 
+import ca.spottedleaf.moonrise.common.util.TickThread;
 import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -94,7 +95,7 @@ public class ShreddedPaper {
     }
 
     public static boolean isSync(ServerLevel serverLevel, ChunkPos chunkPos) {
-        return serverLevel.chunkScheduler.getRegionLocker().hasWriteLock(RegionPos.forChunk(chunkPos));
+        return serverLevel.chunkScheduler.getRegionLocker().hasWriteLock(RegionPos.forChunk(chunkPos)) || TickThread.isShutdownThread();
     }
 
 }
