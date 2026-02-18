@@ -16,3 +16,12 @@
                  }
              }
  
+@@ -352,7 +_,7 @@
+             if (!list.isEmpty()) {
+                 consumer.accept(new ClientboundSetEquipmentPacket(this.entity.getId(), list, true)); // Paper - data sanitization
+             }
+-            ((LivingEntity) this.entity).detectEquipmentUpdates(); // CraftBukkit - SPIGOT-3789: sync again immediately after sending
++            // ((LivingEntity) this.entity).detectEquipmentUpdates(); // CraftBukkit - SPIGOT-3789: sync again immediately after sending // ShreddedPaper - why? - equipment changes should not be run when sending pairing changes
+         }
+ 
+         if (!this.entity.getPassengers().isEmpty()) {
