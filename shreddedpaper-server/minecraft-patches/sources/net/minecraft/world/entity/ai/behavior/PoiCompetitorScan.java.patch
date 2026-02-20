@@ -1,0 +1,19 @@
+--- a/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java
++++ b/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java
+@@ -2,6 +_,8 @@
+ 
+ import java.util.List;
+ import java.util.Optional;
++
++import ca.spottedleaf.moonrise.common.util.TickThread;
+ import net.minecraft.core.GlobalPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.world.entity.LivingEntity;
+@@ -19,6 +_,7 @@
+                     instance,
+                     (jobSite, nearestLivingEntities) -> (level, villager, gameTime) -> {
+                         GlobalPos globalPos = instance.get(jobSite);
++                        if (!TickThread.isTickThreadFor(level, globalPos.pos())) return true; // ShreddedPaper - don't run outside poi region
+                         level.getPoiManager()
+                             .getType(globalPos.pos())
+                             .ifPresent(

@@ -1,0 +1,27 @@
+--- a/net/minecraft/world/entity/npc/villager/Villager.java
++++ b/net/minecraft/world/entity/npc/villager/Villager.java
+@@ -7,6 +_,7 @@
+ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.Dynamic;
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+ import java.util.List;
+ import java.util.Map;
+@@ -798,13 +_,15 @@
+             this.brain.getMemory(moduleType).ifPresent(pos -> {
+                 ServerLevel level = server.getLevel(pos.dimension());
+                 if (level != null) {
++                    BiPredicate<Villager, Holder<PoiType>> biPredicate = POI_MEMORIES.get(moduleType); // ShreddedPaper - don't run on poi's region
++                    ShreddedPaper.ensureSync(level, pos.pos(), () -> { // ShreddedPaper - run on poi's region
+                     PoiManager poiManager = level.getPoiManager();
+                     Optional<Holder<PoiType>> type = poiManager.getType(pos.pos());
+-                    BiPredicate<Villager, Holder<PoiType>> biPredicate = POI_MEMORIES.get(moduleType);
+                     if (type.isPresent() && biPredicate.test(this, type.get())) {
+                         poiManager.release(pos.pos());
+                         level.debugSynchronizers().updatePoi(pos.pos());
+                     }
++                    }); // ShreddedPaper - run on poi's region
+                 }
+             });
+         }
