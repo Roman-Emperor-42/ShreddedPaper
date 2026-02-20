@@ -160,7 +160,7 @@
          if (!TickThread.isTickThread()) {
              // These will be handled on the next ServerChunkCache$MainThreadExecutor#pollTask, as it runs the distance manager update
              // which will invoke processTicketUpdates
-@@ -1143,94 +_,110 @@
+@@ -1143,97 +_,116 @@
  
      private void removeChunkHolder(final NewChunkHolder holder) {
          holder.onUnload();
@@ -230,8 +230,17 @@
          // We do need to process updates here so that any addTicket that is synchronised before this call does not go missed.
          this.processTicketUpdates();
  
--        final int toUnloadCount = Math.max(50, (int)(unloadCountTentative * 0.05));
-+        final int toUnloadCount = 50; // Math.max(50, (int)(unloadCountTentative * 0.05)); // ShreddedPaper - use our own unload queue
+-        final int toUnloadCount = Math.max(
+-            PlatformHooks.get().configMinChunkUnloadCount(this.world),
+-            (int)Math.round(unloadCountTentative * Math.clamp(PlatformHooks.get().configMinChunkUnloadFraction(this.world), 0.0, 1.0))
+-        );
++        // ShreddedPaper start - use our own unload queue
++        // final int toUnloadCount = Math.max(
++        //     PlatformHooks.get().configMinChunkUnloadCount(this.world),
++        //     (int)Math.round(unloadCountTentative * Math.clamp(PlatformHooks.get().configMinChunkUnloadFraction(this.world), 0.0, 1.0))
++        // );
++        final int toUnloadCount = 50;
++        // ShreddedPaper end - use our own unload queue
          int processedCount = 0;
  
 -        for (final ChunkUnloadQueue.SectionToUnload sectionRef : unloadSectionsForRegion) {
@@ -334,7 +343,7 @@
  
                      // run stage 1
                      for (int i = 0, len = stage1.size(); i < len; ++i) {
-@@ -1295,10 +_,12 @@
+@@ -1298,10 +_,12 @@
  
              processedCount += stage1.size();
  
@@ -351,7 +360,7 @@
      }
  
      public enum TicketOperationType {
-@@ -1515,7 +_,7 @@
+@@ -1518,7 +_,7 @@
      public JsonObject getDebugJson() {
          final JsonObject ret = new JsonObject();
  
