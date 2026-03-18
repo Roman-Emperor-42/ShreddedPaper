@@ -43,7 +43,13 @@ public class LevelChunkRegionMap {
     }
 
     public LevelChunkRegion get(RegionPos regionPos) {
-        return regionsLock.optimisticRead(() -> regions.get(regionPos.longKey));
+        return regionsLock.optimisticRead(() -> {
+            LevelChunkRegion levelChunkRegion = regions.get(regionPos.longKey);
+            if (levelChunkRegion != null) {
+                levelChunkRegion.bumpLastAccess();
+            }
+            return levelChunkRegion;
+        });
     }
 
     public void remove(RegionPos regionPos) {

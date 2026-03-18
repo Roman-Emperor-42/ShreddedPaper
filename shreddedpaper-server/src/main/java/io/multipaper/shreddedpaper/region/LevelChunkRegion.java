@@ -2,7 +2,6 @@ package io.multipaper.shreddedpaper.region;
 
 import ca.spottedleaf.concurrentutil.executor.queue.PrioritisedTaskQueue;
 import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
-import ca.spottedleaf.moonrise.common.util.TickThread;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -44,11 +43,18 @@ public class LevelChunkRegion {
     public final List<TickingBlockEntity> pendingBlockEntityTickers = new ReferenceArrayList<>();
     private final ObjectOpenHashSet<Mob> navigatingMobs = new ObjectOpenHashSet<>();
     private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>();
+    private volatile long lastAccessTick;
     public ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos;
 
     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
         this.level = level;
         this.regionPos = regionPos;
+
+        this.bumpLastAccess();
+    }
+
+    public void bumpLastAccess() {
+        this.lastAccessTick = this.level.levelData.getGameTime();
     }
 
     public synchronized void add(LevelChunk levelChunk) {
@@ -210,7 +216,8 @@ public class LevelChunkRegion {
     }
 
     public boolean isEmpty() {
-        return levelChunks.isEmpty()
+        return this.lastAccessTick < this.level.levelData.getGameTime() - 20
+                && levelChunks.isEmpty()
                 && playerTickingChunkRequests.isEmpty()
                 && tickingEntities.size() == 0
                 && scheduledTasks.isEmpty()
