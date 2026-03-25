@@ -1,0 +1,26 @@
+--- a/net/minecraft/world/entity/ai/behavior/GoToPotentialJobSite.java
++++ b/net/minecraft/world/entity/ai/behavior/GoToPotentialJobSite.java
+@@ -2,6 +_,8 @@
+ 
+ import com.google.common.collect.ImmutableMap;
+ import java.util.Optional;
++
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.GlobalPos;
+ import net.minecraft.server.level.ServerLevel;
+@@ -45,12 +_,14 @@
+             BlockPos blockPos = globalPos.pos();
+             ServerLevel level1 = level.getServer().getLevel(globalPos.dimension());
+             if (level1 != null) {
++                ShreddedPaper.ensureSync(level, blockPos, () -> { // ShreddedPaper - run on poi's region
+                 PoiManager poiManager = level1.getPoiManager();
+                 if (poiManager.exists(blockPos, holder -> true)) {
+                     poiManager.release(blockPos);
+                 }
+ 
+                 level.debugSynchronizers().updatePoi(blockPos);
++                }); // ShreddedPaper - run on poi's region
+             }
+         });
+         entity.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
