@@ -1,0 +1,32 @@
+--- a/net/minecraft/util/debug/TrackingDebugSynchronizer.java
++++ b/net/minecraft/util/debug/TrackingDebugSynchronizer.java
+@@ -7,6 +_,7 @@
+ import java.util.Set;
+ import java.util.UUID;
+ import java.util.Map.Entry;
++import java.util.concurrent.ConcurrentHashMap;
+ import java.util.function.BiConsumer;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.SectionPos;
+@@ -27,7 +_,7 @@
+ 
+ public abstract class TrackingDebugSynchronizer<T> {
+     protected final DebugSubscription<T> subscription;
+-    private final Set<UUID> subscribedPlayers = new ObjectOpenHashSet<>();
++    private final Set<UUID> subscribedPlayers = ConcurrentHashMap.newKeySet(); // ShreddedPaper - thread safety
+ 
+     public TrackingDebugSynchronizer(DebugSubscription<T> subscription) {
+         this.subscription = subscription;
+@@ -137,9 +_,9 @@
+     }
+ 
+     public static class SourceSynchronizer<T> extends TrackingDebugSynchronizer<T> {
+-        private final Map<ChunkPos, TrackingDebugSynchronizer.ValueSource<T>> chunkSources = new HashMap<>();
+-        private final Map<BlockPos, TrackingDebugSynchronizer.ValueSource<T>> blockEntitySources = new HashMap<>();
+-        private final Map<UUID, TrackingDebugSynchronizer.ValueSource<T>> entitySources = new HashMap<>();
++        private final Map<ChunkPos, TrackingDebugSynchronizer.ValueSource<T>> chunkSources = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety
++        private final Map<BlockPos, TrackingDebugSynchronizer.ValueSource<T>> blockEntitySources = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety
++        private final Map<UUID, TrackingDebugSynchronizer.ValueSource<T>> entitySources = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety
+ 
+         public SourceSynchronizer(DebugSubscription<T> subscription) {
+             super(subscription);
