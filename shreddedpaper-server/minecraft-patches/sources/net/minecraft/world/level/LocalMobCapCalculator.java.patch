@@ -1,0 +1,46 @@
+--- a/net/minecraft/world/level/LocalMobCapCalculator.java
++++ b/net/minecraft/world/level/LocalMobCapCalculator.java
+@@ -1,19 +_,22 @@
+ package net.minecraft.world.level;
+ 
+ import com.google.common.collect.Maps;
++import io.multipaper.shreddedpaper.util.SimpleStampedLock;
+ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+ import it.unimi.dsi.fastutil.objects.Object2IntMap;
+ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+ import java.util.List;
+ import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
+ import net.minecraft.server.level.ChunkMap;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.world.entity.MobCategory;
+ 
+ public class LocalMobCapCalculator {
+-    private final Long2ObjectMap<List<ServerPlayer>> playersNearChunk = new Long2ObjectOpenHashMap<>();
++    private final Map<Long, List<ServerPlayer>> playersNearChunk = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety (playersNearChunk is mostly writes)
+     private final Map<ServerPlayer, LocalMobCapCalculator.MobCounts> playerMobCounts = Maps.newHashMap();
++    private final SimpleStampedLock playerMobCountsLock = new SimpleStampedLock(); // ShreddedPaper - thread safety (playerMobCounts is mostly reads)
+     private final ChunkMap chunkMap;
+ 
+     public LocalMobCapCalculator(ChunkMap chunkMap) {
+@@ -26,13 +_,17 @@
+ 
+     public void addMob(ChunkPos pos, MobCategory category) {
+         for (ServerPlayer serverPlayer : this.getPlayersNear(pos)) {
+-            this.playerMobCounts.computeIfAbsent(serverPlayer, key -> new LocalMobCapCalculator.MobCounts()).add(category);
++            // ShreddedPaper start - thread safety
++            LocalMobCapCalculator.MobCounts playerMobCount = this.playerMobCountsLock.optimisticRead(() -> this.playerMobCounts.get(serverPlayer));
++            if (playerMobCount == null) playerMobCount = this.playerMobCountsLock.write(() -> this.playerMobCounts.computeIfAbsent(serverPlayer, key -> new LocalMobCapCalculator.MobCounts()));
++            playerMobCount.add(category);
++            // ShreddedPaper end - thread safety
+         }
+     }
+ 
+     public boolean canSpawn(MobCategory category, ChunkPos pos) {
+         for (ServerPlayer serverPlayer : this.getPlayersNear(pos)) {
+-            LocalMobCapCalculator.MobCounts mobCounts = this.playerMobCounts.get(serverPlayer);
++            LocalMobCapCalculator.MobCounts mobCounts = this.playerMobCountsLock.optimisticRead(() -> this.playerMobCounts.get(serverPlayer)); // ShreddedPaper - thread safety
+             if (mobCounts == null || mobCounts.canSpawn(category)) {
+                 return true;
+             }
