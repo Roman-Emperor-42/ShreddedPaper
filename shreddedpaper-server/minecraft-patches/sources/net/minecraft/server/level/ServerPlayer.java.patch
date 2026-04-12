@@ -111,7 +111,8 @@
 +                consumeAnchorCharge.set(respawnPosAngle.consumeAnchorCharge()); // ShreddedPaper - respawn async
 +                return CompletableFuture.completedFuture(new TeleportTransition( // ShreddedPaper - respawn async
                      respawnLevel, respawnPosAngle.position(), Vec3.ZERO, respawnPosAngle.yaw(), respawnPosAngle.pitch(), postTeleportTransition
-                 );
+-                );
++                )); // ShreddedPaper - respawn async
                  // CraftBukkit end
              } else {
 -                teleportTransition = TeleportTransition.missingRespawnBlock(this, postTeleportTransition); // CraftBukkit
@@ -228,7 +229,7 @@
                  this.connection.send(new ClientboundRemoveMobEffectPacket(oldVehicle.getId(), effect.getEffect()));
              }
 +
-+            if (vehicle.moonrise$getTrackedEntity() != null) vehicle.moonrise$getTrackedEntity().serverEntity.sendChanges(); // ShreddedPaper - send changes now
++            if (oldVehicle.moonrise$getTrackedEntity() != null) oldVehicle.moonrise$getTrackedEntity().serverEntity.sendChanges(); // ShreddedPaper - send changes now
          }
  
          if (oldVehicle != null) {

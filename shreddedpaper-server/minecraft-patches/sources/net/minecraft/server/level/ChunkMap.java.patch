@@ -381,97 +381,11 @@
              }
          }
  
-@@ -1303,6 +_,177 @@
+@@ -1303,6 +_,91 @@
              this.range = range;
              this.lastSectionPos = SectionPos.of(entity);
          }
 +        
-+        // ShreddedPaper start - maximum trackers per entity
-+        private record DistancedServerPlayer(ServerPlayer serverPlayer, double distanceSqr, boolean hasBypassPerm) implements Comparable<DistancedServerPlayer> {
-+            DistancedServerPlayer(ServerPlayer serverPlayer, Entity entity) {
-+                this(serverPlayer, distanceBetween(serverPlayer, entity), serverPlayer.hasMaximumTrackerBypassPermission);
-+            }
-+
-+            private static double distanceBetween(ServerPlayer serverPlayer, Entity entity) {
-+                double vec3d_dx = serverPlayer.getX() - entity.getX();
-+                double vec3d_dz = serverPlayer.getZ() - entity.getZ();
-+                return vec3d_dx * vec3d_dx + vec3d_dz * vec3d_dz;
-+            }
-+
-+            @Override
-+            public int compareTo(@NotNull ChunkMap.TrackedEntity.DistancedServerPlayer o) {
-+                int compareResult = Double.compare(hasBypassPerm ? 0 : this.distanceSqr, o.hasBypassPerm ? 0 : o.distanceSqr);
-+                return compareResult == 0 ? Integer.compare(this.serverPlayer.getId(), o.serverPlayer.getId()) : compareResult;
-+            }
-+        }
-+
-+        public void updatePlayersLimitedAndOrdered(ca.spottedleaf.moonrise.common.list.ReferenceList<ServerPlayer> players, boolean hasTrackerCandidatesChanged, boolean fullTrackerUpdate) {
-+            if (!hasTrackerCandidatesChanged && !fullTrackerUpdate) return;
-+
-+            TreeSet<DistancedServerPlayer> playerSet = new TreeSet<>();
-+            final ServerPlayer[] playersRaw = players.getRawDataUnchecked();
-+
-+            for (int index = 0, len = players.size(); index < len; ++index) {
-+                ServerPlayer player = playersRaw[index];
-+                if (player == null || player == this.entity) continue;
-+                DistancedServerPlayer distancedPlayer = new DistancedServerPlayer(player, this.entity);
-+                int i = ChunkMap.this.getPlayerViewDistance(player);
-+                double d0 = (double) Math.min(this.getEffectiveRange(), i * 16);
-+                double d2 = d0 * d0;
-+                boolean flag = distancedPlayer.distanceSqr <= d2 && this.entity.broadcastToPlayer(player) && ChunkMap.this.isChunkTracked(player, this.entity.chunkPosition().x, this.entity.chunkPosition().z);
-+                // Paper start - Configurable entity tracking range by Y
-+                if (flag && level.paperConfig().entities.trackingRangeY.enabled) {
-+                    double rangeY = level.paperConfig().entities.trackingRangeY.get(this.entity, -1);
-+                    if (rangeY != -1) {
-+                        double vec3d_dy = player.getY() - this.entity.getY();
-+                        flag = vec3d_dy * vec3d_dy <= rangeY * rangeY;
-+                    }
-+                }
-+                // Paper end - Configurable entity tracking range by Y
-+
-+                // CraftBukkit start - respect vanish API
-+                if (flag && !player.getBukkitEntity().canSee(this.entity.getBukkitEntity())) { // Paper - only consider hits
-+                    flag = false;
-+                }
-+
-+                if (flag) {
-+                    playerSet.add(distancedPlayer);
-+                }
-+            }
-+
-+            seenByLock.lock();
-+            try {
-+                Set<ServerPlayer> canBeSeenBy = new ReferenceOpenHashSet<>(Math.min(ShreddedPaperConfiguration.get().optimizations.maximumTrackersPerEntity, playerSet.size()));
-+                java.util.Iterator<DistancedServerPlayer> playerSetIterator = playerSet.iterator();
-+                int count = 0;
-+                while (playerSetIterator.hasNext() && count++ < ShreddedPaperConfiguration.get().optimizations.maximumTrackersPerEntity) { // ShreddedPaper - maximum trackers per entity
-+                    DistancedServerPlayer distancedPlayer = playerSetIterator.next();
-+                    ServerPlayer player = distancedPlayer.serverPlayer();
-+                    canBeSeenBy.add(player);
-+                    if (this.seenBy.add(player.connection)) {
-+                        // Paper start - entity tracking events
-+                        if (io.papermc.paper.event.player.PlayerTrackEntityEvent.getHandlerList().getRegisteredListeners().length == 0 || new io.papermc.paper.event.player.PlayerTrackEntityEvent(player.getBukkitEntity(), this.entity.getBukkitEntity()).callEvent()) {
-+                            this.serverEntity.addPairing(player);
-+                        }
-+                        // Paper end - entity tracking events
-+                        this.serverEntity.onPlayerAdd(); // Paper - fix desync when a player is added to the tracker
-+                    }
-+                }
-+
-+                if (this.seenBy.size() != canBeSeenBy.size()) {
-+                    for (ServerPlayerConnection conn : this.seenBy.toArray(new ServerPlayerConnection[0])) { // avoid CME
-+                        if (!canBeSeenBy.contains(conn.getPlayer()) && this.seenBy.remove(conn)) {
-+                            this.serverEntity.removePairing(conn.getPlayer());
-+                        }
-+                    }
-+                }
-+            } finally {
-+                seenByLock.unlock();
-+            }
-+        }
-+        // ShreddedPaper end - maximum trackers per entity
-+
-+
 +        // ShreddedPaper start - maximum trackers per entity
 +        private record DistancedServerPlayer(ServerPlayer serverPlayer, double distanceSqr, boolean hasBypassPerm) implements Comparable<DistancedServerPlayer> {
 +            DistancedServerPlayer(ServerPlayer serverPlayer, Entity entity) {

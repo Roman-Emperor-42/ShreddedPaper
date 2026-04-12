@@ -16,6 +16,14 @@
  import it.unimi.dsi.fastutil.longs.LongSet;
  import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+@@ -22,6 +_,7 @@
+ import net.minecraft.core.SectionPos;
+ import net.minecraft.network.protocol.Packet;
+ import net.minecraft.network.protocol.game.ClientGamePacketListener;
++import net.minecraft.server.MinecraftServer;
+ import net.minecraft.util.FileUtil;
+ import net.minecraft.util.Util;
+ import net.minecraft.util.VisibleForDebug;
 @@ -72,7 +_,9 @@
      private final @Nullable ChunkStatus[] lastChunkStatus = new ChunkStatus[4];
      private final @Nullable ChunkAccess[] lastChunk = new ChunkAccess[4];
@@ -274,10 +282,12 @@
          }
      }
  
-@@ -828,12 +_,27 @@
+@@ -827,13 +_,28 @@
+         }
  
          @Override
-         protected boolean pollTask() {
+-        protected boolean pollTask() {
++        public boolean pollTask() { // ShreddedPaper - make public
 +            // ShreddedPaper start - run all region tasks cause the worker threads might be deadlocked and not get to them
 +            if ((!MinecraftServer.getServer().executingMidTickTasks.get() && TickThread.isTickThread()) || TickThread.isShutdownThread()) {
 +                level.getChunkSource().tickingRegions.forEach(region -> {

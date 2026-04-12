@@ -136,7 +136,7 @@
              this.processQueue.remove().run();
          }
  
-+        profilerFiller.popPush("connection"); // ShreddedPaper - moved up
++        profiler.popPush("connection"); // ShreddedPaper - moved up
 +        this.tickConnection(); // ShreddedPaper - moved up
 +        // ShreddedPaper start - some players aren't registered in their level if they're dead, let's manually add a task for them to process them
 +        for (ServerPlayer player : this.playerList.getPlayers()) {
@@ -159,10 +159,11 @@
          for (ServerLevel level : this.getAllLevels()) {
              level.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
              level.hasEntityMoveEvent = io.papermc.paper.event.entity.EntityMoveEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - Add EntityMoveEvent
-@@ -1878,6 +_,9 @@
+@@ -1877,7 +_,9 @@
+             profiler.push("tick");
  
              try {
-                 level.tick(haveTime);
+-                level.tick(haveTime);
 +                futures.add(CompletableFuture.supplyAsync(() -> level.tickAsync(haveTime), level.levelThread).thenCompose(v -> v).thenRun(() -> { // ShreddedPaper - tick worlds async
 +                    level.explosionDensityCache.clear(); // Paper - Optimize explosions // ShreddedPaper - moved up from below
 +                })); // ShreddedPaper

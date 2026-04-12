@@ -280,7 +280,7 @@
          this.sleepStatus = new SleepStatus();
          this.gameEventDispatcher = new GameEventDispatcher(this);
 -        this.waypointManager = new ServerWaypointManager(this); // Paper - optimize ServerWaypointManager with locator bar disabled
-+        this.waypointManager = ShreddedPaperConfiguration.get().optimizations.disableLocatorBar ? new NoOpServerWaypointManager() : new ServerWaypointManager(this); // Paper - optimize ServerWaypointManager with locator bar disabled // ShreddedPaper - Optimise ServerWaypointManager
++        this.waypointManager = ShreddedPaperConfiguration.get().optimizations.disableLocatorBar ? new NoOpServerWaypointManager(this) : new ServerWaypointManager(this); // Paper - optimize ServerWaypointManager with locator bar disabled // ShreddedPaper - Optimise ServerWaypointManager
          this.environmentAttributes = EnvironmentAttributeSystem.builder().addDefaultLayers(this).build();
          this.updateSkyBrightness();
          // Paper start - rewrite chunk system
@@ -482,7 +482,7 @@
          }
          // Paper end - Add BlockBreakProgressUpdateEvent
 -        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
-+        ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(id, pos, progress); // ShreddedPaper - BroadcastPacketEvent - move packet creation out of loop
++        ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(id, blockPos, progress); // ShreddedPaper - BroadcastPacketEvent - move packet creation out of loop
 +        new io.multipaper.shreddedpaper.event.BroadcastPacketEvent(this.getWorld(), packet, entity == null ? null : entity.getBukkitEntity()).callEvent(); // ShreddedPaper - BroadcastPacketEvent
 +        for (ServerPlayer player : this.players) { // ShreddedPaper - BroadcastPacketEvent - optimization: use the level's players instead of all players
              if (player.level() == this && player.getId() != id) {

@@ -15,7 +15,7 @@
  
      @Override
 -    public @Nullable TeleportTransition getPortalDestination(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) {
-+    public CompletableFuture<@Nullable TeleportTransition> getPortalDestination(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) { // ShreddedPaper - async teleportation
++    public CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) { // ShreddedPaper - async teleportation
          ResourceKey<Level> newDimension = currentLevel.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.NETHER ? Level.OVERWORLD : Level.NETHER; // CraftBukkit
          ServerLevel newLevel = currentLevel.getServer().getLevel(newDimension);
          // Paper start - Add EntityPortalReadyEvent

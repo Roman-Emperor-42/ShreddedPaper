@@ -68,19 +68,19 @@ public class LevelChunkRegion {
     }
 
     public synchronized void addPlayerTickingRequest(final ChunkPos chunkPos) {
-        this.playerTickingChunkRequests.add(chunkPos.toLong());
+        this.playerTickingChunkRequests.add(chunkPos.longKey());
     }
 
     public synchronized void removePlayerTickingRequest(final ChunkPos chunkPos) {
-        this.playerTickingChunkRequests.remove(chunkPos.toLong());
+        this.playerTickingChunkRequests.remove(chunkPos.longKey());
     }
 
     public boolean isPlayerTickingRequested(final ChunkPos chunkPos) {
-        if (chunkPos.getRegionPos().toLong() != this.regionPos.toLong()) {
+        if (chunkPos.getRegionPos().longKey() != this.regionPos.longKey()) {
             throw new IllegalStateException("Chunk %s is not in region %s".formatted(chunkPos, this.regionPos));
         }
 
-        return this.playerTickingChunkRequests.contains(chunkPos.toLong());
+        return this.playerTickingChunkRequests.contains(chunkPos.longKey());
     }
 
     public synchronized void addTickingEntity(Entity entity) {

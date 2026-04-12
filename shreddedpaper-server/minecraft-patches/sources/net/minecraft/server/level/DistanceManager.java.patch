@@ -55,13 +55,14 @@
      }
  
      private int getPlayerTicketLevel() {
-@@ -233,8 +_,10 @@
+@@ -233,8 +_,11 @@
          }
  
          private boolean havePlayer(final long chunkPos) {
 -            ObjectSet<ServerPlayer> players = DistanceManager.this.playersPerChunk.get(chunkPos);
 -            return players != null && !players.isEmpty();
 +            // ShreddedPaper start - Remove unused DistanceManager methods
++            throw new UnsupportedOperationException("REPORT THIS STACK TRACE TO SHREDDEDPAPER"); // ShreddedPaper - Remove unused DistanceManager methods
 +//            ObjectSet<ServerPlayer> players = DistanceManager.this.playersPerChunk.get(chunkPos);
 +//            return players != null && !players.isEmpty();
 +            // ShreddedPaper end - Remove unused DistanceManager methods

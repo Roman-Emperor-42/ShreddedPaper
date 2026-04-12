@@ -6,11 +6,11 @@
          } else {
 -            this.doRunTask(this.pendingRunnables.remove());
 +            // ShreddedPaper start - concurrency fix
-+            R task = this.pendingRunnables.poll();
-+            if (task == null) {
++            R task2 = this.pendingRunnables.poll();
++            if (task2 == null) {
 +                return false;
 +            }
-+            this.doRunTask(task);
++            this.doRunTask(task2);
              return true;
 +            // ShreddedPaper end - concurrency fix
          }

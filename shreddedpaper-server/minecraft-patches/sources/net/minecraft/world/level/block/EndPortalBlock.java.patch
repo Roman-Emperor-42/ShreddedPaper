@@ -16,7 +16,7 @@
  
      @Override
 -    public @Nullable TeleportTransition getPortalDestination(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) {
-+    public CompletableFuture<@Nullable TeleportTransition> getPortalDestination(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) { // ShreddedPaper - async teleportation
++    public CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos) { // ShreddedPaper - async teleportation
          LevelData.RespawnData respawnData = currentLevel.getRespawnData();
          boolean fromEnd = currentLevel.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.END; // CraftBukkit - SPIGOT-6152: send back to main overworld in custom ends
          ResourceKey<Level> newDimension = fromEnd ? respawnData.dimension() : Level.END;

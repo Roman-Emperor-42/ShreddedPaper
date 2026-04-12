@@ -16,9 +16,9 @@
 +// ShreddedPaper start - turn back to class
 +public class ChunkPos {
 +    @Nullable private RegionPos regionPos; // ShreddedPaper
-+    private final int x; public int x() { return x; }
-+    private final int z; public int z() { return z; }
-+    private final long longKey; public long longKey() { return longKey; }
++    public final int x; public int x() { return x; }
++    public final int z; public int z() { return z; }
++    public final long longKey; public long longKey() { return longKey; }
      public ChunkPos(int x, int z) {
 -        this(x, z, pack(x, z));
 -    }

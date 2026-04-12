@@ -51,7 +51,7 @@
                                      }
                                      // Paper end - Prevent moving into unloaded chunks
 +                                    // ShreddedPaper start - Check we own the destination location
-+                                    if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(toX, toY, toZ))) {
++                                    if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(targetX, targetY, targetZ))) {
 +                                        this.internalTeleport(PositionMoveRotation.of(this.player), Collections.emptySet());
 +                                        return;
 +                                    }

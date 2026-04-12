@@ -9,15 +9,6 @@
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
  import net.minecraft.ReportedException;
-@@ -50,7 +_,7 @@
-     public static CompletableFuture<Vec3> findSpawn(final ServerLevel level, final BlockPos spawnSuggestion) {
-         if (level.dimensionType().hasSkyLight() && level.serverLevelData.getGameType() != GameType.ADVENTURE) { // CraftBukkit
-             int radius = Math.max(0, level.getGameRules().get(GameRules.RESPAWN_RADIUS));
--            int distToBorder = Mth.floor(level.getWorldBorder().getDistanceToBorder(spawnSuggestion.getX(), spawnSuggestion.getZ()));
-+            int distToBorder = Mth.floor(level.getWorldBorder().geDistanceToBorder(spawnSuggestion.getX(), spawnSuggestion.getZ()));
-             if (distToBorder < radius) {
-                 radius = distToBorder;
-             }
 @@ -70,9 +_,9 @@
      private void scheduleNext() {
          int candidateIndex = this.nextCandidateIndex++;
@@ -36,7 +27,7 @@
                          this.finishedFuture.completeExceptionally(new ReportedException(report));
                      }
 -                }, this.level.chunkSource.mainThreadProcessor); // Paper - rewrite chunk system
-+                }, this.level.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(sectionPosX, sectionPosZ))); // Paper - rewrite chunk system // ShreddedPaper - run on region
++                }, this.level.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(chunkX, chunkZ))); // Paper - rewrite chunk system // ShreddedPaper - run on region
          }
      }
  

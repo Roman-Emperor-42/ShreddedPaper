@@ -49,7 +49,8 @@
 +    public CompletableFuture<ServerPlayer> respawnAsync(final ServerPlayer serverPlayer, final boolean keepAllPlayerData, final Entity.RemovalReason removalReason, final org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) { // ShreddedPaper - respawn async
 +        return serverPlayer.findRespawnPositionAndUseSpawnBlock0Async(!keepAllPlayerData, TeleportTransition.DO_NOTHING, respawnReason).thenCompose(result -> { // ShreddedPaper - respawn async
          if (result == null) { // disconnected player during the respawn event
-             return serverPlayer;
+-            return serverPlayer;
++            return CompletableFuture.completedFuture(serverPlayer); // ShreddedPaper - respawn async
          }
          TeleportTransition respawnInfo = result.transition();
 +        return CompletableFuture.supplyAsync(() -> { // ShreddedPaper - respawn async
