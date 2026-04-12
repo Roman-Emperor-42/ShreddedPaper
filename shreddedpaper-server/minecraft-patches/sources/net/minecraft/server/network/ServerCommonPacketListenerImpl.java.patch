@@ -18,7 +18,7 @@
 -    protected void keepConnectionAlive() {
 +    public void keepConnectionAlive() { // ShreddedPaper - make public
          Profiler.get().push("keepAlive");
-         long millis = Util.getMillis();
+         long now = Util.getMillis();
          // Paper start - improve keepalives
 @@ -391,7 +_,7 @@
          if (this.processedDisconnect) {

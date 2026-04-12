@@ -9,12 +9,12 @@
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
  import net.minecraft.commands.arguments.EntityArgument;
-@@ -24,7 +_,7 @@
+@@ -21,7 +_,7 @@
  
-     private static int kill(CommandSourceStack source, Collection<? extends Entity> targets) {
-         for (Entity entity : targets) {
+     private static int kill(final CommandSourceStack source, final Collection<? extends Entity> victims) {
+         for (Entity entity : victims) {
 -            entity.kill(source.getLevel());
 +            ShreddedPaper.ensureSync(entity, e -> e.kill(source.getLevel())); // ShreddedPaper - run on right thread
          }
  
-         if (targets.size() == 1) {
+         if (victims.size() == 1) {

@@ -82,19 +82,19 @@
 @@ -221,6 +_,10 @@
      }
  
-     public boolean blockChanged(BlockPos pos) {
+     public boolean blockChanged(final BlockPos pos) {
 +        if (!this.getChunkMap().level.getServer().forceTicks && !TickThread.isShutdownThread() && !this.getChunkMap().level.chunkScheduler.getRegionLocker().hasWriteLock(RegionPos.forBlockPos(pos))) { // ShreddedPaper
 +            LOGGER.error("Block change is not write locked: world={} pos={} newstate={}", WorldUtil.getWorldName(this.getChunkMap().level), pos, this.getFullChunkNow().getBlockState(pos)); // ShreddedPaper
 +            TickThread.ensureTickThread(this.getChunkMap().level, pos, "Block change is not write locked"); // ShreddedPaper
 +        } // ShreddedPaper
-         LevelChunk tickingChunk = this.playersSentChunkTo.size() == 0 ? null : this.getChunkToSend(); // Paper - rewrite chunk system
-         if (tickingChunk == null) {
+         LevelChunk chunk = this.playersSentChunkTo.size() == 0 ? null : this.getChunkToSend(); // Paper - rewrite chunk system
+         if (chunk == null) {
              return false;
 @@ -274,6 +_,7 @@
  
-     public void broadcastChanges(LevelChunk chunk) {
+     public void broadcastChanges(final LevelChunk chunk) {
          if (this.hasChangesToBroadcast()) {
 +            if (chunk.cachedChunkPacket != null) chunk.cachedChunkPacket = null; // ShreddedPaper
              Level level = chunk.getLevel();
              if (!this.skyChangedLightSectionFilter.isEmpty() || !this.blockChangedLightSectionFilter.isEmpty()) {
-                 List<ServerPlayer> players = this.moonrise$getPlayers(true); // Paper - rewrite chunk system
+                 List<ServerPlayer> borderPlayers = this.moonrise$getPlayers(true); // Paper - rewrite chunk system

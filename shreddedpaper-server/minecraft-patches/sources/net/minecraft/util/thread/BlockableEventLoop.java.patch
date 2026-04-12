@@ -1,7 +1,7 @@
 --- a/net/minecraft/util/thread/BlockableEventLoop.java
 +++ b/net/minecraft/util/thread/BlockableEventLoop.java
-@@ -148,8 +_,14 @@
-         } else if (!this.shouldRunAllTasks() && !this.shouldRun(runnable)) {
+@@ -176,8 +_,14 @@
+         } else if (!this.shouldRunAllTasks() && !this.shouldRun(task)) {
              return false;
          } else {
 -            this.doRunTask(this.pendingRunnables.remove());

@@ -16,4 +16,4 @@
 +    private final Set<Objective> trackedObjectives = ConcurrentHashMap.newKeySet(); // ShreddedPaper - concurrent
      private boolean dirty;
  
-     public ServerScoreboard(MinecraftServer server) {
+     public ServerScoreboard(final MinecraftServer server) {

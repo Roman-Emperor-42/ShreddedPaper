@@ -18,15 +18,22 @@
          long currTime = System.nanoTime();
          for (final ServerPlayer player : new java.util.ArrayList<>(this.world.players())) {
              final PlayerChunkLoaderData loader = ((ChunkSystemServerPlayer)player).moonrise$getChunkLoader();
-@@ -387,6 +_,7 @@
-                 Math.abs(c2x - centerX) + Math.abs(c2z - centerZ)
+@@ -405,13 +_,13 @@
+                 (diff2X * diff2X) + (diff2Z * diff2Z)
              );
          };
 +        private final LongArrayList retryLaterSendQueue = new LongArrayList(); // ShreddedPaper
-         private final LongHeapPriorityQueue sendQueue = new LongHeapPriorityQueue(CLOSEST_MANHATTAN_DIST);
-         private final LongHeapPriorityQueue tickingQueue = new LongHeapPriorityQueue(CLOSEST_MANHATTAN_DIST);
-         private final LongHeapPriorityQueue generatingQueue = new LongHeapPriorityQueue(CLOSEST_MANHATTAN_DIST);
-@@ -641,7 +_,7 @@
+         private final LongHeapPriorityQueue sendQueue = new LongHeapPriorityQueue(this.queueComparator);
+         private final LongHeapPriorityQueue tickingQueue = new LongHeapPriorityQueue(this.queueComparator);
+         private final LongHeapPriorityQueue generatingQueue = new LongHeapPriorityQueue(this.queueComparator);
+         private final LongHeapPriorityQueue genQueue = new LongHeapPriorityQueue(this.queueComparator);
+         private final LongHeapPriorityQueue loadingQueue = new LongHeapPriorityQueue(this.queueComparator);
+         private final LongHeapPriorityQueue loadQueue = new LongHeapPriorityQueue(this.queueComparator);
+-
+         private volatile boolean removed;
+ 
+         public PlayerChunkLoaderData(final ServerLevel world, final ServerPlayer player) {
+@@ -659,7 +_,7 @@
              return true;
          }
  
@@ -35,12 +42,12 @@
              TickThread.ensureTickThread(this.player, "Cannot tick player chunk loader async");
              if (this.removed) {
                  throw new IllegalStateException("Ticking removed player chunk loader");
-@@ -821,17 +_,31 @@
-             final long maxSends = Math.max(0L, Math.min(MAX_RATE, Integer.MAX_VALUE)); // note: no logic to track concurrent sends
-             final int maxSendsThisTick = Math.min((int)this.chunkSendLimiter.takeAllocation(time, sendRate, maxSends), this.sendQueue.size());
+@@ -838,17 +_,31 @@
+             final long maxSends = Math.max(0L, Math.min(MAX_RATE, Math.min(this.sendQueue.size(), Integer.MAX_VALUE))); // note: no logic to track concurrent sends
+             final long maxSendsThisTick = this.chunkSendLimiter.takeAllocation(maxSends);
              // we do not return sends that we took from the allocation back because we want to limit the max send rate, not target it
 +            int j = 0; // ShreddedPaper
-             for (int i = 0; i < maxSendsThisTick; ++i) {
+             for (long i = 0; i < maxSendsThisTick; ++i) {
                  final long pendingSend = this.sendQueue.firstLong();
                  final int pendingSendX = CoordinateUtils.getChunkX(pendingSend);
                  final int pendingSendZ = CoordinateUtils.getChunkZ(pendingSend);
@@ -68,7 +75,7 @@
                      // not yet post-processed, need to do this so that tile entities can properly be sent to clients
                      chunk.postProcessGeneration(this.world);
                      // check if there was any recursive action
-@@ -841,7 +_,17 @@
+@@ -858,7 +_,17 @@
                  }
                  this.sendQueue.dequeueLong();
  
@@ -87,7 +94,7 @@
  
                  if (this.removed) {
                      // sendChunk may invoke plugin logic
-@@ -849,6 +_,15 @@
+@@ -866,6 +_,15 @@
                  }
              }
  
@@ -103,7 +110,7 @@
              this.flushDelayedTicketOps();
          }
  
-@@ -907,7 +_,7 @@
+@@ -918,7 +_,7 @@
              );
          }
  
@@ -112,7 +119,7 @@
              TickThread.ensureTickThread(this.player, "Cannot update player asynchronously");
              if (this.removed) {
                  throw new IllegalStateException("Updating removed player chunk loader");
-@@ -967,6 +_,7 @@
+@@ -978,6 +_,7 @@
                  this.player.connection.send(this.updateClientSimulationDistance(tickViewDistance));
              }
  
@@ -120,7 +127,7 @@
              this.sendQueue.clear();
              this.tickingQueue.clear();
              this.generatingQueue.clear();
-@@ -1073,6 +_,7 @@
+@@ -1084,6 +_,7 @@
              this.tickMap.remove();
  
              // purge queues

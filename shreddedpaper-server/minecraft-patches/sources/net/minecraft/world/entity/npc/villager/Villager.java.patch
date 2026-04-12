@@ -1,25 +1,26 @@
 --- a/net/minecraft/world/entity/npc/villager/Villager.java
 +++ b/net/minecraft/world/entity/npc/villager/Villager.java
-@@ -7,6 +_,7 @@
+@@ -5,6 +_,7 @@
+ import com.google.common.collect.ImmutableSet;
  import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
- import com.mojang.serialization.Dynamic;
 +import io.multipaper.shreddedpaper.ShreddedPaper;
- import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+ import java.util.ArrayList;
  import java.util.List;
  import java.util.Map;
-@@ -798,13 +_,15 @@
-             this.brain.getMemory(moduleType).ifPresent(pos -> {
-                 ServerLevel level = server.getLevel(pos.dimension());
-                 if (level != null) {
-+                    BiPredicate<Villager, Holder<PoiType>> biPredicate = POI_MEMORIES.get(moduleType); // ShreddedPaper - don't run on poi's region
-+                    ShreddedPaper.ensureSync(level, pos.pos(), () -> { // ShreddedPaper - run on poi's region
-                     PoiManager poiManager = level.getPoiManager();
-                     Optional<Holder<PoiType>> type = poiManager.getType(pos.pos());
--                    BiPredicate<Villager, Holder<PoiType>> biPredicate = POI_MEMORIES.get(moduleType);
-                     if (type.isPresent() && biPredicate.test(this, type.get())) {
-                         poiManager.release(pos.pos());
-                         level.debugSynchronizers().updatePoi(pos.pos());
+@@ -791,13 +_,16 @@
+             this.brain.getMemory(memoryType).ifPresent(memory -> {
+                 ServerLevel poiLevel = server.getLevel(memory.dimension());
+                 if (poiLevel != null) {
++                    BiPredicate<Villager, Holder<PoiType>> poiTypePredicate = POI_MEMORIES.get(memoryType); // ShreddedPaper - don't run on poi's region
++                    ShreddedPaper.ensureSync(poiLevel, memory.pos(), () -> { // ShreddedPaper - run on poi's region
+                     PoiManager poiManager = poiLevel.getPoiManager();
+                     Optional<Holder<PoiType>> type = poiManager.getType(memory.pos());
+-                    BiPredicate<Villager, Holder<PoiType>> poiTypePredicate = POI_MEMORIES.get(memoryType);
++                    // BiPredicate<Villager, Holder<PoiType>> poiTypePredicate = POI_MEMORIES.get(memoryType); // ShreddedPaper - move up
+                     if (type.isPresent() && poiTypePredicate.test(this, type.get())) {
+                         poiManager.release(memory.pos());
+                         poiLevel.debugSynchronizers().updatePoi(memory.pos());
                      }
 +                    }); // ShreddedPaper - run on poi's region
                  }

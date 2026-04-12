@@ -12,8 +12,8 @@
 @@ -33,6 +_,7 @@
                              return false;
                          } else {
-                             BlockPos blockPos = instance.<GlobalPos>get(potentialJobSite).pos();
-+                            if (!TickThread.isTickThreadFor(level, blockPos)) return true; // ShreddedPaper - don't run outside poi region
-                             Optional<Holder<PoiType>> type = level.getPoiManager().getType(blockPos);
-                             if (type.isEmpty()) {
+                             BlockPos poiPos = i.<GlobalPos>get(potentialJob).pos();
++                            if (!TickThread.isTickThreadFor(level, poiPos)) return true; // ShreddedPaper - don't run outside poi region
+                             Optional<Holder<PoiType>> poiType = level.getPoiManager().getType(poiPos);
+                             if (poiType.isEmpty()) {
                                  return true;

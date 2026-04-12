@@ -16,7 +16,7 @@
  import it.unimi.dsi.fastutil.longs.LongSet;
  import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-@@ -73,7 +_,9 @@
+@@ -72,7 +_,9 @@
      private final @Nullable ChunkStatus[] lastChunkStatus = new ChunkStatus[4];
      private final @Nullable ChunkAccess[] lastChunk = new ChunkAccess[4];
      private final List<LevelChunk> spawningChunks = new ObjectArrayList<>();
@@ -27,7 +27,7 @@
      @VisibleForDebug
      private NaturalSpawner.@Nullable SpawnState lastSpawnState;
      // Paper start
-@@ -115,7 +_,7 @@
+@@ -114,7 +_,7 @@
              );
          }
  
@@ -37,31 +37,31 @@
              this.mainThreadProcessor.managedBlock(completable::isDone);
              ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler.popChunkWait();
 @@ -198,6 +_,7 @@
-         Supplier<DimensionDataStorage> overworldDataStorage
+         , final SavedDataStorage savedDataStorage // Paper - initialize SavedDataStorage earlier
      ) {
          this.level = level;
 +        this.tickingRegions = new LevelChunkRegionMap(this.level); // ShreddedPaper
          this.mainThreadProcessor = new ServerChunkCache.MainThreadExecutor(level);
          this.mainThread = Thread.currentThread();
-         Path path = levelStorageAccess.getDimensionPath(level.dimension()).resolve("data");
-@@ -350,14 +_,14 @@
+         Path dataFolder = levelStorage.getDimensionPath(level.dimension()).resolve("data");
+@@ -351,14 +_,14 @@
      }
  
-     public CompletableFuture<ChunkResult<ChunkAccess>> getChunkFuture(int x, int z, ChunkStatus chunkStatus, boolean requireChunk) {
--        boolean flag = Thread.currentThread() == this.mainThread;
-+        boolean flag = TickThread.isTickThreadFor(this.level, x, z); // ShreddedPaper - regions
-         CompletableFuture<ChunkResult<ChunkAccess>> chunkFutureMainThread;
-         if (flag) {
-             chunkFutureMainThread = this.getChunkFutureMainThread(x, z, chunkStatus, requireChunk);
-             this.mainThreadProcessor.managedBlock(chunkFutureMainThread::isDone);
+     public CompletableFuture<ChunkResult<ChunkAccess>> getChunkFuture(final int x, final int z, final ChunkStatus targetStatus, final boolean loadOrGenerate) {
+-        boolean isMainThread = Thread.currentThread() == this.mainThread;
++        boolean isMainThread = TickThread.isTickThreadFor(this.level, x, z); // ShreddedPaper - regions
+         CompletableFuture<ChunkResult<ChunkAccess>> serverFuture;
+         if (isMainThread) {
+             serverFuture = this.getChunkFutureMainThread(x, z, targetStatus, loadOrGenerate);
+             this.mainThreadProcessor.managedBlock(serverFuture::isDone);
          } else {
-             chunkFutureMainThread = CompletableFuture.<CompletableFuture<ChunkResult<ChunkAccess>>>supplyAsync(
--                    () -> this.getChunkFutureMainThread(x, z, chunkStatus, requireChunk), this.mainThreadProcessor
-+                    () -> this.getChunkFutureMainThread(x, z, chunkStatus, requireChunk), this.tickingRegions.executorFor(RegionPos.forChunk(x, z)) // ShreddedPaper - regions
+             serverFuture = CompletableFuture.<CompletableFuture<ChunkResult<ChunkAccess>>>supplyAsync(
+-                    () -> this.getChunkFutureMainThread(x, z, targetStatus, loadOrGenerate), this.mainThreadProcessor
++                    () -> this.getChunkFutureMainThread(x, z, targetStatus, loadOrGenerate), this.tickingRegions.executorFor(RegionPos.forChunk(x, z)) // ShreddedPaper - regions
                  )
-                 .thenCompose(future -> (CompletionStage<ChunkResult<ChunkAccess>>)future);
+                 .thenCompose(chunk -> (CompletionStage<ChunkResult<ChunkAccess>>)chunk);
          }
-@@ -426,6 +_,7 @@
+@@ -433,6 +_,7 @@
      }
  
      public boolean pollTask() {
@@ -69,15 +69,15 @@
          return this.mainThreadProcessor.pollTask();
      }
  
-@@ -474,28 +_,37 @@
+@@ -481,28 +_,37 @@
      // CraftBukkit end
  
      @Override
--    public void tick(BooleanSupplier hasTimeLeft, boolean tickChunks) {
-+    public CompletableFuture<Void> tick(BooleanSupplier hasTimeLeft, boolean tickChunks) { // ShreddedPaper - run async
+-    public void tick(final BooleanSupplier haveTime, final boolean tickChunks) {
++    public CompletableFuture<Void> tick(final BooleanSupplier haveTime, final boolean tickChunks) { // ShreddedPaper - run async
 +        CompletableFuture<Void> future = CompletableFuture.completedFuture(null); // ShreddedPaper - run async
-         ProfilerFiller profilerFiller = Profiler.get();
-         profilerFiller.push("purge");
+         ProfilerFiller profiler = Profiler.get();
+         profiler.push("purge");
 +        CompletableFuture<Void> purgeStaleTicketsFuture = CompletableFuture.completedFuture(null); // ShreddedPaper - purgeStaleTickets async
          if (this.level.tickRateManager().runsNormally() || !tickChunks || this.level.spigotConfig.unloadFrozenChunks) { // Spigot
 -            this.ticketStorage.purgeStaleTickets(this.chunkMap);
@@ -86,7 +86,7 @@
          }
  
          this.runDistanceManagerUpdates();
-         profilerFiller.popPush("chunks");
+         profiler.popPush("chunks");
          if (tickChunks) {
              ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)this.level).moonrise$getPlayerChunkLoader().tick(); // Paper - rewrite chunk system
 -            this.tickChunks();
@@ -97,9 +97,9 @@
  
 +        future = CompletableFuture.allOf(future, purgeStaleTicketsFuture); // ShreddedPaper - purgeStaleTickets async
 +        future = future.thenRun(() -> { // ShreddedPaper - run async
-         profilerFiller.popPush("unload");
-         this.chunkMap.tick(hasTimeLeft);
-         profilerFiller.pop();
+         profiler.popPush("unload");
+         this.chunkMap.tick(haveTime);
+         profiler.pop();
          this.clearCache();
 +        }); // ShreddedPaper - run async
 +
@@ -107,130 +107,130 @@
      }
  
 -    private void tickChunks() {
-+    private CompletableFuture<Void> tickChunks() { // ShreddedPaper - run async
++    private CompletableFuture<Void>  tickChunks() { // ShreddedPaper - run async
 +        CompletableFuture<Void> future = CompletableFuture.completedFuture(null); // ShreddedPaper - run async
-         long gameTime = this.level.getGameTime();
-         long l = gameTime - this.lastInhabitedUpdate;
-         this.lastInhabitedUpdate = gameTime;
-@@ -504,34 +_,41 @@
-             profilerFiller.push("pollingChunks");
+         long time = this.level.getGameTime();
+         long timeDiff = time - this.lastInhabitedUpdate;
+         this.lastInhabitedUpdate = time;
+@@ -511,34 +_,41 @@
+             profiler.push("pollingChunks");
              if (this.level.tickRateManager().runsNormally()) {
-                 profilerFiller.push("tickingChunks");
--                this.tickChunks(profilerFiller, l);
-+                future = future.thenCompose(v -> this.tickChunks(profilerFiller, l)); // ShreddedPaper - run async
-                 profilerFiller.pop();
+                 profiler.push("tickingChunks");
+-                this.tickChunks(profiler, timeDiff);
++                future = future.thenCompose(v -> this.tickChunks(profiler, timeDiff)); // ShreddedPaper - run async
+                 profiler.pop();
 -            }
 +            } else future = future.thenCompose(v -> this.shreddedPaperChunkTicker.tickChunks(0, null, null)); // ShreddedPaper - still tick chunks anyway
  
--            this.broadcastChangedChunks(profilerFiller);
-+            // this.broadcastChangedChunks(profilerFiller); // ShreddedPaper - handled in the region
-             profilerFiller.pop();
+-            this.broadcastChangedChunks(profiler);
++            // this.broadcastChangedChunks(profiler); // ShreddedPaper - handled in the region
+             profiler.pop();
          }
 +
 +        return future; // ShreddedPaper - run async
      }
  
-     private void broadcastChangedChunks(ProfilerFiller profiler) {
+     private void broadcastChangedChunks(final ProfilerFiller profiler) {
 +        if (true) throw new UnsupportedOperationException("Disabled by ShreddedPaper"); // ShreddedPaper - handled in the region, ensure it stays that way
          profiler.push("broadcast");
  
 -        for (ChunkHolder chunkHolder : this.chunkHoldersToBroadcast) {
--            LevelChunk tickingChunk = chunkHolder.getChunkToSend(); // Paper - rewrite chunk system
--            if (tickingChunk != null) {
--                chunkHolder.broadcastChanges(tickingChunk);
+-            LevelChunk chunk = chunkHolder.getChunkToSend(); // Paper - rewrite chunk system
+-            if (chunk != null) {
+-                chunkHolder.broadcastChanges(chunk);
 -            }
 -        }
 -
 -        this.chunkHoldersToBroadcast.clear();
-+        // ShreddedPaper  - handled by the regions
++        // ShreddedPaper start - handled by the regions
 +//        for (ChunkHolder chunkHolder : this.chunkHoldersToBroadcast) {
-+//            LevelChunk tickingChunk = chunkHolder.getChunkToSend(); // Paper - rewrite chunk system
-+//            if (tickingChunk != null) {
-+//                chunkHolder.broadcastChanges(tickingChunk);
++//            LevelChunk chunk = chunkHolder.getChunkToSend(); // Paper - rewrite chunk system
++//            if (chunk != null) {
++//                chunkHolder.broadcastChanges(chunk);
 +//            }
 +//        }
 +//
 +//        this.chunkHoldersToBroadcast.clear();
-+        // ShreddedPaper  - handled by the regions
++        // ShreddedPaper end - handled by the regions
          profiler.pop();
      }
  
--    private void tickChunks(ProfilerFiller profiler, long timeInhabited) {
-+    private CompletableFuture<Void> tickChunks(ProfilerFiller profiler, long timeInhabited) { // ShreddedPaper - run async
+-    private void tickChunks(final ProfilerFiller profiler, final long timeDiff) {
++    private CompletableFuture<Void> tickChunks(final ProfilerFiller profiler, final long timeDiff) { // ShreddedPaper - run async
 +        CompletableFuture<Void> future = CompletableFuture.completedFuture(null); // ShreddedPaper - run async
          profiler.push("naturalSpawnCount");
-         int naturalSpawnChunkCount = this.distanceManager.getNaturalSpawnChunkCount();
+         int chunkCount = this.distanceManager.getNaturalSpawnChunkCount();
          // Paper start - Optional per player mob spawns
-         NaturalSpawner.SpawnState spawnState;
+         NaturalSpawner.SpawnState spawnCookie;
 +        if (ShreddedPaperChunkTicker.willTrySpawnMobsThisTick(this.level)) { // ShreddedPaper - only create NaturalSpawner if we'll use it
          if ((this.spawnFriendlies || this.spawnEnemies) && this.level.paperConfig().entities.spawning.perPlayerMobSpawns) { // don't count mobs when animals and monsters are disabled
              // re-set mob counts
-             for (ServerPlayer player : this.level.players) {
-@@ -551,11 +_,13 @@
+             for (ServerPlayer player : this.level.players()) {
+@@ -558,11 +_,13 @@
          } else {
-             spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, this.level.getAllEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
+             spawnCookie = NaturalSpawner.createState(chunkCount, this.level.getAllEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
          }
-+        } else { spawnState = null; } // ShreddedPaper - only create NaturalSpawner if we'll use it
++        } else { spawnCookie = null; } // ShreddedPaper - only create NaturalSpawner if we'll use it
          // Paper end - Optional per player mob spawns
-         this.lastSpawnState = spawnState;
-         boolean flag = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.players().isEmpty(); // CraftBukkit
-         int i = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
-         List<MobCategory> filteredSpawningCategories;
-+        if (spawnState != null) { // ShreddedPaper - only create NaturalSpawner if we'll use it
-         if (flag && (this.spawnEnemies || this.spawnFriendlies)) { // Paper
+         this.lastSpawnState = spawnCookie;
+         boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.players().isEmpty(); // CraftBukkit
+         int tickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
+         List<MobCategory> spawningCategories;
++        if (spawnCookie != null) { // ShreddedPaper - only create NaturalSpawner if we'll use it
+         if (doMobSpawning && (this.spawnEnemies || this.spawnFriendlies)) { // Paper
              // Paper start - PlayerNaturallySpawnCreaturesEvent
-             for (ServerPlayer entityPlayer : this.level.players()) {
-@@ -570,37 +_,42 @@
+             for (ServerPlayer player : this.level.players()) {
+@@ -577,37 +_,42 @@
          } else {
-             filteredSpawningCategories = List.of();
+             spawningCategories = List.of();
          }
 -
--        List<LevelChunk> list = this.spawningChunks;
+-        List<LevelChunk> spawningChunks = this.spawningChunks;
 -
 -        try {
 -            profiler.popPush("filteringSpawningChunks");
--            this.chunkMap.collectSpawningChunks(list);
+-            this.chunkMap.collectSpawningChunks(spawningChunks);
 -            profiler.popPush("shuffleSpawningChunks");
 -            // Paper start - chunk tick iteration optimisation
--            this.shuffleRandom.setSeed(this.level.random.nextLong());
--            if (!this.level.paperConfig().entities.spawning.perPlayerMobSpawns) Util.shuffle(list, this.shuffleRandom); // Paper - Optional per player mob spawns; do not need this when per-player is enabled
+-            this.shuffleRandom.setSeed(this.level.getRandom().nextLong());
+-            if (!this.level.paperConfig().entities.spawning.perPlayerMobSpawns) Util.shuffle(spawningChunks, this.level.getRandom()); // Paper - Optional per player mob spawns; do not need this when per-player is enabled
 -            // Paper end - chunk tick iteration optimisation
 -            profiler.popPush("tickSpawningChunks");
 -
--            for (LevelChunk levelChunk : list) {
--                this.tickSpawningChunk(levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
+-            for (LevelChunk chunk : spawningChunks) {
+-                this.tickSpawningChunk(chunk, timeDiff, spawningCategories, spawnCookie);
 -            }
 -        } finally {
--            list.clear();
+-            spawningChunks.clear();
 -        }
-+        } else { filteredSpawningCategories = null; } // ShreddedPaper - only create NaturalSpawner if we'll use it
++        } else { spawningCategories = null; } // ShreddedPaper - only create NaturalSpawner if we'll use it
 +
-+        future = future.thenCompose(v -> this.shreddedPaperChunkTicker.tickChunks(timeInhabited, filteredSpawningCategories, spawnState)).thenRunAsync(() -> {}, this.level.levelThread); // ShreddedPaper - run async
++        future = future.thenCompose(v -> this.shreddedPaperChunkTicker.tickChunks(timeDiff, spawningCategories, spawnCookie)).thenRunAsync(() -> {}, this.level.levelThread); // ShreddedPaper - run async
 +        // ShreddedPaper start - moved to ShreddedPaperChunkTicker
-+//        List<LevelChunk> list = this.spawningChunks;
++//        List<LevelChunk> spawningChunks = this.spawningChunks;
 +//
 +//        try {
 +//            profiler.popPush("filteringSpawningChunks");
-+//            this.chunkMap.collectSpawningChunks(list);
++//            this.chunkMap.collectSpawningChunks(spawningChunks);
 +//            profiler.popPush("shuffleSpawningChunks");
 +//            // Paper start - chunk tick iteration optimisation
-+//            this.shuffleRandom.setSeed(this.level.random.nextLong());
-+//            if (!this.level.paperConfig().entities.spawning.perPlayerMobSpawns) Util.shuffle(list, this.shuffleRandom); // Paper - Optional per player mob spawns; do not need this when per-player is enabled
++//            this.shuffleRandom.setSeed(this.level.getRandom().nextLong());
++//            if (!this.level.paperConfig().entities.spawning.perPlayerMobSpawns) Util.shuffle(spawningChunks, this.level.getRandom()); // Paper - Optional per player mob spawns; do not need this when per-player is enabled
 +//            // Paper end - chunk tick iteration optimisation
 +//            profiler.popPush("tickSpawningChunks");
 +//
-+//            for (LevelChunk levelChunk : list) {
-+//                this.tickSpawningChunk(levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
++//            for (LevelChunk chunk : spawningChunks) {
++//                this.tickSpawningChunk(chunk, timeDiff, spawningCategories, spawnCookie);
 +//            }
 +//        } finally {
-+//            list.clear();
++//            spawningChunks.clear();
 +//        }
 +        // ShreddedPaper end - moved to ShreddedPaperChunkTicker
  
          profiler.popPush("tickTickingChunks");
 -        this.iterateTickingChunksFaster(); // Paper - chunk tick iteration optimizations
 +        // this.iterateTickingChunksFaster(); // Paper - chunk tick iteration optimizations // ShreddedPaper - moved to ShreddedPaperChunkTicker
-         if (flag) {
+         if (doMobSpawning) {
              profiler.popPush("customSpawners");
 -            this.level.tickCustomSpawners(this.spawnEnemies);
 +            future = future.thenRun(() -> this.level.tickCustomSpawners(this.spawnEnemies)); // ShreddedPaper - run async
@@ -240,44 +240,44 @@
 +        return future; // ShreddedPaper - run async
      }
  
--    private void tickSpawningChunk(LevelChunk chunk, long timeInhabited, List<MobCategory> spawnCategories, NaturalSpawner.SpawnState spawnState) {
-+    public void tickSpawningChunk(LevelChunk chunk, long timeInhabited, List<MobCategory> spawnCategories, NaturalSpawner.SpawnState spawnState) { // ShreddedPaper - make public
-         ChunkPos pos = chunk.getPos();
-         chunk.incrementInhabitedTime(timeInhabited);
-         if (true) { // Paper - rewrite chunk system
-@@ -656,16 +_,16 @@
-         int sectionPosZ = SectionPos.blockToSectionCoord(pos.getZ());
-         ChunkHolder visibleChunkIfPresent = this.getVisibleChunkIfPresent(ChunkPos.asLong(sectionPosX, sectionPosZ));
-         if (visibleChunkIfPresent != null && visibleChunkIfPresent.blockChanged(pos)) {
--            this.chunkHoldersToBroadcast.add(visibleChunkIfPresent);
-+            ShreddedPaperChangesBroadcaster.add(visibleChunkIfPresent); // ShreddedPaper  - handled by the regions
+-    private void tickSpawningChunk(
++    public void tickSpawningChunk( // ShreddedPaper - make public
+         final LevelChunk chunk, final long timeDiff, final List<MobCategory> spawningCategories, final NaturalSpawner.SpawnState spawnCookie
+     ) {
+         ChunkPos chunkPos = chunk.getPos();
+@@ -665,16 +_,16 @@
+         int zc = SectionPos.blockToSectionCoord(pos.getZ());
+         ChunkHolder chunk = this.getVisibleChunkIfPresent(ChunkPos.pack(xc, zc));
+         if (chunk != null && chunk.blockChanged(pos)) {
+-            this.chunkHoldersToBroadcast.add(chunk);
++            ShreddedPaperChangesBroadcaster.add(chunk); // ShreddedPaper  - handled by the regions
          }
      }
  
      @Override
-     public void onLightUpdate(LightLayer lightLayer, SectionPos pos) {
+     public void onLightUpdate(final LightLayer layer, final SectionPos pos) {
 -        this.mainThreadProcessor.execute(() -> {
 +        this.level.moonrise$getChunkTaskScheduler().scheduleChunkTask(pos.x(), pos.z(), () -> { // ShreddedPaper - run on chunk thread
-             ChunkHolder visibleChunkIfPresent = this.getVisibleChunkIfPresent(pos.chunk().toLong());
-             if (visibleChunkIfPresent != null && visibleChunkIfPresent.sectionLightChanged(lightLayer, pos.y())) {
--                this.chunkHoldersToBroadcast.add(visibleChunkIfPresent);
-+                ShreddedPaperChangesBroadcaster.add(visibleChunkIfPresent); // ShreddedPaper  - handled by the regions
+             ChunkHolder chunk = this.getVisibleChunkIfPresent(pos.chunk().pack());
+             if (chunk != null && chunk.sectionLightChanged(layer, pos.y())) {
+-                this.chunkHoldersToBroadcast.add(chunk);
++                ShreddedPaperChangesBroadcaster.add(chunk); // ShreddedPaper  - handled by the regions
              }
          });
      }
-@@ -781,7 +_,7 @@
+@@ -790,7 +_,7 @@
  
-     public void onChunkReadyToSend(ChunkHolder chunkHolder) {
-         if (chunkHolder.hasChangesToBroadcast()) {
--            this.chunkHoldersToBroadcast.add(chunkHolder);
-+            ShreddedPaperChangesBroadcaster.add(chunkHolder); // ShreddedPaper  - handled by the regions
+     public void onChunkReadyToSend(final ChunkHolder chunk) {
+         if (chunk.hasChangesToBroadcast()) {
+-            this.chunkHoldersToBroadcast.add(chunk);
++            ShreddedPaperChangesBroadcaster.add(chunk); // ShreddedPaper  - handled by the regions
          }
      }
  
-@@ -823,12 +_,27 @@
+@@ -828,12 +_,27 @@
  
          @Override
-         public boolean pollTask() {
+         protected boolean pollTask() {
 +            // ShreddedPaper start - run all region tasks cause the worker threads might be deadlocked and not get to them
 +            if ((!MinecraftServer.getServer().executingMidTickTasks.get() && TickThread.isTickThread()) || TickThread.isShutdownThread()) {
 +                level.getChunkSource().tickingRegions.forEach(region -> {

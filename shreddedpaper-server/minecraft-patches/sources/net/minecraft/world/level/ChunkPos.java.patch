@@ -8,18 +8,37 @@
  import io.netty.buffer.ByteBuf;
  import java.util.Spliterators.AbstractSpliterator;
  import java.util.function.Consumer;
-@@ -48,6 +_,7 @@
-     public final int x;
-     public final int z;
-     public final long longKey; // Paper
-+    @Nullable private RegionPos regionPos; // ShreddedPaper
-     private static final int HASH_A = 1664525;
-     private static final int HASH_C = 1013904223;
-     private static final int HASH_Z_XOR = -559038737;
-@@ -70,6 +_,16 @@
-         this.longKey = asLong(this.x, this.z); // Paper
-     }
+@@ -18,14 +_,18 @@
+ import org.jspecify.annotations.Nullable;
  
+ // Paper start
+-public record ChunkPos(int x, int z, long longKey) {
++// ShreddedPaper start - turn back to class
++public class ChunkPos {
++    @Nullable private RegionPos regionPos; // ShreddedPaper
++    private final int x; public int x() { return x; }
++    private final int z; public int z() { return z; }
++    private final long longKey; public long longKey() { return longKey; }
+     public ChunkPos(int x, int z) {
+-        this(x, z, pack(x, z));
+-    }
+-
+-    public ChunkPos {
+-        longKey = pack(x, z); // override if people mess around with longKey
+-    }
++        this.x = x;
++        this.z = z;
++        this.longKey = pack(x, z);
++    }
++    // ShreddedPaper end - turn back to class
+     // Paper end
+     public static final Codec<ChunkPos> CODEC = Codec.INT_STREAM
+         .<ChunkPos>comapFlatMap(input -> Util.fixedSize(input, 2).map(ints -> new ChunkPos(ints[0], ints[1])), pos -> IntStream.of(pos.x, pos.z))
+@@ -63,6 +_,16 @@
+     public static ChunkPos unpack(final long key) {
+         return new ChunkPos((int)key, (int)(key >> 32));
+     }
++
 +    // ShreddedPaper start
 +    public RegionPos getRegionPos() {
 +        if (this.regionPos == null) {
@@ -29,20 +48,6 @@
 +        return this.regionPos;
 +    }
 +    // ShreddedPaper end
-+
-     public static ChunkPos minFromRegion(int chunkX, int chunkZ) {
-         return new ChunkPos(chunkX << 5, chunkZ << 5);
-     }
-@@ -212,6 +_,12 @@
-         int i1 = z - this.z;
-         return i * i + i1 * i1;
-     }
-+
-+    // ShreddedPaper start
-+    public static ChunkPos of(BlockPos blockPos) {
-+        return new ChunkPos(blockPos);
-+    }
-+    // ShreddedPaper end
  
-     public static Stream<ChunkPos> rangeClosed(ChunkPos center, int radius) {
-         return rangeClosed(new ChunkPos(center.x - radius, center.z - radius), new ChunkPos(center.x + radius, center.z + radius));
+     public static ChunkPos minFromRegion(final int regionX, final int regionZ) {
+         return new ChunkPos(regionX << 5, regionZ << 5);

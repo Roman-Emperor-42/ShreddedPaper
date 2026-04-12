@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/entity/ai/village/poi/PoiManager.java
 +++ b/net/minecraft/world/entity/ai/village/poi/PoiManager.java
-@@ -59,7 +_,7 @@
+@@ -60,7 +_,7 @@
          return POI_DATA_SOURCE - level;
      }
  
@@ -9,21 +9,21 @@
          if (this.isVillageCenter(section)) {
              this.villageDistanceTracker.setSource(section, POI_DATA_SOURCE);
          } else {
-@@ -347,7 +_,7 @@
-         return this.getOrLoad(SectionPos.asLong(pos)).flatMap(poiSection -> poiSection.getDebugPoiInfo(pos)).orElse(null);
+@@ -420,7 +_,7 @@
+         return this.getOrLoad(SectionPos.asLong(pos)).flatMap(section -> section.getDebugPoiInfo(pos)).orElse(null);
      }
  
--    public int sectionsToVillage(SectionPos sectionPos) {
-+    public synchronized int sectionsToVillage(SectionPos sectionPos) { // ShreddedPaper - synchronized
+-    public int sectionsToVillage(final SectionPos sectionPos) {
++    public synchronized int sectionsToVillage(final SectionPos sectionPos) { // ShreddedPaper - synchronized
          // Paper start - rewrite chunk system
          this.villageDistanceTracker.propagateUpdates();
          return convertBetweenLevels(this.villageDistanceTracker.getLevel(ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkSectionKey(sectionPos)));
-@@ -364,7 +_,7 @@
+@@ -434,7 +_,7 @@
      }
  
      @Override
--    public void tick(BooleanSupplier aheadOfTime) {
-+    public synchronized void tick(BooleanSupplier aheadOfTime) { // ShreddedPaper - synchronized
+-    public void tick(final BooleanSupplier haveTime) {
++    public synchronized void tick(final BooleanSupplier haveTime) { // ShreddedPaper - synchronized
          this.villageDistanceTracker.propagateUpdates(); // Paper - rewrite chunk system
      }
  
