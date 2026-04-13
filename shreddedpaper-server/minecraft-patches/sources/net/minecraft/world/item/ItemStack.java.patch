@@ -8,14 +8,14 @@
 +                level.captureBlockStatesThreadLocal.set(true); // ShreddedPaper - use thread local
                  if (isBonemeal) {
 -                    level.captureTreeGeneration = true;
-+                    level.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
++                    level.captureTreeGenerationThreadLocal.set(true); // ShreddedPaper - use thread local
                  }
              }
              InteractionResult result;
              try {
-                 result = usedItem.useOn(context);
 +                level.capturedTileEntitiesThreadLocal.get().clear(); // ShreddedPaper - use thread local - clear beforehand
 +                level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local - clear beforehand
+                 result = usedItem.useOn(context);
              } finally {
 -                level.captureBlockStates = false;
 +                level.captureBlockStatesThreadLocal.set(false); // ShreddedPaper - use thread local
