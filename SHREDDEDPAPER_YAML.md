@@ -67,7 +67,7 @@ optimizations:
   # that span region boundaries resolve in the same game tick at the expense of some performance loss.
   # When false, each region ticks in a single fused pass. cross-region redstone (flying machines and double piston extenders) 
   # may break, but per-tick scheduling overhead is lower.
-  public boolean splitTickPhases: false
+  split-tick-phases: false
 
 
   # Maximum number of players to render each entity to. Can be bypassed with the
