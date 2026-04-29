@@ -18,7 +18,7 @@
  import org.jspecify.annotations.Nullable;
  import org.slf4j.Logger;
  
-@@ -19,6 +_,27 @@
+@@ -19,6 +_,26 @@
      }
  
      public static <T extends PacketListener> void ensureRunningOnSameThread(final Packet<T> packet, final T listener, final PacketProcessor packetProcessor) throws RunningOnDifferentThreadException {
@@ -26,7 +26,6 @@
 +        if (listener instanceof ServerGamePacketListenerImpl gamePacketListener) {
 +            if (TickThread.isTickThreadFor(gamePacketListener.player)) return;
 +            ShreddedPaper.runSync(gamePacketListener.player, () -> {
-+                if (listener instanceof net.minecraft.server.network.ServerCommonPacketListenerImpl serverCommonPacketListener && serverCommonPacketListener.processedDisconnect) return; // Paper - Don't handle sync packets for kicked players
 +                if (listener.shouldHandleMessage(packet)) {
 +                    try {
 +                        packet.handle(listener);

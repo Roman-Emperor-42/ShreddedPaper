@@ -122,7 +122,7 @@
          this.lastInhabitedUpdate = time;
 @@ -511,34 +_,41 @@
              profiler.push("pollingChunks");
-             if (this.level.tickRateManager().runsNormally()) {
+             if (this.level.tickRateManager().runsNormally() && this.level.paperConfig().unsupportedSettings.ticking.chunks) { // Paper - option to disable ticking
                  profiler.push("tickingChunks");
 -                this.tickChunks(profiler, timeDiff);
 +                future = future.thenCompose(v -> this.tickChunks(profiler, timeDiff)); // ShreddedPaper - run async
