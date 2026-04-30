@@ -15,9 +15,9 @@
 -    private final Set<UUID> subscribedPlayers = new ObjectOpenHashSet<>();
 +    private final Set<UUID> subscribedPlayers = ConcurrentHashMap.newKeySet(); // ShreddedPaper - thread safety
  
-     public TrackingDebugSynchronizer(DebugSubscription<T> subscription) {
+     public TrackingDebugSynchronizer(final DebugSubscription<T> subscription) {
          this.subscription = subscription;
-@@ -137,9 +_,9 @@
+@@ -139,9 +_,9 @@
      }
  
      public static class SourceSynchronizer<T> extends TrackingDebugSynchronizer<T> {
@@ -28,5 +28,5 @@
 +        private final Map<BlockPos, TrackingDebugSynchronizer.ValueSource<T>> blockEntitySources = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety
 +        private final Map<UUID, TrackingDebugSynchronizer.ValueSource<T>> entitySources = new ConcurrentHashMap<>(); // ShreddedPaper - thread safety
  
-         public SourceSynchronizer(DebugSubscription<T> subscription) {
+         public SourceSynchronizer(final DebugSubscription<T> subscription) {
              super(subscription);

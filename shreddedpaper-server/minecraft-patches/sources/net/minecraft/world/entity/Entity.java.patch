@@ -15,7 +15,7 @@
  import it.unimi.dsi.fastutil.floats.FloatArraySet;
  import it.unimi.dsi.fastutil.floats.FloatArrays;
  import it.unimi.dsi.fastutil.floats.FloatSet;
-@@ -24,6 +_,7 @@
+@@ -25,6 +_,7 @@
  import java.util.Optional;
  import java.util.Set;
  import java.util.UUID;
@@ -23,15 +23,15 @@
  import java.util.concurrent.atomic.AtomicInteger;
  import java.util.function.BiConsumer;
  import java.util.function.Predicate;
-@@ -148,6 +_,7 @@
- import net.minecraft.world.scores.ScoreHolder;
+@@ -154,6 +_,7 @@
+ import net.minecraft.world.scores.Scoreboard;
  import net.minecraft.world.scores.Team;
  import net.minecraft.world.waypoints.WaypointTransmitter;
 +import org.bukkit.craftbukkit.util.CraftLocation;
  import org.jetbrains.annotations.Contract;
  import org.jspecify.annotations.Nullable;
  import org.slf4j.Logger;
-@@ -283,6 +_,8 @@
+@@ -298,6 +_,8 @@
      public double xOld;
      public double yOld;
      public double zOld;
@@ -40,19 +40,19 @@
      public float maxUpStep; // Purpur - Add option to set armorstand step height
      public boolean noPhysics;
      public final RandomSource random; // Paper - Share random for entities to make them more random // Add toggle for RNG manipulation
-@@ -709,7 +_,7 @@
-     public void resendPossiblyDesyncedEntityData(net.minecraft.server.level.ServerPlayer player) {
+@@ -725,7 +_,7 @@
+     public void resendPossiblyDesyncedEntityData(ServerPlayer player) {
          if (player.getBukkitEntity().canSee(this.getBukkitEntity())) {
-             ServerLevel world = (net.minecraft.server.level.ServerLevel)this.level();
--            net.minecraft.server.level.ChunkMap.TrackedEntity tracker = world == null ? null : world.getChunkSource().chunkMap.entityMap.get(this.getId());
-+            net.minecraft.server.level.ChunkMap.TrackedEntity tracker = this.moonrise$getTrackedEntity(); // world == null ? null : world.getChunkSource().chunkMap.entityMap.get(this.getId()); // ShreddedPaper - don't use map
+             ServerLevel level = (net.minecraft.server.level.ServerLevel) this.level();
+-            net.minecraft.server.level.ChunkMap.TrackedEntity tracker = level == null ? null : level.getChunkSource().chunkMap.entityMap.get(this.getId());
++            net.minecraft.server.level.ChunkMap.TrackedEntity tracker = this.moonrise$getTrackedEntity(); // level == null ? null : level.getChunkSource().chunkMap.entityMap.get(this.getId()); // ShreddedPaper - don't use map
              if (tracker == null) {
                  return;
              }
-@@ -830,6 +_,14 @@
+@@ -846,6 +_,14 @@
      }
  
-     public void setPos(double x, double y, double z) {
+     public void setPos(final double x, final double y, final double z) {
 +        // ShreddedPaper start
 +        Vec3 vec3 = new Vec3(x, y, z);
 +        if (!this.firstTick && !this.blockPosition().equals(BlockPos.containing(vec3)) && (!TickThread.isTickThreadFor(level, vec3) || !TickThread.isTickThreadFor(this))) {
@@ -64,27 +64,27 @@
          this.setPosRaw(x, y, z, true); // Paper - Block invalid positions and bounding box; force update
          // this.setBoundingBox(this.makeBoundingBox()); // Paper - Block invalid positions and bounding box; move into setPosRaw
      }
-@@ -1148,7 +_,9 @@
-     public void move(MoverType type, Vec3 movement) {
-         final Vec3 originalMovement = movement; // Paper - Expose pre-collision velocity
+@@ -1164,7 +_,9 @@
+     public void move(final MoverType moverType, Vec3 delta) {
+         final Vec3 originalMovement = delta; // Paper - Expose pre-collision velocity
          // Paper start - detailed watchdog information
 -        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread("Cannot move an entity off-main");
 +        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, "Cannot move an entity off-main"); // ShreddedPaper
-+        BlockPos newPos = new BlockPos((int) (this.getX() + movement.x), (int) (this.getY() + movement.y), (int) (this.getZ() + movement.z)); // ShreddedPaper - check destination region
++        BlockPos newPos = new BlockPos((int) (this.getX() + delta.x), (int) (this.getY() + delta.y), (int) (this.getZ() + delta.z)); // ShreddedPaper - check destination region
 +        TickThread.ensureTickThread((ServerLevel) this.level, newPos, "Cannot move an entity into off-main"); // ShreddedPaper - check destination region
          synchronized (this.posLock) {
              this.moveStartX = this.getX();
              this.moveStartY = this.getY();
-@@ -1476,7 +_,7 @@
+@@ -1502,7 +_,7 @@
      }
  
-     protected BlockPos getOnPos(float yOffset) {
+     protected BlockPos getOnPos(final float offset) {
 -        if (this.mainSupportingBlockPos.isPresent() && this.level().getChunkIfLoadedImmediately(this.mainSupportingBlockPos.get()) != null) { // Paper - ensure no loads
 +        if (this.mainSupportingBlockPos.isPresent() && this.level().getChunkIfLoadedImmediately(this.mainSupportingBlockPos.get()) != null && TickThread.isTickThreadFor((ServerLevel) this.level(), this.mainSupportingBlockPos.get())) { // Paper - ensure no loads // ShreddedPaper - ensure same region
-             BlockPos blockPos = this.mainSupportingBlockPos.get();
-             if (!(yOffset > 1.0E-5F)) {
-                 return blockPos;
-@@ -2377,7 +_,7 @@
+             BlockPos getOnPos = this.mainSupportingBlockPos.get();
+             if (!(offset > 1.0E-5F)) {
+                 return getOnPos;
+@@ -2394,7 +_,7 @@
                  }
                  delta = event.getKnockback();
              }
@@ -93,61 +93,53 @@
              // Paper end - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
              this.needsSync = true;
          }
-@@ -3546,7 +_,9 @@
+@@ -3569,7 +_,9 @@
          }
      }
  
 +    private @Nullable CompletableFuture<Void> beingPortalled = null; // ShreddedPaper - async teleportation
      protected void handlePortal() {
 +        if (this.beingPortalled != null && !this.beingPortalled.isDone()) return; // Currently being teleported by a portal // ShreddedPaper - async teleportation
-         if (this.level() instanceof ServerLevel serverLevel) {
+         if (this.level() instanceof ServerLevel level) {
              this.processPortalCooldown();
              if (this.portalProcess != null) {
-@@ -3554,15 +_,19 @@
-                     ProfilerFiller profilerFiller = Profiler.get();
-                     profilerFiller.push("portal");
+@@ -3577,13 +_,17 @@
+                     ProfilerFiller profiler = Profiler.get();
+                     profiler.push("portal");
                      this.setPortalCooldown();
--                    TeleportTransition portalDestination = this.portalProcess.getPortalDestination(serverLevel, this);
-+                    this.beingPortalled = this.portalProcess.getPortalDestinationAsync(serverLevel, this).thenCompose(portalDestination -> { // ShreddedPaper - async teleportation
-                     if (portalDestination != null) {
+-                    TeleportTransition teleportTransition = this.portalProcess.getPortalDestination(level, this);
++                    this.beingPortalled = this.portalProcess.getPortalDestinationAsync(level, this).thenCompose(teleportTransition -> { // ShreddedPaper - async teleportation
+                     if (teleportTransition != null) {
 +                        return CompletableFuture.runAsync(() -> { // ShreddedPaper - async teleportation
-                         ServerLevel level = portalDestination.newLevel();
-                         if (serverLevel.isAllowedToEnterPortal(level) && (level.dimension() == serverLevel.dimension() || this.canTeleport(serverLevel, level))
-                             )
-                          {
-                             this.teleport(portalDestination);
+                         ServerLevel newLevel = teleportTransition.newLevel();
+                         if (level.isAllowedToEnterPortal(newLevel) && (newLevel.dimension() == level.dimension() || this.canTeleport(level, newLevel))) {
+                             this.teleport(teleportTransition);
                          }
-+                        }, r -> ShreddedPaper.ensureSync(this, portalDestination.newLevel(), ChunkPos.of(BlockPos.containing(portalDestination.position())), r)); // ShreddedPaper - async teleportation
++                        }, r -> ShreddedPaper.ensureSync(this, teleportTransition.newLevel(), ChunkPos.containing(BlockPos.containing(teleportTransition.position())), r)); // ShreddedPaper - async teleportation
                      }
 +                    return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
 +                    }).thenRun(() -> this.beingPortalled = null); // ShreddedPaper - async teleportation
  
-                     profilerFiller.pop();
+                     profiler.pop();
                  } else if (this.portalProcess.hasExpired()) {
-@@ -4064,6 +_,11 @@
-             PositionMoveRotation absolutePosition = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(this), PositionMoveRotation.of(teleportTransition), teleportTransition.relatives());
+@@ -4080,6 +_,11 @@
+             PositionMoveRotation absolutePosition = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(this), PositionMoveRotation.of(transition), transition.relatives());
              Vec3 velocity = absolutePosition.deltaMovement(); // Paper
-             org.bukkit.Location to = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(absolutePosition.position(), teleportTransition.newLevel(), absolutePosition.yRot(), absolutePosition.xRot());
-+            if (!TickThread.isTickThreadFor(this) || !TickThread.isTickThreadFor(teleportTransition.newLevel(), absolutePosition.position())) { // ShreddedPaper
+             org.bukkit.Location to = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(absolutePosition.position(), transition.newLevel(), absolutePosition.yRot(), absolutePosition.xRot());
++            if (!TickThread.isTickThreadFor(this) || !TickThread.isTickThreadFor(transition.newLevel(), absolutePosition.position())) { // ShreddedPaper
 +                LOGGER.error("Trying to teleport {} to {}", this, to); // ShreddedPaper
 +                TickThread.ensureTickThread(this, "Cannot teleport entity async"); // ShreddedPaper
-+                TickThread.ensureTickThread(teleportTransition.newLevel(), CraftLocation.toBlockPosition(to), "Cannot teleport entity to async destination"); // ShreddedPaper
++                TickThread.ensureTickThread(transition.newLevel(), CraftLocation.toBlockPos(to), "Cannot teleport entity to async destination"); // ShreddedPaper
 +            } // ShreddedPaper
              // Paper start - gateway-specific teleport event
              final org.bukkit.event.entity.EntityTeleportEvent teleEvent;
              if (this.portalProcess != null && this.portalProcess.isSamePortal(((net.minecraft.world.level.block.EndGatewayBlock) Blocks.END_GATEWAY)) && this.level.getBlockEntity(this.portalProcess.getEntryPosition()) instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity theEndGatewayBlockEntity) {
-@@ -4920,7 +_,7 @@
-             pushVector = pushVector.normalize().scale(0.0045000000000000005);
-         }
+@@ -4917,8 +_,14 @@
+         return this.deltaMovement;
+     }
  
--        this.setDeltaMovement(currMovement.add(pushVector));
-+        this.setDeltaMovement(currMovement.add(pushVector).shreddedPaperCapToRegionSize()); // ShreddedPaper - cap pushing delta to region size
- 
-         // note: inFluid = true here as pushVector != 0
-         return true;
-@@ -4996,6 +_,12 @@
- 
-     public void setDeltaMovement(Vec3 deltaMovement) {
+-    public void setDeltaMovement(final Vec3 deltaMovement) {
++    public void setDeltaMovement(Vec3 deltaMovement) { // ShreddedPaper - make deltaMovement not final
          if (deltaMovement.isFinite()) {
 +            // ShreddedPaper start - why is something setting the entity velocity to larger than one region...
 +            if (deltaMovement.horizontalDistanceSqr() > RegionPos.MAX_DISTANCE_SQR + 1 && deltaMovement.horizontalDistanceSqr() > this.deltaMovement.horizontalDistanceSqr()) {

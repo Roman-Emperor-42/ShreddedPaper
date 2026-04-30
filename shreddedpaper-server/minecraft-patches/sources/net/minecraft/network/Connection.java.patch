@@ -30,36 +30,36 @@
  import net.minecraft.util.Mth;
  import net.minecraft.util.Util;
  import net.minecraft.util.debugchart.LocalSampleLogger;
-@@ -303,6 +_,7 @@
+@@ -304,6 +_,7 @@
  
-     private static void syncAfterConfigurationChange(ChannelFuture future) {
+     private static void syncAfterConfigurationChange(final ChannelFuture future) {
          try {
 +            if (TickThread.isTickThread()) MinecraftServer.getServer().managedBlock(future::isDone); // ShreddedPaper - don't block main thread
              future.syncUninterruptibly();
          } catch (Exception var2) {
              if (var2 instanceof ClosedChannelException) {
-@@ -400,7 +_,7 @@
+@@ -399,7 +_,7 @@
  
-     public void send(Packet<?> packet, @Nullable ChannelFutureListener sendListener, boolean flush) {
+     public void send(final Packet<?> packet, final @Nullable ChannelFutureListener listener, final boolean flush) {
          // Paper start - Optimize network: Handle oversized packets better
 -        final boolean connected = this.isConnected();
 +        final boolean connected = true || this.isConnected(); // ShreddedPaper - Checking if the player is connected is expensive
          if (!connected && !this.preparing) {
              return;
          }
-@@ -448,6 +_,14 @@
+@@ -447,6 +_,14 @@
          if (this.channel.eventLoop().inEventLoop()) {
-             this.doSendPacket(packet, sendListener, flush);
+             this.doSendPacket(packet, listener, flush);
          } else {
 +            // ShreddedPaper start - Use lazyExecute if we aren't flushing
 +            if (ShreddedPaperConfiguration.get().optimizations.useLazyExecuteWhenNotFlushing && !flush) {
 +                ((AbstractEventExecutor) this.channel.eventLoop()).lazyExecute(() -> {
-+                    this.doSendPacket(packet, sendListener, flush);
++                    this.doSendPacket(packet, listener, flush);
 +                });
 +                return;
 +            }
 +            // ShreddedPaper end - Use lazyExecute if we aren't flushing
-             this.channel.eventLoop().execute(() -> this.doSendPacket(packet, sendListener, flush));
+             this.channel.eventLoop().execute(() -> this.doSendPacket(packet, listener, flush));
          }
      }
 @@ -500,7 +_,7 @@

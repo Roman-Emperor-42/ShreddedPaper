@@ -8,27 +8,27 @@
  import java.util.List;
  import java.util.Map;
  import java.util.WeakHashMap;
-@@ -73,7 +_,7 @@
-     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-         boolean hasNeighborSignal = this.hasNeighborSignal(level, pos, state);
+@@ -74,7 +_,7 @@
+     protected void tick(final BlockState state, final ServerLevel level, final BlockPos pos, final RandomSource random) {
+         boolean neighborSignal = this.hasNeighborSignal(level, pos, state);
          // Paper start - Faster redstone torch rapid clock removal
--        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos = level.redstoneUpdateInfos;
-+        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos = level.chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos; // ShreddedPaper - move redstoneUpdateInfos to the region
-         if (redstoneUpdateInfos != null) {
+-        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.redstoneUpdateInfos;
++        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos; // ShreddedPaper - move redstoneUpdateInfos to the region
+         if (toggles != null) {
              RedstoneTorchBlock.Toggle curr;
-             while ((curr = redstoneUpdateInfos.peek()) != null && level.getGameTime() - curr.when > 60L) {
-@@ -154,10 +_,12 @@
+             while ((curr = toggles.peek()) != null && level.getGameTime() - curr.when > 60L) {
+@@ -155,10 +_,12 @@
  
-     private static boolean isToggledTooFrequently(Level level, BlockPos pos, boolean logToggle) {
+     private static boolean isToggledTooFrequently(final Level level, final BlockPos pos, final boolean add) {
          // Paper start - Faster redstone torch rapid clock removal
--        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> list = level.redstoneUpdateInfos;
+-        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.redstoneUpdateInfos;
 +        // ShreddedPaper start - move redstoneUpdateInfos to the region
-+        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> list = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos;
-         if (list == null) {
--            list = level.redstoneUpdateInfos = new java.util.ArrayDeque<>();
-+            list = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos = new java.util.ArrayDeque<>();
++        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos;
+         if (toggles == null) {
+-            toggles = level.redstoneUpdateInfos = new java.util.ArrayDeque<>();
++            toggles = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos = new java.util.ArrayDeque<>();
          }
 +        // ShreddedPaper end - move redstoneUpdateInfos to the region
          // Paper end - Faster redstone torch rapid clock removal
-         if (logToggle) {
-             list.add(new RedstoneTorchBlock.Toggle(pos.immutable(), level.getGameTime()));
+         if (add) {
+             toggles.add(new RedstoneTorchBlock.Toggle(pos.immutable(), level.getGameTime()));

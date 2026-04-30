@@ -1,15 +1,15 @@
 --- a/net/minecraft/core/dispenser/DispenseItemBehavior.java
 +++ b/net/minecraft/core/dispenser/DispenseItemBehavior.java
-@@ -407,20 +_,20 @@
+@@ -337,20 +_,20 @@
                      return result;
                  }
                  // Paper end - Call BlockDispenseEvent
 -                level.captureTreeGeneration = true; // CraftBukkit
 +                level.captureTreeGenerationThreadLocal.set(true); // CraftBukkit // ShreddedPaper - use thread local
-                 if (!BoneMealItem.growCrop(item, level, blockPos) && !BoneMealItem.growWaterPlant(item, level, blockPos, null)) {
+                 if (!BoneMealItem.growCrop(dispensed, level, target) && !BoneMealItem.growWaterPlant(dispensed, level, target, null)) {
                      this.setSuccess(false);
                  } else if (!level.isClientSide()) {
-                     level.levelEvent(LevelEvent.PARTICLES_AND_SOUND_PLANT_GROWTH, blockPos, 15);
+                     level.levelEvent(LevelEvent.PARTICLES_AND_SOUND_PLANT_GROWTH, target, 15);
                  }
                  // CraftBukkit start
 -                level.captureTreeGeneration = false;
@@ -20,7 +20,7 @@
 +                if (!level.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
 +                    org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
 +                    net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(blockPos, level);
+                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(target, level);
 -                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStates.values());
 -                    level.capturedBlockStates.clear();
 +                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local

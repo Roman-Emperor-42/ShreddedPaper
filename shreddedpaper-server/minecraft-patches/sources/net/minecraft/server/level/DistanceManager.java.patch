@@ -1,53 +1,53 @@
 --- a/net/minecraft/server/level/DistanceManager.java
 +++ b/net/minecraft/server/level/DistanceManager.java
-@@ -34,7 +_,7 @@
+@@ -35,7 +_,7 @@
  public abstract class DistanceManager implements ca.spottedleaf.moonrise.patches.chunk_system.level.chunk.ChunkSystemDistanceManager, ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickDistanceManager { // Paper - rewrite chunk system // Paper - chunk tick iteration optimisation
      private static final Logger LOGGER = LogUtils.getLogger();
-     static final int PLAYER_TICKET_LEVEL = ChunkLevel.byStatus(FullChunkStatus.ENTITY_TICKING);
--    final Long2ObjectMap<ObjectSet<ServerPlayer>> playersPerChunk = new Long2ObjectOpenHashMap<>();
-+    // final Long2ObjectMap<ObjectSet<ServerPlayer>> playersPerChunk = new Long2ObjectOpenHashMap<>(); // ShreddedPaper - Remove unused DistanceManager methods
+     private static final int PLAYER_TICKET_LEVEL = ChunkLevel.byStatus(FullChunkStatus.ENTITY_TICKING);
+-    private final Long2ObjectMap<ObjectSet<ServerPlayer>> playersPerChunk = new Long2ObjectOpenHashMap<>();
++    // private final Long2ObjectMap<ObjectSet<ServerPlayer>> playersPerChunk = new Long2ObjectOpenHashMap<>(); // ShreddedPaper - Remove unused DistanceManager methods
      // Paper - rewrite chunk system
      public final TicketStorage ticketStorage;
      // Paper - chunk tick iteration optimisation
-@@ -99,25 +_,29 @@
+@@ -100,25 +_,29 @@
      }
  
-     public void addPlayer(SectionPos sectionPos, ServerPlayer player) {
--        ChunkPos chunkPos = sectionPos.chunk();
--        long packedChunkPos = chunkPos.toLong();
--        this.playersPerChunk.computeIfAbsent(packedChunkPos, l -> new ObjectOpenHashSet<>()).add(player);
+     public void addPlayer(final SectionPos pos, final ServerPlayer player) {
+-        ChunkPos chunk = pos.chunk();
+-        long chunkPos = chunk.pack();
+-        this.playersPerChunk.computeIfAbsent(chunkPos, k -> new ObjectOpenHashSet<>()).add(player);
 -        // Paper - chunk tick iteration optimisation
 -        // Paper - rewrite chunk system
 +        // ShreddedPaper start - Remove unused DistanceManager methods
-+//        ChunkPos chunkPos = sectionPos.chunk();
-+//        long packedChunkPos = chunkPos.toLong();
-+//        this.playersPerChunk.computeIfAbsent(packedChunkPos, l -> new ObjectOpenHashSet<>()).add(player);
++//        ChunkPos chunk = pos.chunk();
++//        long chunkPos = chunk.pack();
++//        this.playersPerChunk.computeIfAbsent(chunkPos, k -> new ObjectOpenHashSet<>()).add(player);
 +//        // Paper - chunk tick iteration optimisation
 +//        // Paper - rewrite chunk system
 +        // ShreddedPaper end - Remove unused DistanceManager methods
      }
  
-     public void removePlayer(SectionPos sectionPos, ServerPlayer player) {
--        ChunkPos chunkPos = sectionPos.chunk();
--        long packedChunkPos = chunkPos.toLong();
--        ObjectSet<ServerPlayer> set = this.playersPerChunk.get(packedChunkPos);
+     public void removePlayer(final SectionPos pos, final ServerPlayer player) {
+-        ChunkPos chunk = pos.chunk();
+-        long chunkPos = chunk.pack();
+-        ObjectSet<ServerPlayer> chunkPlayers = this.playersPerChunk.get(chunkPos);
 -        // Paper start - some state corruption happens here, don't crash, clean up gracefully
--        if (set != null) set.remove(player);
--        if (set == null || set.isEmpty()) {
+-        if (chunkPlayers != null) chunkPlayers.remove(player);
+-        if (chunkPlayers == null || chunkPlayers.isEmpty()) {
 -        // Paper end - some state corruption happens here, don't crash, clean up gracefully
--            this.playersPerChunk.remove(packedChunkPos);
+-            this.playersPerChunk.remove(chunkPos);
 -            // Paper - chunk tick iteration optimisation
 -            // Paper - rewrite chunk system
 -        }
 +        // ShreddedPaper start - Remove unused DistanceManager methods
-+//        ChunkPos chunkPos = sectionPos.chunk();
-+//        long packedChunkPos = chunkPos.toLong();
-+//        ObjectSet<ServerPlayer> set = this.playersPerChunk.get(packedChunkPos);
++//        ChunkPos chunk = pos.chunk();
++//        long chunkPos = chunk.pack();
++//        ObjectSet<ServerPlayer> chunkPlayers = this.playersPerChunk.get(chunkPos);
 +//        // Paper start - some state corruption happens here, don't crash, clean up gracefully
-+//        if (set != null) set.remove(player);
-+//        if (set == null || set.isEmpty()) {
++//        if (chunkPlayers != null) chunkPlayers.remove(player);
++//        if (chunkPlayers == null || chunkPlayers.isEmpty()) {
 +//        // Paper end - some state corruption happens here, don't crash, clean up gracefully
-+//            this.playersPerChunk.remove(packedChunkPos);
++//            this.playersPerChunk.remove(chunkPos);
 +//            // Paper - chunk tick iteration optimisation
 +//            // Paper - rewrite chunk system
 +//        }
@@ -55,16 +55,16 @@
      }
  
      private int getPlayerTicketLevel() {
-@@ -230,8 +_,11 @@
+@@ -233,8 +_,11 @@
          }
  
-         private boolean havePlayer(long chunkPos) {
--            ObjectSet<ServerPlayer> set = DistanceManager.this.playersPerChunk.get(chunkPos);
--            return set != null && !set.isEmpty();
+         private boolean havePlayer(final long chunkPos) {
+-            ObjectSet<ServerPlayer> players = DistanceManager.this.playersPerChunk.get(chunkPos);
+-            return players != null && !players.isEmpty();
 +            // ShreddedPaper start - Remove unused DistanceManager methods
 +            throw new UnsupportedOperationException("REPORT THIS STACK TRACE TO SHREDDEDPAPER"); // ShreddedPaper - Remove unused DistanceManager methods
-+//            ObjectSet<ServerPlayer> set = DistanceManager.this.playersPerChunk.get(chunkPos);
-+//            return set != null && !set.isEmpty();
++//            ObjectSet<ServerPlayer> players = DistanceManager.this.playersPerChunk.get(chunkPos);
++//            return players != null && !players.isEmpty();
 +            // ShreddedPaper end - Remove unused DistanceManager methods
          }
  

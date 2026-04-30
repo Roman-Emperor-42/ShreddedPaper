@@ -5,7 +5,7 @@
          } else {
              level.removeBlock(pos, false);
 -            SaplingBlock.treeType = (this == Blocks.BROWN_MUSHROOM) ? org.bukkit.TreeType.BROWN_MUSHROOM : org.bukkit.TreeType.RED_MUSHROOM; // CraftBukkit
-+            SaplingBlock.treeTypeThreadLocal.set(this == Blocks.BROWN_MUSHROOM ? org.bukkit.TreeType.BROWN_MUSHROOM : org.bukkit.TreeType.RED_MUSHROOM); // CraftBukkit // ShreddedPaper - use thread local
-             if (optional.get().value().place(level, level.getChunkSource().getGenerator(), random, pos)) {
++            SaplingBlock.treeTypeThreadLocal.set((this == Blocks.BROWN_MUSHROOM) ? org.bukkit.TreeType.BROWN_MUSHROOM : org.bukkit.TreeType.RED_MUSHROOM); // CraftBukkit // ShreddedPaper - use thread local
+             if (feature.get().value().place(level, level.getChunkSource().getGenerator(), random, pos)) {
                  return true;
              } else {

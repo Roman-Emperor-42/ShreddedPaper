@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -22,6 +_,9 @@
+@@ -23,6 +_,9 @@
  import java.util.UUID;
  import java.util.concurrent.CompletableFuture;
  import java.util.stream.Collectors;
@@ -10,7 +10,7 @@
  import net.minecraft.ChatFormatting;
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
-@@ -64,7 +_,6 @@
+@@ -66,7 +_,6 @@
  import net.minecraft.network.protocol.game.ClientboundMerchantOffersPacket;
  import net.minecraft.network.protocol.game.ClientboundMountScreenOpenPacket;
  import net.minecraft.network.protocol.game.ClientboundOpenBookPacket;
@@ -18,7 +18,7 @@
  import net.minecraft.network.protocol.game.ClientboundOpenSignEditorPacket;
  import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
  import net.minecraft.network.protocol.game.ClientboundPlayerCombatEndPacket;
-@@ -247,6 +_,7 @@
+@@ -249,6 +_,7 @@
      private @Nullable Entity camera;
      public boolean isChangingDimension;
      public boolean seenCredits = false;
@@ -26,7 +26,7 @@
      private final ServerRecipeBook recipeBook;
      private @Nullable Vec3 levitationStartPos;
      private int levitationStartTime;
-@@ -259,6 +_,7 @@
+@@ -261,6 +_,7 @@
      private @Nullable Vec3 enteredLavaOnVehiclePosition;
      private SectionPos lastSectionPos = SectionPos.of(0, 0, 0);
      private ChunkTrackingView chunkTrackingView = ChunkTrackingView.EMPTY;
@@ -34,23 +34,24 @@
      private ServerPlayer.@Nullable RespawnConfig respawnConfig;
      private final TextFilter textFilter;
      private boolean textFilteringEnabled;
-@@ -637,12 +_,15 @@
-         if (!optional.isEmpty()) {
-             ServerLevel level = this.level().getServer().getLevel(optional.get());
-             if (level != null) {
-+                BlockPos enderpearlPos = BlockPos.containing(input.read("Pos", Vec3.CODEC).orElse(Vec3.ZERO)); // ShreddedPaper - spawn ender pearl on ender pearl thread
-+                ShreddedPaper.ensureSync(level, enderpearlPos, () -> { // ShreddedPaper - spawn ender pearl on ender pearl thread
-                 Entity entity = EntityType.loadEntityRecursive(input, level, EntitySpawnReason.LOAD, entity1 -> !level.addWithUUID(entity1) ? null : entity1);
-                 if (entity != null) {
-                     placeEnderPearlTicket(level, entity.chunkPosition());
+@@ -658,6 +_,8 @@
+         if (!pearlLevelKey.isEmpty()) {
+             ServerLevel pearlLevel = this.level().getServer().getLevel(pearlLevelKey.get());
+             if (pearlLevel != null) {
++                BlockPos enderpearlPos = BlockPos.containing(pearlInput.read("Pos", Vec3.CODEC).orElse(Vec3.ZERO)); // ShreddedPaper - spawn ender pearl on ender pearl thread
++                ShreddedPaper.ensureSync(pearlLevel, enderpearlPos, () -> { // ShreddedPaper - spawn ender pearl on ender pearl thread
+                 Entity pearl = EntityType.loadEntityRecursive(
+                     pearlInput, pearlLevel, EntitySpawnReason.LOAD, entity -> !pearlLevel.addWithUUID(entity) ? null : entity
+                 );
+@@ -666,6 +_,7 @@
                  } else {
-                     LOGGER.warn("Failed to spawn player ender pearl in level ({}), skipping", optional.get());
+                     LOGGER.warn("Failed to spawn player ender pearl in level ({}), skipping", pearlLevelKey.get());
                  }
 +                }); // ShreddedPaper - spawn ender pearl on ender pearl thread
              } else {
-                 LOGGER.warn("Trying to load ender pearl without level ({}) being loaded, skipping", optional.get());
+                 LOGGER.warn("Trying to load ender pearl without level ({}) being loaded, skipping", pearlLevelKey.get());
              }
-@@ -752,9 +_,11 @@
+@@ -775,9 +_,11 @@
  
          Entity camera = this.getCamera();
          if (camera != this) {
@@ -63,37 +64,43 @@
                  if (this.wantsToStopRiding()) {
                      this.setCamera(this);
                  }
-@@ -1352,39 +_,43 @@
+@@ -1373,45 +_,49 @@
      public record RespawnResult(TeleportTransition transition, boolean isBedSpawn, boolean isAnchorSpawn) {
      }
  
--    public @Nullable TeleportTransition findRespawnPositionAndUseSpawnBlock(boolean useCharge, TeleportTransition.PostTeleportTransition postTeleportTransition, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) {
--        RespawnResult result = this.findRespawnPositionAndUseSpawnBlock0(useCharge, postTeleportTransition, respawnReason);
-+    public CompletableFuture<TeleportTransition> findRespawnPositionAndUseSpawnBlockAsync(boolean useCharge, TeleportTransition.PostTeleportTransition postTeleportTransition, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) { // ShreddedPaper - respawn async
-+        return this.findRespawnPositionAndUseSpawnBlock0Async(useCharge, postTeleportTransition, respawnReason).thenApply(result -> { // ShreddedPaper - respawn async
+-    public @Nullable TeleportTransition findRespawnPositionAndUseSpawnBlock(
++    public CompletableFuture<TeleportTransition> findRespawnPositionAndUseSpawnBlockAsync( // ShreddedPaper - respawn async
+         final boolean consumeSpawnBlock, final TeleportTransition.PostTeleportTransition postTeleportTransition,
+         final org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason
+     ) {
+-        RespawnResult result = this.findRespawnPositionAndUseSpawnBlock0(consumeSpawnBlock, postTeleportTransition, respawnReason);
++        return this.findRespawnPositionAndUseSpawnBlock0Async(consumeSpawnBlock, postTeleportTransition, respawnReason).thenApply(result -> { // ShreddedPaper - respawn async
          return result == null ? null : result.transition();
 +        }); // ShreddedPaper - respawn async
      }
  
--    public @Nullable RespawnResult findRespawnPositionAndUseSpawnBlock0(boolean useCharge, TeleportTransition.PostTeleportTransition postTeleportTransition, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) {
+-    public @Nullable RespawnResult findRespawnPositionAndUseSpawnBlock0(
++    public CompletableFuture<@Nullable RespawnResult> findRespawnPositionAndUseSpawnBlock0Async( // ShreddedPaper - respawn async
+         final boolean consumeSpawnBlock, final TeleportTransition.PostTeleportTransition postTeleportTransition,
+         final org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason
+     ) {
 -        TeleportTransition teleportTransition;
 -        boolean isBedSpawn = false;
 -        boolean isAnchorSpawn = false;
 -        Runnable consumeAnchorCharge = null;
-+    public CompletableFuture<RespawnResult> findRespawnPositionAndUseSpawnBlock0Async(boolean useCharge, TeleportTransition.PostTeleportTransition postTeleportTransition, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) { // ShreddedPaper - respawn async
 +        // TeleportTransition teleportTransition; // ShreddedPaper - respawn async
 +        ObjectHolder<Boolean> isBedSpawn = new ObjectHolder<>(false); // ShreddedPaper - respawn async
 +        ObjectHolder<Boolean> isAnchorSpawn = new ObjectHolder<>(false); // ShreddedPaper - respawn async
 +        ObjectHolder<Runnable> consumeAnchorCharge = new ObjectHolder<>(null); // ShreddedPaper - respawn async
          // Paper end
          ServerPlayer.RespawnConfig respawnConfig = this.getRespawnConfig();
-         ServerLevel level = this.server.getLevel(ServerPlayer.RespawnConfig.getDimensionOrDefault(respawnConfig));
+         ServerLevel respawnLevel = this.server.getLevel(ServerPlayer.RespawnConfig.getDimensionOrDefault(respawnConfig));
 +        CompletableFuture<TeleportTransition> future; // ShreddedPaper - respawn async
-         if (level != null && respawnConfig != null) {
--            Optional<ServerPlayer.RespawnPosAngle> optional = findRespawnAndUseSpawnBlock(level, respawnConfig, useCharge);
-+            future = findRespawnAndUseSpawnBlockAsync(level, respawnConfig, useCharge).thenCompose(optional -> { // ShreddedPaper - respawn async
-             if (optional.isPresent()) {
-                 ServerPlayer.RespawnPosAngle respawnPosAngle = optional.get();
+         if (respawnLevel != null && respawnConfig != null) {
+-            Optional<ServerPlayer.RespawnPosAngle> respawn = findRespawnAndUseSpawnBlock(respawnLevel, respawnConfig, consumeSpawnBlock);
++            future = findRespawnAndUseSpawnBlockAsync(respawnLevel, respawnConfig, consumeSpawnBlock).thenCompose(respawn -> { // ShreddedPaper - respawn async
+             if (respawn.isPresent()) {
+                 ServerPlayer.RespawnPosAngle respawnPosAngle = respawn.get();
                  // CraftBukkit start
 -                isBedSpawn = respawnPosAngle.isBedSpawn();
 -                isAnchorSpawn = respawnPosAngle.isAnchorSpawn();
@@ -103,7 +110,7 @@
 +                isAnchorSpawn.set(respawnPosAngle.isAnchorSpawn()); // ShreddedPaper - respawn async
 +                consumeAnchorCharge.set(respawnPosAngle.consumeAnchorCharge()); // ShreddedPaper - respawn async
 +                return CompletableFuture.completedFuture(new TeleportTransition( // ShreddedPaper - respawn async
-                     level, respawnPosAngle.position(), Vec3.ZERO, respawnPosAngle.yaw(), respawnPosAngle.pitch(), postTeleportTransition
+                     respawnLevel, respawnPosAngle.position(), Vec3.ZERO, respawnPosAngle.yaw(), respawnPosAngle.pitch(), postTeleportTransition
 -                );
 +                )); // ShreddedPaper - respawn async
                  // CraftBukkit end
@@ -122,7 +129,7 @@
          org.bukkit.entity.Player respawnPlayer = this.getBukkitEntity();
          org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(
              teleportTransition.position(),
-@@ -1397,8 +_,8 @@
+@@ -1424,8 +_,8 @@
          org.bukkit.event.player.PlayerRespawnEvent respawnEvent = new org.bukkit.event.player.PlayerRespawnEvent(
              respawnPlayer,
              location,
@@ -133,7 +140,7 @@
              teleportTransition.missingRespawnBlock(),
              respawnReason
          );
-@@ -1411,8 +_,8 @@
+@@ -1438,8 +_,8 @@
          // Spigot end
  
          // Paper start - consume anchor charge if location hasn't changed
@@ -144,7 +151,7 @@
          }
          // Paper end - consume anchor charge if location hasn't changed
          location = respawnEvent.getRespawnLocation();
-@@ -1430,10 +_,11 @@
+@@ -1457,10 +_,11 @@
                  teleportTransition.postTeleportTransition(),
                  teleportTransition.cause()
              ),
@@ -158,37 +165,34 @@
      }
  
      public boolean isReceivingWaypoints() {
-@@ -1454,7 +_,7 @@
+@@ -1481,7 +_,7 @@
          super.onAttributeUpdated(attribute);
      }
  
 -    public static Optional<ServerPlayer.RespawnPosAngle> findRespawnAndUseSpawnBlock(
 +    public static CompletableFuture<Optional<ServerPlayer.RespawnPosAngle>> findRespawnAndUseSpawnBlockAsync( // ShreddedPaper - respawn async
-         ServerLevel level, ServerPlayer.RespawnConfig respawnConfig, boolean useCharge
+         final ServerLevel level, final ServerPlayer.RespawnConfig respawnConfig, final boolean consumeSpawnBlock
      ) {
          LevelData.RespawnData respawnData = respawnConfig.respawnData;
-@@ -1462,22 +_,32 @@
+@@ -1489,6 +_,7 @@
          float yaw = respawnData.yaw();
          float pitch = respawnData.pitch();
-         boolean flag = respawnConfig.forced;
+         boolean forced = respawnConfig.forced;
 +        return CompletableFuture.supplyAsync(() -> { // ShreddedPaper - respawn async
-         BlockState blockState = level.getBlockState(blockPos);
+         BlockState blockState = level.getBlockState(pos);
          Block block = blockState.getBlock();
-         if (block instanceof RespawnAnchorBlock
--            && (flag || blockState.getValue(RespawnAnchorBlock.CHARGE) > 0)
--            && RespawnAnchorBlock.canSetSpawn(level, blockPos)) {
-+                && (flag || blockState.getValue(RespawnAnchorBlock.CHARGE) > 0)
-+                && RespawnAnchorBlock.canSetSpawn(level, blockPos)) {
-             Optional<Vec3> optional = RespawnAnchorBlock.findStandUpPosition(EntityType.PLAYER, level, blockPos);
+         if (block instanceof RespawnAnchorBlock && (forced || blockState.getValue(RespawnAnchorBlock.CHARGE) > 0) && RespawnAnchorBlock.canSetSpawn(level, pos)
+@@ -1497,7 +_,16 @@
              Runnable consumeAnchorCharge = null; // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
-             if (!flag && useCharge && optional.isPresent()) {
--                consumeAnchorCharge = () -> level.setBlock(blockPos, blockState.setValue(RespawnAnchorBlock.CHARGE, blockState.getValue(RespawnAnchorBlock.CHARGE) - 1), Block.UPDATE_ALL); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
+             Optional<Vec3> standUpPosition = RespawnAnchorBlock.findStandUpPosition(EntityType.PLAYER, level, pos);
+             if (!forced && consumeSpawnBlock && standUpPosition.isPresent()) {
+-                consumeAnchorCharge = () -> level.setBlock(pos, blockState.setValue(RespawnAnchorBlock.CHARGE, blockState.getValue(RespawnAnchorBlock.CHARGE) - 1), Block.UPDATE_ALL); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
 +                // ShreddedPaper start - respawn anchor block update async
 +                consumeAnchorCharge = () -> {
-+                    ShreddedPaper.ensureSync(level, blockPos, () -> {
-+                        BlockState blockState2 = level.getBlockState(blockPos); // Use the latest block state in case it has been modified since
++                    ShreddedPaper.ensureSync(level, pos, () -> {
++                        BlockState blockState2 = level.getBlockState(pos); // Use the latest block state in case it has been modified since
 +                        if (blockState2.getBlock() instanceof RespawnAnchorBlock && blockState2.getValue(RespawnAnchorBlock.CHARGE) > 0) { // Ensure this block is still a respawn anchor block
-+                            level.setBlock(blockPos, blockState2.setValue(RespawnAnchorBlock.CHARGE, blockState2.getValue(RespawnAnchorBlock.CHARGE) - 1), Block.UPDATE_ALL); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
++                            level.setBlock(pos, blockState2.setValue(RespawnAnchorBlock.CHARGE, blockState2.getValue(RespawnAnchorBlock.CHARGE) - 1), Block.UPDATE_ALL); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
 +                        }
 +                    });
 +                };
@@ -196,36 +200,23 @@
              }
              final Runnable finalConsumeAnchorCharge = consumeAnchorCharge; // Paper - Fix SPIGOT-5989
  
-             return optional.map(pos -> ServerPlayer.RespawnPosAngle.of(pos, blockPos, 0.0F, false, true, finalConsumeAnchorCharge)); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
-         } else if (block instanceof BedBlock && level.environmentAttributes().getValue(EnvironmentAttributes.BED_RULE, blockPos).canSetSpawn(level)) {
-             return BedBlock.findStandUpPosition(EntityType.PLAYER, level, blockPos, blockState.getValue(BedBlock.FACING), yaw)
--                .map(pos -> ServerPlayer.RespawnPosAngle.of(pos, blockPos, 0.0F, true, false, null)); // Paper - Fix SPIGOT-5989
-+                    .map(pos -> ServerPlayer.RespawnPosAngle.of(pos, blockPos, 0.0F, true, false, null)); // Paper - Fix SPIGOT-5989
-         } else if (!flag) {
-             return Optional.empty();
-         } else {
-@@ -1485,9 +_,10 @@
-             BlockState blockState1 = level.getBlockState(blockPos.above());
-             boolean isPossibleToRespawnInThis1 = blockState1.getBlock().isPossibleToRespawnInThis(blockState1);
-             return isPossibleToRespawnInThis && isPossibleToRespawnInThis1
--                ? Optional.of(new ServerPlayer.RespawnPosAngle(new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.1, blockPos.getZ() + 0.5), yaw, pitch, false, false, null)) // Paper - Fix SPIGOT-5989
--                : Optional.empty();
-+                    ? Optional.of(new ServerPlayer.RespawnPosAngle(new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.1, blockPos.getZ() + 0.5), yaw, pitch, false, false, null)) // Paper - Fix SPIGOT-5989
-+                    : Optional.empty();
+@@ -1515,6 +_,7 @@
+                 ? Optional.of(new ServerPlayer.RespawnPosAngle(new Vec3(pos.getX() + 0.5, pos.getY() + 0.1, pos.getZ() + 0.5), yaw, pitch, false, false, null)) // Paper - Fix SPIGOT-5989
+                 : Optional.empty();
          }
-+        }, r -> ShreddedPaper.ensureSync(level, blockPos, r));
++        }, r -> ShreddedPaper.ensureSync(level, pos, r));
      }
  
      public void showEndCredits() {
-@@ -2655,6 +_,7 @@
+@@ -2717,6 +_,7 @@
      }
  
-     public void setCamera(@Nullable Entity entityToSpectate) {
-+        ShreddedPaper.ensureSync(this, entityToSpectate == null ? this : entityToSpectate, () -> { // ShreddedPaper - run on entity's thread
-         Entity camera = this.getCamera();
-         this.camera = (Entity)(entityToSpectate == null ? this : entityToSpectate);
-         if (camera != this.camera) {
-@@ -2684,6 +_,7 @@
+     public void setCamera(final @Nullable Entity newCamera) {
++        ShreddedPaper.ensureSync(this, newCamera == null ? this : newCamera, () -> { // ShreddedPaper - run on entity's thread
+         Entity oldCamera = this.getCamera();
+         this.camera = (Entity)(newCamera == null ? this : newCamera);
+         if (oldCamera != this.camera) {
+@@ -2746,6 +_,7 @@
              this.connection.send(new ClientboundSetCameraPacket(this.camera));
              this.connection.resetPosition();
          }
@@ -233,12 +224,12 @@
      }
  
      @Override
-@@ -2962,6 +_,8 @@
-             for (MobEffectInstance mobEffectInstance : livingEntity.getActiveEffects()) {
-                 this.connection.send(new ClientboundRemoveMobEffectPacket(vehicle.getId(), mobEffectInstance.getEffect()));
+@@ -3015,6 +_,8 @@
+             for (MobEffectInstance effect : livingEntity.getActiveEffects()) {
+                 this.connection.send(new ClientboundRemoveMobEffectPacket(oldVehicle.getId(), effect.getEffect()));
              }
 +
-+            if (vehicle.moonrise$getTrackedEntity() != null) vehicle.moonrise$getTrackedEntity().serverEntity.sendChanges(); // ShreddedPaper - send changes now
++            if (oldVehicle.moonrise$getTrackedEntity() != null) oldVehicle.moonrise$getTrackedEntity().serverEntity.sendChanges(); // ShreddedPaper - send changes now
          }
  
-         if (vehicle != null) {
+         if (oldVehicle != null) {

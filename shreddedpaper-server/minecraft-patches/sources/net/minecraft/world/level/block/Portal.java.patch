@@ -7,12 +7,12 @@
 +import java.util.concurrent.CompletableFuture;
 +
  public interface Portal {
-     default int getPortalTransitionTime(ServerLevel level, Entity entity) {
+     default int getPortalTransitionTime(final ServerLevel level, final Entity entity) {
          return 0;
      }
  
--    @Nullable TeleportTransition getPortalDestination(ServerLevel level, Entity entity, BlockPos pos);
-+    CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(ServerLevel level, Entity entity, BlockPos pos); // ShreddedPaper - async teleportation
+-    @Nullable TeleportTransition getPortalDestination(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos);
++    CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(final ServerLevel currentLevel, final Entity entity, final BlockPos portalEntryPos); // ShreddedPaper - async teleportation
  
      default Portal.Transition getLocalTransition() {
          return Portal.Transition.NONE;

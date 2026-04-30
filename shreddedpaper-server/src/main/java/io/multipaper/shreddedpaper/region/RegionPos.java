@@ -67,7 +67,7 @@ public class RegionPos {
         this.longKey = regionKey;
     }
 
-    public long toLong() {
+    public long longKey() {
         return this.longKey;
     }
 

@@ -8,12 +8,12 @@
  import net.minecraft.core.particles.ParticleOptions;
  import net.minecraft.server.level.ServerLevel;
 @@ -21,7 +_,9 @@
-         if (entity instanceof ServerPlayer serverPlayer && !entity.isSpectator()) {
-             BlockPos raidOmenPosition = serverPlayer.getRaidOmenPosition();
+         if (mob instanceof ServerPlayer player && !mob.isSpectator()) {
+             BlockPos raidOmenPosition = player.getRaidOmenPosition();
              if (raidOmenPosition != null) {
 +                ShreddedPaper.runSync(level, raidOmenPosition, () -> { // ShreddedPaper - run on raidOmenPosition's thread. Do not use ensureSync as createOrExtendRaid can call positions that are outside the player's thread
-                 level.getRaids().createOrExtendRaid(serverPlayer, raidOmenPosition);
+                 level.getRaids().createOrExtendRaid(player, raidOmenPosition);
 +                }); // ShreddedPaper - run on raidOmenPosition's thread
-                 serverPlayer.clearRaidOmenPosition();
+                 player.clearRaidOmenPosition();
                  return false;
              }

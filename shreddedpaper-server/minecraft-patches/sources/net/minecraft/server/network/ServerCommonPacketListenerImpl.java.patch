@@ -11,25 +11,25 @@
  import io.netty.channel.ChannelFutureListener;
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
-@@ -283,7 +_,7 @@
+@@ -276,7 +_,7 @@
          this.disconnect(DISCONNECT_UNEXPECTED_QUERY, io.papermc.paper.connection.DisconnectionReason.INVALID_COOKIE); // Paper - kick event cause
      }
  
 -    protected void keepConnectionAlive() {
 +    public void keepConnectionAlive() { // ShreddedPaper - make public
          Profiler.get().push("keepAlive");
-         long millis = Util.getMillis();
+         long now = Util.getMillis();
          // Paper start - improve keepalives
-@@ -391,7 +_,7 @@
-         if (this.processedDisconnect) {
+@@ -384,7 +_,7 @@
+         if (!this.connection.isConnected()) {
              return;
          }
 -        if (!this.cserver.isPrimaryThread()) {
 +        if (this instanceof ServerGamePacketListenerImpl serverGamePacketListener ? !TickThread.isTickThreadFor(serverGamePacketListener.player) : !this.cserver.isPrimaryThread()) { // ShreddedPaper
              org.bukkit.craftbukkit.util.Waitable waitable = new org.bukkit.craftbukkit.util.Waitable() {
                  @Override
-                 protected Object evaluate() {
-@@ -400,9 +_,20 @@
+                 protected @Nullable Object evaluate() {
+@@ -393,9 +_,20 @@
                  }
              };
  

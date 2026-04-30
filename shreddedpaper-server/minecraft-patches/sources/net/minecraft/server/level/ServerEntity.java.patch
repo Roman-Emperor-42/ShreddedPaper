@@ -1,15 +1,15 @@
 --- a/net/minecraft/server/level/ServerEntity.java
 +++ b/net/minecraft/server/level/ServerEntity.java
-@@ -122,6 +_,7 @@
-                 MapId mapId = itemFrame.cachedMapId; // Paper - Perf: Cache map ids on item frames
-                 MapItemSavedData savedData = MapItem.getSavedData(mapId, this.level);
-                 if (savedData != null) {
-+                    synchronized (savedData) { // ShreddedPaper - thread-safe
+@@ -123,6 +_,7 @@
+                 MapId id = frame.cachedMapId; // Paper - Perf: Cache map ids on item frames
+                 MapItemSavedData data = MapItem.getSavedData(id, this.level);
+                 if (data != null) {
++                    synchronized (data) { // ShreddedPaper - thread-safe
                      for (final net.minecraft.server.network.ServerPlayerConnection connection : this.trackedPlayers) { // Paper
-                         final ServerPlayer serverPlayer = connection.getPlayer(); // Paper
-                         savedData.tickCarriedBy(serverPlayer, item);
-@@ -130,6 +_,7 @@
-                             serverPlayer.connection.send(updatePacket);
+                         final ServerPlayer player = connection.getPlayer(); // Paper
+                         data.tickCarriedBy(player, itemStack, frame);
+@@ -131,6 +_,7 @@
+                             player.connection.send(packet);
                          }
                      }
 +                    } // ShreddedPaper - thread-safe
@@ -17,8 +17,8 @@
              }
  
 @@ -352,7 +_,7 @@
-             if (!list.isEmpty()) {
-                 consumer.accept(new ClientboundSetEquipmentPacket(this.entity.getId(), list, true)); // Paper - data sanitization
+             if (!slots.isEmpty()) {
+                 broadcast.accept(new ClientboundSetEquipmentPacket(this.entity.getId(), slots, true)); // Paper - data sanitization
              }
 -            ((LivingEntity) this.entity).detectEquipmentUpdates(); // CraftBukkit - SPIGOT-3789: sync again immediately after sending
 +            // ((LivingEntity) this.entity).detectEquipmentUpdates(); // CraftBukkit - SPIGOT-3789: sync again immediately after sending // ShreddedPaper - why? - equipment changes should not be run when sending pairing changes

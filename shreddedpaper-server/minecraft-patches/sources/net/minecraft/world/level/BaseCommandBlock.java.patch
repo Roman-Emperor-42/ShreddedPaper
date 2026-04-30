@@ -23,9 +23,9 @@
  
      public int getSuccessCount() {
          return this.successCount;
-@@ -206,9 +_,11 @@
+@@ -209,9 +_,11 @@
          @Override
-         public void sendSystemMessage(Component message) {
+         public void sendSystemMessage(final Component message) {
              if (this.trackOutput && !this.closed) { // Paper - add back source when output disabled
 +                ShreddedPaper.ensureSync(this.level, BaseCommandBlock.this.getBlockPos(), () -> { // ShreddedPaper - run sync
                  org.spigotmc.AsyncCatcher.catchOp("sendSystemMessage to a command block"); // Paper - Don't broadcast messages to command blocks

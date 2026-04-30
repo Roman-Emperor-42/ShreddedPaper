@@ -7,7 +7,7 @@
  import com.google.common.base.Preconditions;
  import com.google.common.collect.Sets;
  import java.util.ArrayList;
-@@ -499,7 +_,7 @@
+@@ -508,7 +_,7 @@
  
      @Override
      public boolean addPotionEffect(PotionEffect effect, boolean force) {

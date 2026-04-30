@@ -25,7 +25,7 @@
  import java.util.Arrays;
  import java.util.Collection;
  import java.util.Collections;
-@@ -309,6 +_,7 @@
+@@ -339,6 +_,7 @@
      public static final long SERVER_INIT = System.nanoTime(); // Paper - Lag compensation
      public boolean lagging = false; // Purpur - Lagging threshold
      protected boolean upnp = false; // Purpur - UPnP Port Forwarding
@@ -33,7 +33,7 @@
      // Paper start - improve tick loop
      public final ca.spottedleaf.moonrise.common.time.TickData tickTimes1s  = new ca.spottedleaf.moonrise.common.time.TickData(java.util.concurrent.TimeUnit.SECONDS.toNanos(1L));
      public final ca.spottedleaf.moonrise.common.time.TickData tickTimes5s  = new ca.spottedleaf.moonrise.common.time.TickData(java.util.concurrent.TimeUnit.SECONDS.toNanos(5L));
-@@ -437,6 +_,8 @@
+@@ -465,6 +_,8 @@
          return executed;
      }
  
@@ -42,7 +42,7 @@
      @Override
      public final void moonrise$executeMidTickTasks() {
          final long startTime = System.nanoTime();
-@@ -446,6 +_,7 @@
+@@ -474,6 +_,7 @@
              return;
          }
  
@@ -50,24 +50,24 @@
          for (;;) {
              final boolean moreTasks = this.tickMidTickTasks();
              final long currTime = System.nanoTime();
-@@ -470,6 +_,7 @@
+@@ -498,6 +_,7 @@
                  return;
              }
          }
 +        } finally { this.executingMidTickTasks.set(false); } // ShreddedPaper
      }
  
-    @Override
-@@ -893,6 +_,8 @@
+     @Override
+@@ -920,6 +_,8 @@
  
      // CraftBukkit start
-     public void prepareLevel(ServerLevel serverLevel) {
+     public void prepareLevel(ServerLevel level) {
 +        if (!TickThread.isTickThread()) throw new IllegalStateException("Cannot load worlds async!!"); // ShreddedPaper
 +        if (ShreddedPaperTickThread.isShreddedPaperTickThread()) throw new IllegalStateException("Must load worlds from the global scheduler!"); // ShreddedPaper
          this.forceTicks = true;
          // CraftBukkit end
          ChunkLoadCounter chunkLoadCounter = new ChunkLoadCounter();
-@@ -1018,6 +_,7 @@
+@@ -1061,6 +_,7 @@
  
          LOGGER.info("Stopping server");
          Commands.COMMAND_SENDING_POOL.shutdownNow(); // Paper - Perf: Async command map building; Shutdown and don't bother finishing
@@ -75,16 +75,16 @@
          // Purpur start - UPnP Port Forwarding
          if (upnp) {
              if (dev.omega24.upnp4j.UPnP4J.close(this.getPort(), dev.omega24.upnp4j.util.Protocol.TCP)) {
-@@ -1057,7 +_,7 @@
+@@ -1099,7 +_,7 @@
  
-             for (ServerLevel serverLevelx : this.getAllLevels()) {
-                 serverLevelx.getChunkSource().deactivateTicketsOnClosing();
--                serverLevelx.getChunkSource().tick(() -> true, false);
-+                serverLevelx.getChunkSource().tick(() -> true, false).join(); // ShreddedPaper - run async
+             for (ServerLevel levelx : this.getAllLevels()) {
+                 levelx.getChunkSource().deactivateTicketsOnClosing();
+-                levelx.getChunkSource().tick(() -> true, false);
++                levelx.getChunkSource().tick(() -> true, false).join(); // ShreddedPaper - run async
              }
  
              this.waitUntilNextTick();
-@@ -1622,7 +_,9 @@
+@@ -1666,7 +_,9 @@
                      this.autoSave();
                  }
  
@@ -94,7 +94,7 @@
                  // Paper start - avoid issues with certain tasks not processing during sleep
                  Runnable task;
                  while ((task = this.processQueue.poll()) != null) {
-@@ -1630,7 +_,7 @@
+@@ -1674,7 +_,7 @@
                  }
                  for (final ServerLevel level : this.levels.values()) {
                      // process unloads
@@ -103,10 +103,10 @@
                  }
                  // Paper end - avoid issues with certain tasks not processing during sleep
                  this.server.spark.executeMainThreadTasks(); // Paper - spark
-@@ -1789,16 +_,20 @@
-     protected void tickChildren(BooleanSupplier hasTimeLeft) {
-         ProfilerFiller profilerFiller = Profiler.get();
-         this.getPlayerList().getPlayers().forEach(serverPlayer1 -> serverPlayer1.connection.suspendFlushing());
+@@ -1835,16 +_,20 @@
+     protected void tickChildren(final BooleanSupplier haveTime) {
+         ProfilerFiller profiler = Profiler.get();
+         this.getPlayerList().getPlayers().forEach(playerx -> playerx.connection.suspendFlushing());
 +        MinecraftServer.isBukkitSchedulerHearbeat = true; // ShreddedPaper
          this.server.getScheduler().mainThreadHeartbeat(); // CraftBukkit
 +        MinecraftServer.isBukkitSchedulerHearbeat = false; // ShreddedPaper
@@ -130,13 +130,13 @@
 +//        }
 +        // ShreddedPaper end - moved to ShreddedPaperChunkTicker
          // Paper end - optimise Folia entity scheduler
+         // Paper end - Folia scheduler API
          io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(this.tickCount); // Paper
-         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue(this.tickCount); // Paper
-@@ -1834,7 +_,23 @@
-             }
+@@ -1878,10 +_,25 @@
+             this.processQueue.remove().run();
          }
  
-+        profilerFiller.popPush("connection"); // ShreddedPaper - moved up
++        profiler.popPush("connection"); // ShreddedPaper - moved up
 +        this.tickConnection(); // ShreddedPaper - moved up
 +        // ShreddedPaper start - some players aren't registered in their level if they're dead, let's manually add a task for them to process them
 +        for (ServerPlayer player : this.playerList.getPlayers()) {
@@ -151,32 +151,35 @@
 +        }
 +        // ShreddedPaper end
 +
+         profiler.push("levels");
+         this.updateEffectiveRespawnData();
+-
          this.isIteratingOverLevels = true; // Paper - Throw exception on world create while being ticked
 +        List<CompletableFuture<Void>> futures = new ArrayList<>(); // ShreddedPaper - tick worlds async
-         for (ServerLevel serverLevel : this.getAllLevels()) {
-             serverLevel.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
-             serverLevel.hasEntityMoveEvent = io.papermc.paper.event.entity.EntityMoveEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - Add EntityMoveEvent
-@@ -1853,7 +_,9 @@
-             profilerFiller.push("tick");
+         for (ServerLevel level : this.getAllLevels()) {
+             level.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
+             level.hasEntityMoveEvent = io.papermc.paper.event.entity.EntityMoveEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - Add EntityMoveEvent
+@@ -1892,7 +_,9 @@
+             profiler.push("tick");
  
              try {
--                serverLevel.tick(hasTimeLeft);
-+                futures.add(CompletableFuture.supplyAsync(() -> serverLevel.tickAsync(hasTimeLeft), serverLevel.levelThread).thenCompose(v -> v).thenRun(() -> { // ShreddedPaper - tick worlds async
-+                    serverLevel.explosionDensityCache.clear(); // Paper - Optimize explosions // ShreddedPaper - moved up from below
+-                level.tick(haveTime);
++                futures.add(CompletableFuture.supplyAsync(() -> level.tickAsync(haveTime), level.levelThread).thenCompose(v -> v).thenRun(() -> { // ShreddedPaper - tick worlds async
++                    level.explosionDensityCache.clear(); // Paper - Optimize explosions // ShreddedPaper - moved up from below
 +                })); // ShreddedPaper
              } catch (Throwable var7) {
-                 CrashReport crashReport = CrashReport.forThrowable(var7, "Exception ticking world");
-                 serverLevel.fillReportDetails(crashReport);
-@@ -1862,12 +_,20 @@
+                 CrashReport report = CrashReport.forThrowable(var7, "Exception ticking world");
+                 level.fillReportDetails(report);
+@@ -1901,12 +_,19 @@
  
-             profilerFiller.pop();
-             profilerFiller.pop();
--            serverLevel.explosionDensityCache.clear(); // Paper - Optimize explosions
-+            // serverLevel.explosionDensityCache.clear(); // Paper - Optimize explosions // ShreddedPaper - moved up
+             profiler.pop();
+             profiler.pop();
+-            level.explosionDensityCache.clear(); // Paper - Optimize explosions
++            // level.explosionDensityCache.clear(); // Paper - Optimize explosions // ShreddedPaper - moved up
          }
          this.isIteratingOverLevels = false; // Paper - Throw exception on world create while being ticked
  
--        profilerFiller.popPush("connection");
+-        profiler.popPush("connection");
 -        this.tickConnection();
 +        // ShreddedPaper start - tick worlds async
 +        ((io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler) org.bukkit.Bukkit.getGlobalRegionScheduler()).tick(); // Run global region scheduler async to world ticking
@@ -185,17 +188,16 @@
 +            future.join();
 +        }
 +        // ShreddedPaper end - tick worlds async
-+
 +        // profilerFiller.popPush("connection"); // ShreddedPaper - move up
 +        // this.tickConnection(); // ShreddedPaper - move up
-         profilerFiller.popPush("players");
+         profiler.popPush("players");
          this.playerList.tick();
-         profilerFiller.popPush("debugSubscribers");
-@@ -1887,6 +_,7 @@
+         profiler.popPush("debugSubscribers");
+@@ -1926,6 +_,7 @@
  
-         for (ServerPlayer serverPlayer : this.playerList.getPlayers()) {
-             serverPlayer.connection.chunkSender.sendNextChunks(serverPlayer);
-+            serverPlayer.connection.keepConnectionAlive(); // ShreddedPaper - send the ping packet right before flushing
-             serverPlayer.connection.resumeFlushing();
+         for (ServerPlayer player : this.playerList.getPlayers()) {
+             player.connection.chunkSender.sendNextChunks(player);
++            player.connection.keepConnectionAlive(); // ShreddedPaper - send the ping packet right before flushing
+             player.connection.resumeFlushing();
          }
  

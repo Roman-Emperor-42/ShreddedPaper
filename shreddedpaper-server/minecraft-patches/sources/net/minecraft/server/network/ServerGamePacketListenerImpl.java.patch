@@ -15,7 +15,7 @@
  import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
  import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-@@ -369,7 +_,7 @@
+@@ -376,7 +_,7 @@
          }
  
          if (this.server.isPaused() || !this.tickPlayer()) {
@@ -24,55 +24,55 @@
              this.chatSpamThrottler.tick();
              this.dropSpamThrottler.tick();
              this.tabSpamThrottler.tick(); // Paper - configurable tab spam limits
-@@ -627,6 +_,12 @@
+@@ -634,6 +_,12 @@
                      return;
                  }
                  // Paper end - Prevent moving into unloaded chunks
 +                // ShreddedPaper start - Check we own the destination location
-+                if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(toX, toY, toZ))) {
-+                    this.connection.send(ClientboundMoveVehiclePacket.fromEntity(rootVehicle));
++                if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(targetX, targetY, targetZ))) {
++                    this.connection.send(ClientboundMoveVehiclePacket.fromEntity(vehicle));
 +                    return;
 +                }
 +                // ShreddedPaper end - Check we own the destination location
-                 if (d7 - d6 > Math.max(100.0, Mth.square(org.spigotmc.SpigotConfig.movedTooQuicklyMultiplier * (float) i * speed)) && !this.isSingleplayerOwner()) {
+                 if (movedDist - expectedDist > Math.max(100.0, Mth.square(org.spigotmc.SpigotConfig.movedTooQuicklyMultiplier * (float) i * speed)) && !this.isSingleplayerOwner()) {
                      // CraftBukkit end
-                     LOGGER.warn("{} (vehicle of {}) moved too quickly! {},{},{}", rootVehicle.getPlainTextName(), this.player.getPlainTextName(), d3, d4, d5);
-@@ -1380,7 +_,7 @@
-             Consumer<List<FilteredText>> consumer = optional.isPresent()
-                 ? texts -> this.signBook(texts.get(0), texts.subList(1, texts.size()), slot, hasSignPerm) // Purpur - Allow color codes in books
-                 : list1 -> this.updateBookContents(list1, slot, hasEditPerm); // Purpur - Allow color codes in books
--            this.filterTextPacket(list).thenAcceptAsync(consumer, this.server);
-+            this.filterTextPacket(list).thenAcceptAsync(consumer, r -> ShreddedPaper.ensureSync(this.player, r)); // ShreddedPaper - run on region thread
+                     LOGGER.warn(
+@@ -1417,7 +_,7 @@
+             Consumer<List<FilteredText>> handler = title.isPresent()
+                 ? filteredContents -> this.signBook(filteredContents.get(0), filteredContents.subList(1, filteredContents.size()), slot, hasSignPerm) // Purpur - Allow color codes in books
+                 : filteredContents -> this.updateBookContents(filteredContents, slot, hasEditPerm); // Purpur - Allow color codes in books
+-            this.filterTextPacket(contents).thenAcceptAsync(handler, this.server);
++            this.filterTextPacket(contents).thenAcceptAsync(handler, r -> ShreddedPaper.ensureSync(this.player, r)); // ShreddedPaper - run on region thread
          }
      }
  
-@@ -1574,6 +_,12 @@
+@@ -1613,6 +_,12 @@
                                          // Paper end - Add fail move event
                                      }
                                      // Paper end - Prevent moving into unloaded chunks
 +                                    // ShreddedPaper start - Check we own the destination location
-+                                    if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(toX, toY, toZ))) {
++                                    if (!TickThread.isTickThreadFor(this.player.level(), new Vec3(targetX, targetY, targetZ))) {
 +                                        this.internalTeleport(PositionMoveRotation.of(this.player), Collections.emptySet());
 +                                        return;
 +                                    }
 +                                    // ShreddedPaper end - Check we own the destination location
  
                                      if (this.shouldCheckPlayerMovement(isFallFlying)) {
-                                         float f2 = isFallFlying ? 300.0F : 100.0F;
-@@ -2294,7 +_,9 @@
-             for (ServerLevel serverLevel : this.server.getAllLevels()) {
-                 Entity entity = packet.getEntity(serverLevel);
+                                         float metersPerTick = isFallFlying ? 300.0F : 100.0F;
+@@ -2352,7 +_,9 @@
+             for (ServerLevel level : this.server.getAllLevels()) {
+                 Entity entity = packet.getEntity(level);
                  if (entity != null) {
 +                    ShreddedPaper.ensureSync(this.player, entity, () -> { // ShreddedPaper - ensure on entity's thread
-                     this.player.teleportTo(serverLevel, entity.getX(), entity.getY(), entity.getZ(), Set.of(), entity.getYRot(), entity.getXRot(), true, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE); // CraftBukkit
+                     this.player.teleportTo(level, entity.getX(), entity.getY(), entity.getZ(), Set.of(), entity.getYRot(), entity.getXRot(), true, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE); // CraftBukkit
 +                    }); // ShreddedPaper - ensure on entity's thread
                      return;
                  }
              }
-@@ -2318,12 +_,15 @@
-             this.processedDisconnect = true;
-         }
-         // CraftBukkit end
+@@ -2369,12 +_,15 @@
+ 
+     @Override
+     public void onDisconnect(final DisconnectionDetails details) {
 +        final Consumer<Entity> runOnPlayersThread = e -> { // ShreddedPaper - run on player's thread
          LOGGER.info("{} lost connection: {}", this.player.getPlainTextName(), details.reason().getString());
          // Paper start - Fix kick event leave message not being sent
@@ -85,16 +85,16 @@
      }
  
      private void removePlayerFromWorld() {
-@@ -2585,7 +_,7 @@
+@@ -2634,7 +_,7 @@
              this.player.resetLastActionTime();
              // CraftBukkit start
              if (sync) {
--                this.server.execute(handler);
-+                ShreddedPaper.runSync(player, handler); // ShreddedPaper - run on player's thread
+-                this.server.execute(chatHandler);
++                ShreddedPaper.runSync(player, chatHandler); // ShreddedPaper - run on player's thread
              } else {
-                 handler.run();
+                 chatHandler.run();
              }
-@@ -3042,23 +_,27 @@
+@@ -3085,23 +_,27 @@
          switch (action) {
              case PERFORM_RESPAWN:
                  if (this.player.wonGame) {
@@ -124,16 +124,16 @@
                  }
                  break;
              case REQUEST_STATS:
-@@ -3587,7 +_,7 @@
+@@ -3648,7 +_,7 @@
          }
-         List<String> list = Stream.of(lines).map(ChatFormatting::stripFormatting).collect(Collectors.toList());
+         List<String> lines = Stream.of(linesArray).map(ChatFormatting::stripFormatting).collect(Collectors.toList());
          // Paper end - Limit client sign length
--        this.filterTextPacket(list).thenAcceptAsync(texts -> this.updateSignText(packet, (List<FilteredText>)texts), this.server);
-+        this.filterTextPacket(list).thenAcceptAsync(texts -> this.updateSignText(packet, (List<FilteredText>)texts), r -> ShreddedPaper.ensureSync(this.player, r)); // ShreddedPaper - run on region thread
+-        this.filterTextPacket(lines).thenAcceptAsync(filteredLines -> this.updateSignText(packet, (List<FilteredText>)filteredLines), this.server);
++        this.filterTextPacket(lines).thenAcceptAsync(filteredLines -> this.updateSignText(packet, (List<FilteredText>)filteredLines), r -> ShreddedPaper.ensureSync(this.player, r)); // ShreddedPaper - run on region thread
      }
  
-     private void updateSignText(ServerboundSignUpdatePacket packet, List<FilteredText> filteredText) {
-@@ -3850,7 +_,7 @@
+     private void updateSignText(final ServerboundSignUpdatePacket packet, final List<FilteredText> lines) {
+@@ -3906,7 +_,7 @@
  
      @Override
      public void disconnectAsync(final net.minecraft.network.DisconnectionDetails disconnectionInfo) {

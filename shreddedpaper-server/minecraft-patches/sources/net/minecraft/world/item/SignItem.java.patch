@@ -6,13 +6,13 @@
  public class SignItem extends StandingAndWallBlockItem {
 -    public static BlockPos openSign; // CraftBukkit
 +    public static final ThreadLocal<BlockPos> openSignThreadLocal = new ThreadLocal<>(); // CraftBukkit // ShreddedPaper - thread local for openSign
-     public SignItem(Block standingBlock, Block wallBlock, Item.Properties properties) {
-         super(standingBlock, wallBlock, Direction.DOWN, properties);
+     public SignItem(final Block sign, final Block wallSign, final Item.Properties properties) {
+         super(sign, wallSign, Direction.DOWN, properties);
      }
-@@ -30,7 +_,7 @@
-             && level.getBlockState(pos).getBlock() instanceof SignBlock signBlock) {
+@@ -32,7 +_,7 @@
+             && level.getBlockState(pos).getBlock() instanceof SignBlock sign) {
              // CraftBukkit start - SPIGOT-4678
-             // signBlock.openTextEdit(player, signBlockEntity, true);
+             // sign.openTextEdit(player, signEntity, true);
 -            SignItem.openSign = pos;
 +            SignItem.openSignThreadLocal.set(pos); // ShreddedPaper - thread local for openSign
              // CraftBukkit end

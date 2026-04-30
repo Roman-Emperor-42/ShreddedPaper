@@ -63,24 +63,24 @@
          }
          if (!result) {
              applyCooldown(hopper);
-@@ -534,7 +_,7 @@
-         Container sourceContainer = getSourceContainer(level, hopper, blockPos, blockState);
-         if (sourceContainer != null) {
+@@ -481,7 +_,7 @@
+         Container container = getSourceContainer(level, hopper, blockPos, blockState);
+         if (container != null) {
              Direction direction = Direction.DOWN;
 -            skipPullModeEventFire = skipHopperEvents; // Paper - Perf: Optimize Hoppers
 +            skipPullModeEventFireThreadLocal.set(skipHopperEvents); // Paper - Perf: Optimize Hoppers // ShreddedPaper - use thread local for skipPullModeEventFire
  
-             for (int i : getSlots(sourceContainer, direction)) {
-                 if (tryTakeInItemFromSlot(hopper, sourceContainer, i, direction, level)) { // Spigot
-@@ -683,9 +_,9 @@
-                     stack = stack.split(destination.getMaxStackSize());
+             for (int slot : getSlots(container, direction)) {
+                 if (tryTakeInItemFromSlot(hopper, container, slot, direction, level)) { // Spigot
+@@ -585,9 +_,9 @@
+                     itemStack = itemStack.split(container.getMaxStackSize());
                  }
                  // Spigot end
 -                ignoreBlockEntityUpdates = true; // Paper - Perf: Optimize Hoppers
 +                ignoreBlockEntityUpdatesThreadLocal.set(true); // Paper - Perf: Optimize Hoppers // ShreddedPaper - use thread local for ignoreBlockEntityUpdates
-                 destination.setItem(slot, stack);
+                 container.setItem(slot, itemStack);
 -                ignoreBlockEntityUpdates = false; // Paper - Perf: Optimize Hoppers
 +                ignoreBlockEntityUpdatesThreadLocal.remove(); // Paper - Perf: Optimize Hoppers // ShreddedPaper - use thread local for ignoreBlockEntityUpdates
-                 stack = leftover; // Paper - Make hoppers respect inventory max stack size
-                 flag = true;
-             } else if (canMergeItems(item, stack)) {
+                 itemStack = leftover; // Paper - Make hoppers respect inventory max stack size
+                 success = true;
+             } else if (canMergeItems(current, itemStack)) {
