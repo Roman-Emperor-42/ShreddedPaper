@@ -23,10 +23,17 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class ShreddedPaperChunkTicker {
 
     private static final Logger LOGGER = LogUtils.getClassLogger();
+
+    // Cap iteration count for the cross-region block-event drain to prevent pathological loops.
+    // Vanilla bounds piston/observer chains by physics; 8 passes is comfortably above what real
+    // contraptions need.
+    private static final int MAX_BLOCK_EVENT_PASSES = 8;
 
     private static final ThreadLocal<LevelChunkRegion> currentlyTickingRegion = new ThreadLocal<>();
 
@@ -40,19 +47,72 @@ public class ShreddedPaperChunkTicker {
 
     public CompletableFuture<Void> tickChunks(final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         ServerLevel level = this.serverChunkCache.chunkMap.level;
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
 
-        level.chunkSource.tickingRegions.forEach(
-                region -> futures.add(this.tickRegion(level, region, timeInhabited, filteredSpawningCategories, spawnState))
-        );
+        CompletableFuture<Void> future;
+        if (ShreddedPaperConfiguration.get().optimizations.splitTickPhases) {
+            // Phase A: per-region prep + block/fluid/random ticks (no block events).
+            future = scheduleAllRegions(level, region ->
+                    this._tickRegionPhaseA(level, region, timeInhabited, filteredSpawningCategories, spawnState));
 
-        CompletableFuture<Void> future = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+            // Phase B: drain block events across all regions This barrier matches vanilla's single global
+            // runBlockEvents loop, so a piston that triggers another piston in a neighbouring region resolves
+            // in the same game tick regardless of the order regions were ticked.
+            future = future.thenCompose(v -> drainBlockEventsAcrossRegions(level, MAX_BLOCK_EVENT_PASSES));
+
+            // Phase C: per-region entity / block-entity / player ticks and broadcast.
+            future = future.thenCompose(v -> scheduleAllRegions(level, region ->
+                    this._tickRegionPhaseC(level, region)));
+        } else {
+            // Single fused pass per region; cross-region redstone may break.
+            future = scheduleAllRegions(level, region ->
+                    this._tickRegionFused(level, region, timeInhabited, filteredSpawningCategories, spawnState));
+        }
 
         if (ShreddedPaperConfiguration.get().optimizations.processTrackQueueInParallel) future = future.thenCompose(v -> this.processTrackQueueInParallel(level));
 
         if (ShreddedPaperConfiguration.get().optimizations.flushQueueInParallel) future = future.thenCompose(v -> this.flushQueueInParallel(level));
 
         return future;
+    }
+
+    private CompletableFuture<Void> scheduleAllRegions(final ServerLevel level, final Consumer<LevelChunkRegion> action) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        level.chunkSource.tickingRegions.forEach(region ->
+                futures.add(level.chunkScheduler.schedule(region.getRegionPos(), () -> action.accept(region)).exceptionally(e -> {
+                    LogUtils.getClassLogger().error("Exception ticking region {}", region.getRegionPos(), e);
+                    MinecraftServer.getServer().moonrise$setChunkSystemCrash(new RuntimeException("Ticking thread crash while ticking region " + region.getRegionPos(), e));
+                    return null;
+                }))
+        );
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+    }
+
+    private CompletableFuture<Void> drainBlockEventsAcrossRegions(final ServerLevel level, final int passesRemaining) {
+        if (!level.tickRateManager().runsNormally()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        // Skip the entire Phase B barrier on ticks where no region queued any processable
+        // event during Phase A - i.e. no piston/observer fired anywhere this tick.
+        if (!anyRegionHasProcessableBlockEvents(level)) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        return scheduleAllRegions(level, region -> this._tickRegionPhaseB(level, region))
+                .thenCompose(v -> {
+                    if (passesRemaining <= 1) return CompletableFuture.completedFuture(null);
+                    if (!anyRegionHasProcessableBlockEvents(level)) return CompletableFuture.completedFuture(null);
+                    return drainBlockEventsAcrossRegions(level, passesRemaining - 1);
+                });
+    }
+
+    private boolean anyRegionHasProcessableBlockEvents(final ServerLevel level) {
+        AtomicBoolean found = new AtomicBoolean(false);
+        level.chunkSource.tickingRegions.forEach(region -> {
+            if (!found.get() && region.hasProcessableBlockEvents(level)) {
+                found.set(true);
+            }
+        });
+        return found.get();
     }
 
     /** processTrackQueue has been renamed to newTrackerTick */
@@ -92,20 +152,12 @@ public class ShreddedPaperChunkTicker {
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
     }
 
-    private CompletableFuture<Void> tickRegion(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
-        return level.chunkScheduler.schedule(region.getRegionPos(), () -> this._tickRegion(level, region, timeInhabited, filteredSpawningCategories, spawnState)).exceptionally(e -> {
-            LogUtils.getClassLogger().error("Exception ticking region {}", region.getRegionPos(), e);
-            MinecraftServer.getServer().moonrise$setChunkSystemCrash(new RuntimeException("Ticking thread crash while ticking region " + region.getRegionPos(), e));
-            return null;
-        });
-    }
-
     public static boolean isCurrentlyTickingRegion(Level level, RegionPos regionPos) {
         LevelChunkRegion region = currentlyTickingRegion.get();
         return region != null && level.equals(region.getLevel()) && regionPos.equals(region.getRegionPos());
     }
 
-    private void _tickRegion(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickRegionPhaseA(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             currentlyTickingRegion.set(region);
 
@@ -122,6 +174,88 @@ public class ShreddedPaperChunkTicker {
             region.forEachTickingEntity(entity -> {
                 CraftEntity bukkitEntity = entity.getBukkitEntityRaw();
                 if (bukkitEntity != null && !entity.isRemoved()) { // Entity could have been removed by another entity's task
+                    bukkitEntity.taskScheduler.executeTick();
+                }
+            });
+
+            region.tickTasks();
+
+            if (level.tickRateManager().runsNormally()) {
+                level.handlingTickThreadLocal.set(true);
+
+                level.blockTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickBlock);
+                level.fluidTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickFluid);
+
+                region.forEach(chunk -> this._tickChunk(region, level, chunk, timeInhabited, filteredSpawningCategories, spawnState));
+
+                level.handlingTickThreadLocal.set(false);
+            }
+
+            // Flush per-thread broadcaster while we still hold this region's locks; any blockChanged
+            // calls that happened in Phase A must be sent before we release the region.
+            ShreddedPaperChangesBroadcaster.broadcastChanges();
+        } finally {
+            currentlyTickingRegion.remove();
+        }
+    }
+
+    private void _tickRegionPhaseB(final ServerLevel level, final LevelChunkRegion region) {
+        try {
+            currentlyTickingRegion.set(region);
+            ShreddedPaperChangesBroadcaster.setAsWorkerThread();
+
+            level.handlingTickThreadLocal.set(true);
+            level.runBlockEvents(region);
+            level.handlingTickThreadLocal.set(false);
+
+            ShreddedPaperChangesBroadcaster.broadcastChanges();
+        } finally {
+            currentlyTickingRegion.remove();
+        }
+    }
+
+    private void _tickRegionPhaseC(final ServerLevel level, final LevelChunkRegion region) {
+        try {
+            currentlyTickingRegion.set(region);
+            ShreddedPaperChangesBroadcaster.setAsWorkerThread();
+
+            region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
+
+            if (!ShreddedPaperConfiguration.get().optimizations.processTrackQueueInParallel) region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
+
+            level.tickBlockEntities(region.tickingBlockEntities, region.pendingBlockEntityTickers);
+
+            region.getPlayers().forEach(ShreddedPaperPlayerTicker::tickPlayer);
+
+            while (region.getInternalTaskQueue().executeTask()) ;
+
+            ShreddedPaperChangesBroadcaster.broadcastChanges();
+
+            if (region.isEmpty()) {
+                level.chunkSource.tickingRegions.remove(region.getRegionPos());
+            }
+        } finally {
+            currentlyTickingRegion.remove();
+        }
+    }
+
+    private void _tickRegionFused(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+        try {
+            currentlyTickingRegion.set(region);
+
+            if (!(ShreddedPaperTickThread.isShreddedPaperTickThread())) {
+                throw new IllegalStateException("Ticking region " + WorldUtil.getWorldName(level) + " " + region.getRegionPos() + " outside of ShreddedPaperTickThread!");
+            }
+
+            ShreddedPaperChangesBroadcaster.setAsWorkerThread();
+
+            while (region.getInternalTaskQueue().executeTask()) ;
+
+            level.moonrise$getChunkTaskScheduler().chunkHolderManager.processUnloads(region);
+
+            region.forEachTickingEntity(entity -> {
+                CraftEntity bukkitEntity = entity.getBukkitEntityRaw();
+                if (bukkitEntity != null && !entity.isRemoved()) {
                     bukkitEntity.taskScheduler.executeTick();
                 }
             });

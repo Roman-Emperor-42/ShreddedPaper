@@ -207,6 +207,20 @@ public class LevelChunkRegion {
         return !this.blockEvents.isEmpty();
     }
 
+    /**
+     * Returns true if this region has any queued block events whose position is currently
+     * tickable. Used to decide whether the cross-region block-event drain loop should run
+     * another pass — events whose chunks aren't tick-ready get rescheduled in place each
+     * pass, so checking only those would loop forever.
+     */
+    public synchronized boolean hasProcessableBlockEvents(ServerLevel level) {
+        if (this.blockEvents.isEmpty()) return false;
+        for (BlockEventData event : this.blockEvents) {
+            if (level.shouldTickBlocksAt(event.pos())) return true;
+        }
+        return false;
+    }
+
     public synchronized BlockEventData removeFirstBlockEvent() {
         return this.blockEvents.removeFirst();
     }
