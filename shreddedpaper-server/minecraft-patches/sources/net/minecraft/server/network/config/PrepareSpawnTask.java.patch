@@ -21,13 +21,14 @@
          } else {
              throw new IllegalStateException("Player spawn was not ready");
          }
-@@ -270,7 +_,8 @@
+@@ -270,7 +_,9 @@
              this.spawnLevel.getChunkSource().addTicketWithRadius(TicketType.PLAYER_SPAWN, ChunkPos.containing(BlockPos.containing(this.spawnPosition)), 3);
          }
  
 -        public ServerPlayer spawn(final Connection connection, final CommonListenerCookie cookie) {
 +        public void spawn(final Connection connection, final CommonListenerCookie cookie) { // ShreddedPaper - return void
 +            ShreddedPaper.ensureSync(this.spawnLevel, BlockPos.containing(this.spawnPosition), () -> { // ShreddedPaper - spawn on spawn positions' thread
++            if (!connection.isConnected()) return; // ShreddedPaper - ensure still connected before continuing
              ChunkPos spawnChunk = ChunkPos.containing(BlockPos.containing(this.spawnPosition));
              this.spawnLevel.waitForEntities(spawnChunk, 3);
              // Paper start - configuration api - possibly use legacy saved server player instance
