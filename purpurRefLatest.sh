@@ -7,7 +7,7 @@ setProperty(){
   mv $3.tmp $3
 }
 
-SHA=$(curl https://api.github.com/repos/PurpurMC/Purpur/commits/ver/26.1.2 | jq -r .sha)
+SHA=$(curl https://api.github.com/repos/PurpurMC/Purpur/commits/ver/1.21.11 | jq -r .sha)
 setProperty purpurRef $SHA gradle.properties
 
 echo $SHA

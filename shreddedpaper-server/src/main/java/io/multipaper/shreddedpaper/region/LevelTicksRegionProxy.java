@@ -37,7 +37,7 @@ public class LevelTicksRegionProxy<T> extends LevelTicks<T> {
     }
 
     public Optional<LevelTicks<T>> get(BlockPos pos) {
-        return get(ChunkPos.containing(pos));
+        return get(new ChunkPos(pos));
     }
 
     public Optional<LevelTicks<T>> get(ChunkPos pos) {

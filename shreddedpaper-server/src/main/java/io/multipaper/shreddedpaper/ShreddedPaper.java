@@ -27,7 +27,7 @@ public class ShreddedPaper {
     }
 
     public static void runSync(ServerLevel serverLevel, BlockPos blockPos, Runnable runnable) {
-        runSync(serverLevel, ChunkPos.containing(blockPos), runnable);
+        runSync(serverLevel, ChunkPos.of(blockPos), runnable);
     }
 
     public static void runSync(ServerLevel serverLevel, ChunkPos chunkPos, Runnable runnable) {
@@ -59,7 +59,7 @@ public class ShreddedPaper {
     }
 
     public static void ensureSync(ServerLevel serverLevel, BlockPos blockPos, Runnable runnable) {
-        ensureSync(serverLevel, ChunkPos.containing(blockPos), runnable);
+        ensureSync(serverLevel, ChunkPos.of(blockPos), runnable);
     }
 
     public static void ensureSync(ServerLevel serverLevel, ChunkPos chunkPos, Runnable runnable) {

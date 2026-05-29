@@ -49,7 +49,7 @@ public abstract class MapCommandBase extends Command {
     }
 
     private ChunkStatus getStatus(Player player, int x, int z) {
-        return getStatus(player, ChunkPos.containing(((CraftPlayer) player).getHandle().blockPosition().offset(x << 4, 0, z << 4)));
+        return getStatus(player, new ChunkPos(((CraftPlayer) player).getHandle().blockPosition().offset(x << 4, 0, z << 4)));
     }
 
     private void sendRow(Player player, int radius, int row) {

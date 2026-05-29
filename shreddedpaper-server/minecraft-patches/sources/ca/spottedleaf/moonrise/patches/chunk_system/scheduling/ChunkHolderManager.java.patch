@@ -22,12 +22,12 @@
  
 @@ -77,7 +_,7 @@
  
-     private final ConcurrentChainedLong2ReferenceHashTable<TicketSet> tickets = new ConcurrentChainedLong2ReferenceHashTable<>();
-     private final ConcurrentChainedLong2ReferenceHashTable<Long2IntOpenHashMap> sectionToChunkToExpireCount = new ConcurrentChainedLong2ReferenceHashTable<>();
+     private final ConcurrentLong2ReferenceChainedHashTable<TicketSet> tickets = new ConcurrentLong2ReferenceChainedHashTable<>();
+     private final ConcurrentLong2ReferenceChainedHashTable<Long2IntOpenHashMap> sectionToChunkToExpireCount = new ConcurrentLong2ReferenceChainedHashTable<>();
 -    final ChunkUnloadQueue unloadQueue;
 +    // final ChunkUnloadQueue unloadQueue; // ShreddedPaper - use our own unload queue
  
-     private final ConcurrentChainedLong2ReferenceHashTable<NewChunkHolder> chunkHolders = ConcurrentChainedLong2ReferenceHashTable.createWithCapacity(16384, 0.25f);
+     private final ConcurrentLong2ReferenceChainedHashTable<NewChunkHolder> chunkHolders = ConcurrentLong2ReferenceChainedHashTable.createWithCapacity(16384, 0.25f);
      private final ServerLevel world;
 @@ -85,6 +_,7 @@
      private long currentTick;

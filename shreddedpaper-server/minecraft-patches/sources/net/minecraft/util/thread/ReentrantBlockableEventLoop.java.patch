@@ -9,8 +9,8 @@
 -    private int reentrantCount;
 +    private final AtomicInteger reentrantCount = new AtomicInteger(); // ShreddedPaper - use AtomicInteger
  
-     public ReentrantBlockableEventLoop(final String name, final boolean propagatesCrashes) {
-         super(name, propagatesCrashes);
+     public ReentrantBlockableEventLoop(String name) {
+         super(name);
 @@ -13,17 +_,17 @@
      }
  
@@ -20,7 +20,7 @@
      }
  
      @Override
-     protected void doRunTask(final R task) {
+     public void doRunTask(R task) {
 -        this.reentrantCount++;
 +        this.reentrantCount.getAndIncrement(); // ShreddedPaper - use AtomicInteger
  

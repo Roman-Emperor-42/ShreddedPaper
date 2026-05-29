@@ -1,58 +1,58 @@
 --- a/net/minecraft/server/waypoints/ServerWaypointManager.java
 +++ b/net/minecraft/server/waypoints/ServerWaypointManager.java
-@@ -28,7 +_,7 @@
-     // Paper end - optimize ServerWaypointManager with locator bar disabled
+@@ -21,7 +_,7 @@
+     private final Table<ServerPlayer, WaypointTransmitter, WaypointTransmitter.Connection> connections = HashBasedTable.create();
  
      @Override
--    public void trackWaypoint(final WaypointTransmitter waypoint) {
-+    public synchronized void trackWaypoint(final WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
+-    public void trackWaypoint(WaypointTransmitter waypoint) {
++    public synchronized void trackWaypoint(WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
          this.waypoints.add(waypoint);
  
-         if (!this.locatorBarEnabled) return; // Paper - optimize ServerWaypointManager with locator bar disabled
-@@ -38,7 +_,7 @@
+         for (ServerPlayer serverPlayer : this.players) {
+@@ -30,7 +_,7 @@
      }
  
      @Override
--    public void updateWaypoint(final WaypointTransmitter waypoint) {
-+    public synchronized void updateWaypoint(final WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
-         if (!this.locatorBarEnabled) return; // Paper - optimize ServerWaypointManager with locator bar disabled
+-    public void updateWaypoint(WaypointTransmitter waypoint) {
++    public synchronized void updateWaypoint(WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
          if (this.waypoints.contains(waypoint)) {
-             Map<ServerPlayer, WaypointTransmitter.Connection> playerConnection = Tables.transpose(this.connections).row(waypoint);
-@@ -55,13 +_,13 @@
+             Map<ServerPlayer, WaypointTransmitter.Connection> map = Tables.transpose(this.connections).row(waypoint);
+             SetView<ServerPlayer> set = Sets.difference(this.players, map.keySet());
+@@ -46,13 +_,13 @@
      }
  
      @Override
--    public void untrackWaypoint(final WaypointTransmitter waypoint) {
-+    public synchronized void untrackWaypoint(final WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
-         this.connections.column(waypoint).forEach((player, connection) -> connection.disconnect());
+-    public void untrackWaypoint(WaypointTransmitter waypoint) {
++    public synchronized void untrackWaypoint(WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
+         this.connections.column(waypoint).forEach((serverPlayer, connection) -> connection.disconnect());
          Tables.transpose(this.connections).row(waypoint).clear();
          this.waypoints.remove(waypoint);
      }
  
--    public void addPlayer(final ServerPlayer player) {
-+    public synchronized void addPlayer(final ServerPlayer player) { // ShreddedPaper - synchronized
+-    public void addPlayer(ServerPlayer player) {
++    public synchronized void addPlayer(ServerPlayer player) { // ShreddedPaper - synchronized
          this.players.add(player);
  
-         if (this.locatorBarEnabled) { // Paper - optimize ServerWaypointManager with locator bar disabled
-@@ -75,7 +_,7 @@
+         for (WaypointTransmitter waypointTransmitter : this.waypoints) {
+@@ -64,7 +_,7 @@
          }
      }
  
--    public void updatePlayer(final ServerPlayer player) {
-+    public synchronized void updatePlayer(final ServerPlayer player) { // ShreddedPaper - synchronized
-         if (!this.locatorBarEnabled) return; // Paper - optimize ServerWaypointManager with locator bar disabled
-         Map<WaypointTransmitter, WaypointTransmitter.Connection> waypointConnections = this.connections.row(player);
-         SetView<WaypointTransmitter> potentialWaypoints = Sets.difference(this.waypoints, waypointConnections.keySet());
-@@ -89,7 +_,7 @@
+-    public void updatePlayer(ServerPlayer player) {
++    public synchronized void updatePlayer(ServerPlayer player) { // ShreddedPaper - synchronized
+         Map<WaypointTransmitter, WaypointTransmitter.Connection> map = this.connections.row(player);
+         SetView<WaypointTransmitter> set = Sets.difference(this.waypoints, map.keySet());
+ 
+@@ -77,7 +_,7 @@
          }
      }
  
--    public void removePlayer(final ServerPlayer player) {
-+    public synchronized void removePlayer(final ServerPlayer player) { // ShreddedPaper - synchronized
+-    public void removePlayer(ServerPlayer player) {
++    public synchronized void removePlayer(ServerPlayer player) { // ShreddedPaper - synchronized
          this.connections.row(player).values().removeIf(connection -> {
              connection.disconnect();
              return true;
-@@ -98,20 +_,20 @@
+@@ -86,19 +_,19 @@
          this.players.remove(player);
      }
  
@@ -62,11 +62,10 @@
          this.connections.clear();
      }
  
--    public void remakeConnections(final WaypointTransmitter waypoint) {
-+    public synchronized void remakeConnections(final WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
-         if (!this.locatorBarEnabled) return; // Paper - optimize ServerWaypointManager with locator bar disabled
-         for (ServerPlayer player : this.players) {
-             this.createConnection(player, waypoint);
+-    public void remakeConnections(WaypointTransmitter waypoint) {
++    public synchronized void remakeConnections(WaypointTransmitter waypoint) { // ShreddedPaper - synchronized
+         for (ServerPlayer serverPlayer : this.players) {
+             this.createConnection(serverPlayer, waypoint);
          }
      }
  
@@ -76,4 +75,4 @@
 +        return Set.copyOf(this.waypoints); // ShreddedPaper - synchronized - make a copy
      }
  
-     // Paper start - optimize ServerWaypointManager with locator bar disabled
+     private static boolean isLocatorBarEnabledFor(ServerPlayer player) {

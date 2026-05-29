@@ -11,12 +11,12 @@
  import net.minecraft.tags.StructureTags;
 @@ -26,6 +_,7 @@
              this.nextTick = level.purpurConfig.catSpawnDelay; // Purpur - Cat spawning options
-             Player player = level.getRandomPlayer();
-             if (player != null) {
-+                ShreddedPaper.runSync(player, () -> { // ShreddedPaper - run on player's thread
-                 RandomSource random = level.getRandom();
-                 int x = (8 + random.nextInt(24)) * (random.nextBoolean() ? -1 : 1);
-                 int z = (8 + random.nextInt(24)) * (random.nextBoolean() ? -1 : 1);
+             Player randomPlayer = level.getRandomPlayer();
+             if (randomPlayer != null) {
++                ShreddedPaper.runSync(randomPlayer, () -> { // ShreddedPaper - run on player's thread
+                 RandomSource randomSource = level.random;
+                 int i = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
+                 int i1 = (8 + randomSource.nextInt(24)) * (randomSource.nextBoolean() ? -1 : 1);
 @@ -40,6 +_,7 @@
                          }
                      }

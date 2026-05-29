@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -20,8 +_,11 @@
+@@ -19,8 +_,11 @@
  import java.util.Optional;
  import java.util.Set;
  import java.util.UUID;
@@ -20,17 +20,17 @@
  import net.minecraft.world.level.Level;
  import net.minecraft.world.level.block.Blocks;
  import net.minecraft.world.level.block.state.BlockState;
-@@ -495,7 +_,9 @@
-         for (ThrownEnderpearl enderpearl : player.getEnderPearls()) {
+@@ -490,7 +_,9 @@
+         for (ThrownEnderpearl thrownEnderpearl : player.getEnderPearls()) {
              // Paper start - Allow using old ender pearl behavior
-             if (!enderpearl.level().paperConfig().misc.legacyEnderPearlBehavior) {
-+                ShreddedPaper.ensureSync(enderpearl, () -> { // ShreddedPaper - run on ender pearl's thread
-                 enderpearl.setRemoved(Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT); // CraftBukkit - add Bukkit remove cause
+             if (!thrownEnderpearl.level().paperConfig().misc.legacyEnderPearlBehavior) {
++                ShreddedPaper.ensureSync(thrownEnderpearl, () -> { // ShreddedPaper - run on ender pearl's thread
+                 thrownEnderpearl.setRemoved(Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT); // CraftBukkit - add Bukkit remove cause
 +                }); // ShreddedPaper - run on ender pearl's thread
              }
              // Paper end - Allow using old ender pearl behavior
          }
-@@ -520,8 +_,7 @@
+@@ -515,8 +_,7 @@
          // CraftBukkit start
          // this.broadcastAll(new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID())));
          ClientboundPlayerInfoRemovePacket packet = new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID()));
@@ -40,37 +40,37 @@
  
              if (otherPlayer.getBukkitEntity().canSee(player.getBukkitEntity())) {
                  otherPlayer.connection.send(packet);
-@@ -597,12 +_,13 @@
+@@ -595,12 +_,13 @@
      }
  
      // Paper start - respawn event
--    public ServerPlayer respawn(final ServerPlayer serverPlayer, final boolean keepAllPlayerData, final Entity.RemovalReason removalReason, final org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) {
--        ServerPlayer.RespawnResult result = serverPlayer.findRespawnPositionAndUseSpawnBlock0(!keepAllPlayerData, TeleportTransition.DO_NOTHING, respawnReason);
-+    public CompletableFuture<ServerPlayer> respawnAsync(final ServerPlayer serverPlayer, final boolean keepAllPlayerData, final Entity.RemovalReason removalReason, final org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) { // ShreddedPaper - respawn async
-+        return serverPlayer.findRespawnPositionAndUseSpawnBlock0Async(!keepAllPlayerData, TeleportTransition.DO_NOTHING, respawnReason).thenCompose(result -> { // ShreddedPaper - respawn async
+-    public ServerPlayer respawn(ServerPlayer player, boolean keepInventory, Entity.RemovalReason reason, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) {
+-        ServerPlayer.RespawnResult result = player.findRespawnPositionAndUseSpawnBlock0(!keepInventory, TeleportTransition.DO_NOTHING, respawnReason);
++    public CompletableFuture<ServerPlayer> respawnAsync(ServerPlayer player, boolean keepInventory, Entity.RemovalReason reason, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason respawnReason) { // ShreddedPaper - respawn async
++        return player.findRespawnPositionAndUseSpawnBlock0Async(!keepInventory, TeleportTransition.DO_NOTHING, respawnReason).thenCompose(result -> { // ShreddedPaper - respawn async
          if (result == null) { // disconnected player during the respawn event
--            return serverPlayer;
-+            return CompletableFuture.completedFuture(serverPlayer); // ShreddedPaper - respawn async
+-            return player;
++            return CompletableFuture.completedFuture(player);
          }
-         TeleportTransition respawnInfo = result.transition();
+         TeleportTransition teleportTransition = result.transition();
 +        return CompletableFuture.supplyAsync(() -> { // ShreddedPaper - respawn async
-         Level fromLevel = serverPlayer.level();
+         Level fromLevel = player.level();
          // Paper end - respawn event
-         this.players.remove(serverPlayer);
-@@ -708,6 +_,8 @@
+         this.players.remove(player);
+@@ -707,6 +_,8 @@
          // Paper end
  
-         return player;
-+        }, r -> ShreddedPaper.ensureSync(serverPlayer, respawnInfo.newLevel(), ChunkPos.containing(BlockPos.containing(respawnInfo.position())), r)); // ShreddedPaper - respawn async
+         return serverPlayer;
++        }, r -> ShreddedPaper.ensureSync(player, teleportTransition.newLevel(), new ChunkPos(BlockPos.containing(teleportTransition.position())), r)); // ShreddedPaper - respawn async
 +        }); // ShreddedPaper - respawn async
      }
  
-     public void sendActivePlayerEffects(final ServerPlayer player) {
-@@ -970,6 +_,7 @@
-         final ResourceKey<Level> dimension,
-         final Packet<?> packet
-     ) {
+     public void sendActivePlayerEffects(ServerPlayer player) {
+@@ -961,6 +_,7 @@
+     }
+ 
+     public void broadcast(@Nullable Player except, double x, double y, double z, double radius, ResourceKey<Level> dimension, Packet<?> packet) {
 +        if (except != null) new io.multipaper.shreddedpaper.event.BroadcastPacketEvent(this.getServer().getLevel(dimension).getWorld(), packet, except.getBukkitEntity()).callEvent(); // ShreddedPaper - BroadcastPacketEvent
          for (int i = 0; i < this.players.size(); i++) {
-             ServerPlayer player = this.players.get(i);
+             ServerPlayer serverPlayer = this.players.get(i);
              // CraftBukkit start - Test if player receiving packet can see the source of the packet

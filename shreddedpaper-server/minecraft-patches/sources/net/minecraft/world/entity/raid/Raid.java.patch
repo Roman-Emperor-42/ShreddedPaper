@@ -8,20 +8,20 @@
  import net.minecraft.SharedConstants;
  import net.minecraft.advancements.CriteriaTriggers;
  import net.minecraft.core.BlockPos;
-@@ -422,12 +_,15 @@
-                         for (UUID heroUUID : this.heroesOfTheVillage) {
-                             Entity entity = level.getEntity(heroUUID);
-                             if (entity instanceof LivingEntity hero && !entity.isSpectator()) {
-+                                ShreddedPaper.ensureSync(hero, () -> { // ShreddedPaper - run on right thread
-                                 hero.addEffect(new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 48000, this.raidOmenLevel - 1, false, false, true));
-                                 if (hero instanceof ServerPlayer playerHero) {
-                                     playerHero.awardStat(Stats.RAID_WIN);
-                                     CriteriaTriggers.RAID_WIN.trigger(playerHero);
--                                    winners.add(playerHero.getBukkitEntity()); // CraftBukkit
-+                                    // winners.add(playerHero.getBukkitEntity()); // CraftBukkit // ShreddedPaper - this doesn't need to be run on right thread
+@@ -418,12 +_,15 @@
+                         for (UUID uuid : this.heroesOfTheVillage) {
+                             Entity entity = level.getEntity(uuid);
+                             if (entity instanceof LivingEntity livingEntity && !entity.isSpectator()) {
++                                ShreddedPaper.ensureSync(livingEntity, () -> { // ShreddedPaper - run on right thread
+                                 livingEntity.addEffect(new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 48000, this.raidOmenLevel - 1, false, false, true));
+                                 if (livingEntity instanceof ServerPlayer serverPlayer) {
+                                     serverPlayer.awardStat(Stats.RAID_WIN);
+                                     CriteriaTriggers.RAID_WIN.trigger(serverPlayer);
+-                                    winners.add(serverPlayer.getBukkitEntity()); // CraftBukkit
++                                    // winners.add(serverPlayer.getBukkitEntity()); // CraftBukkit // ShreddedPaper - this doesn't need to be run on right thread
                                  }
 +                                }); // ShreddedPaper - run on right thread
-+                                if (hero instanceof ServerPlayer playerHero) winners.add(playerHero.getBukkitEntity()); // CraftBukkit // ShreddedPaper - this doesn't need to be run on right thread
++                                if (livingEntity instanceof ServerPlayer serverPlayer) winners.add(serverPlayer.getBukkitEntity()); // CraftBukkit // ShreddedPaper - this doesn't need to be run on right thread
                              }
                          }
                          org.bukkit.craftbukkit.event.CraftEventFactory.callRaidFinishEvent(level, this, winners); // CraftBukkit

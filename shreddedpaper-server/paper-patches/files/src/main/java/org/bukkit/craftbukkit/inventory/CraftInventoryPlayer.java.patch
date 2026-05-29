@@ -5,9 +5,9 @@
  
 +import ca.spottedleaf.moonrise.common.util.TickThread;
  import com.google.common.base.Preconditions;
+ import java.util.List;
  import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
- import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
-@@ -70,6 +_,7 @@
+@@ -71,6 +_,7 @@
  
      @Override
      public void setItem(int index, ItemStack item) {

@@ -1,7 +1,7 @@
 --- a/net/minecraft/world/ticks/LevelTicks.java
 +++ b/net/minecraft/world/ticks/LevelTicks.java
-@@ -282,4 +_,10 @@
-     private interface PosAndContainerConsumer<T> {
+@@ -285,4 +_,10 @@
+     interface PosAndContainerConsumer<T> {
          void accept(long pos, LevelChunkTicks<T> container);
      }
 +

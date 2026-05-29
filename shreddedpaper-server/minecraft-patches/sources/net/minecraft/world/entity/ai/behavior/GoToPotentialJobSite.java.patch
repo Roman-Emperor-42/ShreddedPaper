@@ -10,17 +10,17 @@
  import net.minecraft.core.GlobalPos;
  import net.minecraft.server.level.ServerLevel;
 @@ -45,12 +_,14 @@
-             BlockPos pos = globalPos.pos();
-             ServerLevel serverLevel = level.getServer().getLevel(globalPos.dimension());
-             if (serverLevel != null) {
-+                ShreddedPaper.ensureSync(level, pos, () -> { // ShreddedPaper - run on poi's region
-                 PoiManager manager = serverLevel.getPoiManager();
-                 if (manager.exists(pos, p -> true)) {
-                     manager.release(pos);
+             BlockPos blockPos = globalPos.pos();
+             ServerLevel level1 = level.getServer().getLevel(globalPos.dimension());
+             if (level1 != null) {
++                ShreddedPaper.ensureSync(level, blockPos, () -> { // ShreddedPaper - run on poi's region
+                 PoiManager poiManager = level1.getPoiManager();
+                 if (poiManager.exists(blockPos, holder -> true)) {
+                     poiManager.release(blockPos);
                  }
  
-                 level.debugSynchronizers().updatePoi(pos);
+                 level.debugSynchronizers().updatePoi(blockPos);
 +                }); // ShreddedPaper - run on poi's region
              }
          });
-         body.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+         entity.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);

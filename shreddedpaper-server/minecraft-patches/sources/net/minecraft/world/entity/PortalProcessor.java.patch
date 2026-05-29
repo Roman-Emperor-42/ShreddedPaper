@@ -13,10 +13,10 @@
          }
      }
  
--    public @Nullable TeleportTransition getPortalDestination(final ServerLevel serverLevel, final Entity entity) {
--        return this.portal.getPortalDestination(serverLevel, entity, this.entryPosition);
-+    public CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(final ServerLevel serverLevel, final Entity entity) { // ShreddedPaper - async teleportation
-+        return this.portal.getPortalDestinationAsync(serverLevel, entity, this.entryPosition); // ShreddedPaper - async teleportation
+-    public @Nullable TeleportTransition getPortalDestination(ServerLevel level, Entity entity) {
+-        return this.portal.getPortalDestination(level, entity, this.entryPosition);
++    public CompletableFuture<@Nullable TeleportTransition> getPortalDestinationAsync(ServerLevel level, Entity entity) { // ShreddedPaper - async teleportation
++        return this.portal.getPortalDestinationAsync(level, entity, this.entryPosition); // ShreddedPaper - async teleportation
      }
  
      public Portal.Transition getPortalLocalTransition() {

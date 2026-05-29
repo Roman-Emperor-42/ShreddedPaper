@@ -13,31 +13,31 @@
  import net.minecraft.commands.CommandBuildContext;
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
-@@ -193,6 +_,7 @@
-             } else if (toDimension.isDebug()) {
+@@ -233,6 +_,7 @@
+             } else if (serverLevel1.isDebug()) {
                  throw ERROR_FAILED.create();
              } else {
-+                ShreddedPaper.ensureSync(toDimension, destPos, () -> { // ShreddedPaper - run on correct region thread
-                 List<CloneCommands.CloneBlockInfo> solidList = Lists.newArrayList();
-                 List<CloneCommands.CloneBlockInfo> blockEntitiesList = Lists.newArrayList();
-                 List<CloneCommands.CloneBlockInfo> otherBlocksList = Lists.newArrayList();
-@@ -300,17 +_,19 @@
-                         var36.addSuppressed(var35);
++                ShreddedPaper.ensureSync(serverLevel1, blockPos2, () -> { // ShreddedPaper - run on correct region thread
+                 List<CloneCommands.CloneBlockInfo> list = Lists.newArrayList();
+                 List<CloneCommands.CloneBlockInfo> list1 = Lists.newArrayList();
+                 List<CloneCommands.CloneBlockInfo> list2 = Lists.newArrayList();
+@@ -336,17 +_,19 @@
+                         var35.addSuppressed(var34);
                      }
  
--                    throw var36;
-+                    throw new RuntimeException(var36); // ShreddedPaper - run on correct region thread - wrap in RuntimeException for lambda
+-                    throw var35;
++                    throw new RuntimeException(var35); // ShreddedPaper - run on correct region thread - wrap in RuntimeException for lambda
                  }
  
-                 reporter.close();
-                 if (count == 0) {
+                 scopedCollector.close();
+                 if (i2 == 0) {
 -                    throw ERROR_FAILED.create();
 +                    source.sendFailure(Component.translatable("commands.clone.failed")); // ShreddedPaper - run on correct region thread - send failure message instead of throwing
                  } else {
-                     int finalCount = count;
-                     source.sendSuccess(() -> Component.translatable("commands.clone.success", finalCount), true);
--                    return count;
-+                    // return count; // ShreddedPaper - run on correct region thread
+                     int i3 = i2;
+                     source.sendSuccess(() -> Component.translatable("commands.clone.success", i3), true);
+-                    return i2;
++                    // return i2; // ShreddedPaper - run on correct region thread
                  }
 +                }); // ShreddedPaper - run on correct region thread
 +                return 1; // ShreddedPaper - run on correct region thread

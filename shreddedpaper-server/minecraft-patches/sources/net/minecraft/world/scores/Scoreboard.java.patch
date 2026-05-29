@@ -24,21 +24,21 @@
 +    private final Map<String, PlayerTeam> teamsByName = new ConcurrentHashMap<>(); // ShreddedPaper - concurrent
 +    private final Map<String, PlayerTeam> teamsByPlayer = new ConcurrentHashMap<>(); // ShreddedPaper - concurrent
  
-     public @Nullable Objective getObjective(final @Nullable String name) {
+     public @Nullable Objective getObjective(@Nullable String name) {
          return this.objectivesByName.get(name);
-@@ -238,7 +_,7 @@
+@@ -236,7 +_,7 @@
          this.onObjectiveRemoved(objective);
      }
  
--    public void setDisplayObjective(final DisplaySlot slot, final @Nullable Objective objective) {
-+    public synchronized void setDisplayObjective(final DisplaySlot slot, final @Nullable Objective objective) { // ShreddedPaper - synchronized
+-    public void setDisplayObjective(DisplaySlot slot, @Nullable Objective objective) {
++    public synchronized void setDisplayObjective(DisplaySlot slot, @Nullable Objective objective) { // ShreddedPaper - synchronized
          this.displayObjectives.put(slot, objective);
      }
  
-@@ -247,6 +_,7 @@
+@@ -245,6 +_,7 @@
      }
  
-     public @Nullable PlayerTeam getPlayerTeam(final String name) {
+     public @Nullable PlayerTeam getPlayerTeam(String name) {
 +        if (name == null) return null; // ShreddedPaper
          return this.teamsByName.get(name);
      }

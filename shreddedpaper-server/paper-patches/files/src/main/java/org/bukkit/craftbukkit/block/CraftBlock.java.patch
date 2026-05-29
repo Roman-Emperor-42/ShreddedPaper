@@ -7,39 +7,39 @@
  import com.google.common.base.Preconditions;
  import java.util.ArrayList;
  import java.util.Collection;
-@@ -79,6 +_,7 @@
+@@ -75,6 +_,7 @@
      }
  
-     public net.minecraft.world.level.block.state.BlockState getBlockState() {
-+        if (this.level instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
-         return this.level.getBlockState(this.position);
+     public net.minecraft.world.level.block.state.BlockState getNMS() {
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         return this.world.getBlockState(this.position);
      }
  
-@@ -155,6 +_,7 @@
+@@ -160,6 +_,7 @@
  
      @Override
      public byte getData() {
-+        if (this.level instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
-         return CraftMagicNumbers.toLegacyData(this.getBlockState());
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         net.minecraft.world.level.block.state.BlockState state = this.world.getBlockState(this.position);
+         return CraftMagicNumbers.toLegacyData(state);
      }
- 
-@@ -186,6 +_,7 @@
+@@ -192,6 +_,7 @@
      }
  
      boolean setBlockState(final net.minecraft.world.level.block.state.BlockState state, final boolean applyPhysics) {
-+        if (this.level instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot set block asynchronously!");
-         return setBlockState(this.level, this.position, this.getBlockState(), state, applyPhysics);
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot set block asynchronously!");
+         return CraftBlock.setBlockState(this.world, this.position, this.getNMS(), state, applyPhysics);
      }
  
-@@ -221,6 +_,7 @@
+@@ -227,6 +_,7 @@
  
      @Override
      public Material getType() {
-+        if (this.level instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
-         return this.getBlockState().getBukkitMaterial();
++        if (this.world instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot get block asynchronously!");
+         return this.world.getBlockState(this.position).getBukkitMaterial(); // Paper - optimise getType calls
      }
  
-@@ -526,15 +_,15 @@
+@@ -554,15 +_,15 @@
          UseOnContext context = new UseOnContext(world, null, InteractionHand.MAIN_HAND, Items.BONE_MEAL.getDefaultInstance(), new BlockHitResult(Vec3.ZERO, direction, this.getPosition(), false));
  
          // SPIGOT-6895: Call StructureGrowEvent and BlockFertilizeEvent
@@ -52,12 +52,12 @@
 -        if (!world.capturedBlockStates.isEmpty()) {
 -            TreeType treeType = SaplingBlock.treeType;
 -            SaplingBlock.treeType = null;
--            List<org.bukkit.block.BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
+-            List<BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
 -            world.capturedBlockStates.clear();
 +        if (!world.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
 +            TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
 +            SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-+            List<org.bukkit.block.BlockState> states = new ArrayList<>(world.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
++            List<BlockState> states = new ArrayList<>(world.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
 +            world.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
              StructureGrowEvent structureEvent = null;
  

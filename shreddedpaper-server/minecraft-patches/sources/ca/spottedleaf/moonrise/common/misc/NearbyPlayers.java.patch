@@ -155,7 +155,7 @@
  
 -            final TrackedChunk chunk = NearbyPlayers.this.byChunk.get(chunkKey);
 +            NearbyPlayers.this.chunkModificationLock.write(chunkKey, () -> { // ShreddedPaper
-+            final TrackedChunk chunk = NearbyPlayers.this.byChunkLock.optimisticRead(() -> NearbyPlayers.this.byChunk.get(chunkKey)); // ShreddedPaper
++            TrackedChunk chunk = NearbyPlayers.this.byChunkLock.optimisticRead(() -> NearbyPlayers.this.byChunk.get(chunkKey)); // ShreddedPaper
              final NearbyMapType type = this.type;
              if (chunk != null) {
                  chunk.addPlayer(parameter, type);
@@ -180,7 +180,7 @@
 +            NearbyPlayers.this.chunkModificationLock.write(chunkKey, () -> { // ShreddedPaper
 +            final TrackedChunk chunk = NearbyPlayers.this.byChunkLock.optimisticRead(() -> NearbyPlayers.this.byChunk.get(chunkKey)); // ShreddedPaper
              if (chunk == null) {
-                 throw new IllegalStateException("Chunk should exist at " + ChunkPos.unpack(chunkKey));
+                 throw new IllegalStateException("Chunk should exist at " + new ChunkPos(chunkKey));
              }
 @@ -262,12 +_,13 @@
              type.removeFrom(parameter, NearbyPlayers.this.world, chunkX, chunkZ);

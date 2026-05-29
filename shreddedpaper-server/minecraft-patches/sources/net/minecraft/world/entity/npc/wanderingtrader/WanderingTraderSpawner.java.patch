@@ -13,23 +13,23 @@
          } else if (this.random.nextInt(10) != 0) {
              return false;
          } else {
-+            ShreddedPaper.runSync(player, () -> { // ShreddedPaper - run on player's thread
-             BlockPos playerPos = player.blockPosition();
-             int radius = 48;
++            ShreddedPaper.runSync(randomPlayer, () -> { // ShreddedPaper - run on player's thread
+             BlockPos blockPos = randomPlayer.blockPosition();
+             int i = 48;
              PoiManager poiManager = level.getPoiManager();
 @@ -95,7 +_,7 @@
-             BlockPos spawnPosition = this.findSpawnPositionNear(level, referencePos, 48);
-             if (spawnPosition != null && this.hasEnoughSpace(level, spawnPosition)) {
-                 if (level.getBiome(spawnPosition).is(BiomeTags.WITHOUT_WANDERING_TRADER_SPAWNS)) {
+             BlockPos blockPos2 = this.findSpawnPositionNear(level, blockPos1, 48);
+             if (blockPos2 != null && this.hasEnoughSpace(level, blockPos2)) {
+                 if (level.getBiome(blockPos2).is(BiomeTags.WITHOUT_WANDERING_TRADER_SPAWNS)) {
 -                    return false;
 +                    return /*false*/; // ShreddedPaper - no return value
                  }
  
-                 WanderingTrader trader = EntityType.WANDERING_TRADER.spawn(level, wanderingTrader -> wanderingTrader.setDespawnDelay(48000), spawnPosition, EntitySpawnReason.EVENT, false, false, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit // Paper - set despawnTimer before spawn events called
-@@ -107,11 +_,13 @@
-                     // trader.setDespawnDelay(48000); // Paper - moved above, modifiable by plugins on CreatureSpawnEvent
-                     trader.setWanderTarget(referencePos);
-                     trader.setHomeTo(referencePos, 16);
+                 WanderingTrader wanderingTrader = EntityType.WANDERING_TRADER.spawn(level, trader -> trader.setDespawnDelay(48000), blockPos2, EntitySpawnReason.EVENT, false, false, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL); // CraftBukkit // Paper - set despawnTimer before spawn events called
+@@ -108,11 +_,13 @@
+                     // wanderingTrader.setDespawnDelay(48000); // Paper - moved above, modifiable by plugins on CreatureSpawnEvent
+                     wanderingTrader.setWanderTarget(blockPos1);
+                     wanderingTrader.setHomeTo(blockPos1, 16);
 -                    return true;
 +                    return /*true*/; // ShreddedPaper - no return value
                  }

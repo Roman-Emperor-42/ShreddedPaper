@@ -15,10 +15,10 @@
  import java.util.List;
  import java.util.Objects;
 @@ -81,7 +_,16 @@
-     public static void sendChunk(final ServerGamePacketListenerImpl connection, final ServerLevel level, final LevelChunk chunk) { // Paper - rewrite chunk system - public
+     public static void sendChunk(ServerGamePacketListenerImpl packetListener, ServerLevel level, LevelChunk chunk) { // Paper - rewrite chunk system - public
          // Paper start - Anti-Xray
-         final boolean shouldModify = level.chunkPacketBlockController.shouldModify(connection.player, chunk);
--        connection.send(new ClientboundLevelChunkWithLightPacket(chunk, level.getLightEngine(), null, null, shouldModify));
+         final boolean shouldModify = level.chunkPacketBlockController.shouldModify(packetListener.player, chunk);
+-        packetListener.send(new ClientboundLevelChunkWithLightPacket(chunk, level.getLightEngine(), null, null, shouldModify));
 +        // ShreddedPaper start - Cache chunk packet
 +        Reference<ClientboundLevelChunkWithLightPacket> cachedChunkPacket = chunk.cachedChunkPacket;
 +        ClientboundLevelChunkWithLightPacket chunkPacket;
@@ -27,7 +27,7 @@
 +            if (ShreddedPaperConfiguration.get().optimizations.chunkPacketCaching.enabled) chunk.cachedChunkPacket = ShreddedPaperConfiguration.get().optimizations.chunkPacketCaching.useSoftReferences ? new SoftReference<>(chunkPacket) : new WeakReference<>(chunkPacket);
 +        }
 +        chunk.cachedChunkPacketLastAccessed = level.getGameTime();
-+        connection.send(chunkPacket);
++        packetListener.send(chunkPacket);
 +        // ShreddedPaper end - Cache chunk packet
          // Paper end - Anti-Xray
          // Paper start - PlayerChunkLoadEvent

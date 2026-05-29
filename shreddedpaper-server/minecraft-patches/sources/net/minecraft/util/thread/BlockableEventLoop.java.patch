@@ -1,16 +1,16 @@
 --- a/net/minecraft/util/thread/BlockableEventLoop.java
 +++ b/net/minecraft/util/thread/BlockableEventLoop.java
-@@ -176,8 +_,14 @@
-         } else if (!this.shouldRunAllTasks() && !this.shouldRun(task)) {
+@@ -148,8 +_,14 @@
+         } else if (!this.shouldRunAllTasks() && !this.shouldRun(runnable)) {
              return false;
          } else {
 -            this.doRunTask(this.pendingRunnables.remove());
 +            // ShreddedPaper start - concurrency fix
-+            R task2 = this.pendingRunnables.poll();
-+            if (task2 == null) {
++            R task = this.pendingRunnables.poll();
++            if (task == null) {
 +                return false;
 +            }
-+            this.doRunTask(task2);
++            this.doRunTask(task);
              return true;
 +            // ShreddedPaper end - concurrency fix
          }

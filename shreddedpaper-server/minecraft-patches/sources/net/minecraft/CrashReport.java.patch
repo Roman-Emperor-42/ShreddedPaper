@@ -7,5 +7,5 @@
 -    private List<String> extraInfo = List.of("", "DO NOT REPORT THIS TO PAPER! REPORT TO PURPUR INSTEAD!", ""); // Purpur - Rebrand
 +    private List<String> extraInfo = List.of("", "DO NOT REPORT THIS TO PAPER! REPORT TO SHREDDEDPAPER INSTEAD!", ""); // Purpur - Rebrand // ShreddedPaper
  
-     public CrashReport(final String title, final Throwable t) {
+     public CrashReport(String title, Throwable exception) {
          this.title = title;

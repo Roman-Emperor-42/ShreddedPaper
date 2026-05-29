@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: '21'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Configure Git User Details
@@ -27,7 +27,7 @@ jobs:
       - name: Apply Patches
         run: ./gradlew applyAllPatches --stacktrace
       - name: Build
-        run: ./gradlew createPaperclipJar --stacktrace
+        run: ./gradlew createMojmapPaperclipJar --stacktrace
       - name: Rebuild Server Patches
         run: ./gradlew rebuildAllServerPatches --stacktrace
       - name: Rebuild Api Patches
@@ -36,7 +36,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shreddedpaper.jar
-          path: shreddedpaper-server/build/libs/shreddedpaper-paperclip-*.jar
+          path: shreddedpaper-server/build/libs/shreddedpaper-paperclip-*-mojmap.jar
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:

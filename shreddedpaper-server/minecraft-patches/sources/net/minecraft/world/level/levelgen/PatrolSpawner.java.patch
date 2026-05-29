@@ -14,7 +14,7 @@
 +                    ShreddedPaper.runSync(player, () -> { // ShreddedPaper - run on player's thread
                      long dayCount;
                      if (level.paperConfig().entities.behavior.pillagerPatrols.start.perPlayer) {
-                         dayCount = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) / net.minecraft.SharedConstants.TICKS_PER_GAME_DAY; // PLAY_TIME is counting in ticks
+                         dayCount = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) / 24000L; // PLAY_TIME is counting in ticks
 @@ -93,6 +_,7 @@
                              }
                          }

@@ -12,25 +12,25 @@
 @@ -15,20 +_,24 @@
      LevelTickAccess<Block> getBlockTicks();
  
-     default void scheduleTick(final BlockPos pos, final Block type, final int tickDelay, final TickPriority priority) {
+     default void scheduleTick(BlockPos pos, Block block, int delay, TickPriority priority) {
 +        if (this instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, pos, "Cannot schedule outside of tick thread"); // ShreddedPaper
-         this.getBlockTicks().schedule(this.createTick(pos, type, tickDelay, priority));
+         this.getBlockTicks().schedule(this.createTick(pos, block, delay, priority));
      }
  
-     default void scheduleTick(final BlockPos pos, final Block type, final int tickDelay) {
+     default void scheduleTick(BlockPos pos, Block block, int delay) {
 +        if (this instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, pos, "Cannot schedule outside of tick thread"); // ShreddedPaper
-         this.getBlockTicks().schedule(this.createTick(pos, type, tickDelay));
+         this.getBlockTicks().schedule(this.createTick(pos, block, delay));
      }
  
      LevelTickAccess<Fluid> getFluidTicks();
  
-     default void scheduleTick(final BlockPos pos, final Fluid type, final int tickDelay, final TickPriority priority) {
+     default void scheduleTick(BlockPos pos, Fluid fluid, int delay, TickPriority priority) {
 +        if (this instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, pos, "Cannot schedule outside of tick thread"); // ShreddedPaper
-         this.getFluidTicks().schedule(this.createTick(pos, type, tickDelay, priority));
+         this.getFluidTicks().schedule(this.createTick(pos, fluid, delay, priority));
      }
  
-     default void scheduleTick(final BlockPos pos, final Fluid type, final int tickDelay) {
+     default void scheduleTick(BlockPos pos, Fluid fluid, int delay) {
 +        if (this instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, pos, "Cannot schedule outside of tick thread"); // ShreddedPaper
-         this.getFluidTicks().schedule(this.createTick(pos, type, tickDelay));
+         this.getFluidTicks().schedule(this.createTick(pos, fluid, delay));
      }
  }

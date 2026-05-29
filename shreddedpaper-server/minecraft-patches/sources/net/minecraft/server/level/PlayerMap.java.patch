@@ -25,34 +25,34 @@
 +        return this.playersList; // ShreddedPaper
      }
  
-     public void addPlayer(final ServerPlayer player, final boolean ignored) {
--        this.players.put(player, ignored);
-+        this.playersLock.write(() -> this.players.put(player, ignored)); // ShreddedPaper
+     public void addPlayer(ServerPlayer player, boolean skipPlayer) {
+-        this.players.put(player, skipPlayer);
++        this.playersLock.write(() -> this.players.put(player, skipPlayer)); // ShreddedPaper
 +        this.playersList.add(player); // ShreddedPaper
      }
  
-     public void removePlayer(final ServerPlayer player) {
+     public void removePlayer(ServerPlayer player) {
 -        this.players.removeBoolean(player);
 +        this.playersLock.write(() -> this.players.removeBoolean(player)); // ShreddedPaper
 +        this.playersList.remove(player); // ShreddedPaper
      }
  
-     public void ignorePlayer(final ServerPlayer player) {
+     public void ignorePlayer(ServerPlayer player) {
 -        this.players.replace(player, true);
 +        this.playersLock.write(() -> this.players.replace(player, true)); // ShreddedPaper
      }
  
-     public void unIgnorePlayer(final ServerPlayer player) {
+     public void unIgnorePlayer(ServerPlayer player) {
 -        this.players.replace(player, false);
 +        this.playersLock.write(() -> this.players.replace(player, false)); // ShreddedPaper
      }
  
-     public boolean ignoredOrUnknown(final ServerPlayer player) {
+     public boolean ignoredOrUnknown(ServerPlayer player) {
 -        return this.players.getOrDefault(player, true);
 +        return this.playersLock.optimisticRead(() -> this.players.getOrDefault(player, true)); // ShreddedPaper
      }
  
-     public boolean ignored(final ServerPlayer player) {
+     public boolean ignored(ServerPlayer player) {
 -        return this.players.getBoolean(player);
 +        return this.playersLock.optimisticRead(() -> this.players.getBoolean(player)); // ShreddedPaper
      }

@@ -11,23 +11,23 @@
  import net.minecraft.commands.CommandBuildContext;
  import net.minecraft.commands.CommandSourceStack;
  import net.minecraft.commands.Commands;
-@@ -65,9 +_,16 @@
-         int count = 0;
+@@ -73,9 +_,16 @@
+         int i = 0;
  
-         for (ServerPlayer player : players) {
--            count += player.getInventory().clearOrCountMatchingItems(predicate, maxCount, player.inventoryMenu.getCraftSlots());
--            player.containerMenu.broadcastChanges();
--            player.inventoryMenu.slotsChanged(player.getInventory());
+         for (ServerPlayer serverPlayer : targetPlayers) {
+-            i += serverPlayer.getInventory().clearOrCountMatchingItems(itemPredicate, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
+-            serverPlayer.containerMenu.broadcastChanges();
+-            serverPlayer.inventoryMenu.slotsChanged(serverPlayer.getInventory());
 +            // ShreddedPaper start - run on correct thread
 +            CompletableFuture<Integer> future = new CompletableFuture<>();
-+            ShreddedPaper.ensureSync(player, () -> {
-+                int j = player.getInventory().clearOrCountMatchingItems(predicate, maxCount, player.inventoryMenu.getCraftSlots());
-+                player.containerMenu.broadcastChanges();
-+                player.inventoryMenu.slotsChanged(player.getInventory());
++            ShreddedPaper.ensureSync(serverPlayer, () -> {
++                int j = serverPlayer.getInventory().clearOrCountMatchingItems(itemPredicate, maxCount, serverPlayer.inventoryMenu.getCraftSlots());
++                serverPlayer.containerMenu.broadcastChanges();
++                serverPlayer.inventoryMenu.slotsChanged(serverPlayer.getInventory());
 +                future.complete(j);
 +            });
-+            count += future.getNow(1); // ShreddedPaper - default to 1 if player is on a different thread
++            i += future.getNow(1); // ShreddedPaper - default to 1 if player is on a different thread
 +            // ShreddedPaper end - run on correct thread
          }
  
-         if (count == 0) {
+         if (i == 0) {

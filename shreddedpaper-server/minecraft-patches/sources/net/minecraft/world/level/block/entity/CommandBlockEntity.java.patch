@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/level/block/entity/CommandBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/CommandBlockEntity.java
-@@ -44,6 +_,13 @@
+@@ -39,6 +_,13 @@
          }
          // CraftBukkit end
  
@@ -12,5 +12,5 @@
 +        // ShreddedPaper end - Add getBlockPos() for CloseableCommandBlockSource
 +
          @Override
-         public void setCommand(final String command) {
+         public void setCommand(String command) {
              super.setCommand(command);

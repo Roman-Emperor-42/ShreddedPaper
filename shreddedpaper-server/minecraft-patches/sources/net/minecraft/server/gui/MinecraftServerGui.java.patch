@@ -1,29 +1,29 @@
 --- a/net/minecraft/server/gui/MinecraftServerGui.java
 +++ b/net/minecraft/server/gui/MinecraftServerGui.java
-@@ -52,7 +_,7 @@
+@@ -51,7 +_,7 @@
          } catch (Exception var3) {
          }
  
--        final JFrame frame = new JFrame("Purpur Minecraft server"); // Purpur - Improve GUI
-+        final JFrame frame = new JFrame("ShreddedPaper Minecraft server"); // Purpur - Improve GUI // ShreddedPaper
-         final MinecraftServerGui gui = new MinecraftServerGui(server);
-         frame.setDefaultCloseOperation(2);
-         frame.add(gui);
-@@ -60,7 +_,7 @@
-         frame.setLocationRelativeTo(null);
-         frame.setVisible(true);
+-        final JFrame jFrame = new JFrame("Purpur Minecraft server"); // Purpur - Improve GUI
++        final JFrame jFrame = new JFrame("ShreddedPaper Minecraft server"); // Purpur - Improve GUI // ShreddedPaper
+         final MinecraftServerGui minecraftServerGui = new MinecraftServerGui(server);
+         jFrame.setDefaultCloseOperation(2);
+         jFrame.add(minecraftServerGui);
+@@ -59,7 +_,7 @@
+         jFrame.setLocationRelativeTo(null);
+         jFrame.setVisible(true);
          // Paper start - Improve ServerGUI
--        frame.setName("Purpur Minecraft server"); // Purpur - Improve GUI
-+        frame.setName("ShreddedPaper Minecraft server"); // Purpur - Improve GUI // ShreddedPaper
+-        jFrame.setName("Purpur Minecraft server"); // Purpur - Improve GUI
++        jFrame.setName("ShreddedPaper Minecraft server"); // Purpur - Improve GUI // ShreddedPaper
          try {
-             frame.setIconImage(javax.imageio.ImageIO.read(java.util.Objects.requireNonNull(MinecraftServerGui.class.getClassLoader().getResourceAsStream("logo.png"))));
+             jFrame.setIconImage(javax.imageio.ImageIO.read(java.util.Objects.requireNonNull(MinecraftServerGui.class.getClassLoader().getResourceAsStream("logo.png"))));
          } catch (java.io.IOException ignore) {
-@@ -70,7 +_,7 @@
+@@ -69,7 +_,7 @@
              @Override
-             public void windowClosing(final WindowEvent event) {
-                 if (!gui.isClosing.getAndSet(true)) {
--                    frame.setTitle("Purpur Minecraft server - shutting down!"); // Purpur - Improve GUI
-+                    frame.setTitle("ShreddedPaper Minecraft server - shutting down!"); // Purpur - Improve GUI // ShreddedPaper
+             public void windowClosing(WindowEvent event) {
+                 if (!minecraftServerGui.isClosing.getAndSet(true)) {
+-                    jFrame.setTitle("Purpur Minecraft server - shutting down!"); // Purpur - Improve GUI
++                    jFrame.setTitle("ShreddedPaper Minecraft server - shutting down!"); // Purpur - Improve GUI // ShreddedPaper
                      server.halt(true);
-                     gui.runFinalizers();
+                     minecraftServerGui.runFinalizers();
                  }

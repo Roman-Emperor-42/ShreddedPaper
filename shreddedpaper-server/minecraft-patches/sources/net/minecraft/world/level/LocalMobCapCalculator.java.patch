@@ -23,14 +23,12 @@
 +    private final SimpleStampedLock playerMobCountsLock = new SimpleStampedLock(); // ShreddedPaper - thread safety (playerMobCounts is mostly reads)
      private final ChunkMap chunkMap;
  
-     public LocalMobCapCalculator(final ChunkMap chunkMap) {
-@@ -25,14 +_,18 @@
-     }
+     public LocalMobCapCalculator(ChunkMap chunkMap) {
+@@ -26,13 +_,17 @@
  
-     public void addMob(final ChunkPos pos, final MobCategory category) {
--        for (ServerPlayer player : this.getPlayersNear(pos)) {
--            this.playerMobCounts.computeIfAbsent(player, key -> new LocalMobCapCalculator.MobCounts()).add(category);
-+        for (ServerPlayer serverPlayer : this.getPlayersNear(pos)) {
+     public void addMob(ChunkPos pos, MobCategory category) {
+         for (ServerPlayer serverPlayer : this.getPlayersNear(pos)) {
+-            this.playerMobCounts.computeIfAbsent(serverPlayer, key -> new LocalMobCapCalculator.MobCounts()).add(category);
 +            // ShreddedPaper start - thread safety
 +            LocalMobCapCalculator.MobCounts playerMobCount = this.playerMobCountsLock.optimisticRead(() -> this.playerMobCounts.get(serverPlayer));
 +            if (playerMobCount == null) playerMobCount = this.playerMobCountsLock.write(() -> this.playerMobCounts.computeIfAbsent(serverPlayer, key -> new LocalMobCapCalculator.MobCounts()));
@@ -39,10 +37,10 @@
          }
      }
  
-     public boolean canSpawn(final MobCategory mobCategory, final ChunkPos pos) {
+     public boolean canSpawn(MobCategory category, ChunkPos pos) {
          for (ServerPlayer serverPlayer : this.getPlayersNear(pos)) {
 -            LocalMobCapCalculator.MobCounts mobCounts = this.playerMobCounts.get(serverPlayer);
 +            LocalMobCapCalculator.MobCounts mobCounts = this.playerMobCountsLock.optimisticRead(() -> this.playerMobCounts.get(serverPlayer)); // ShreddedPaper - thread safety
-             if (mobCounts == null || mobCounts.canSpawn(mobCategory)) {
+             if (mobCounts == null || mobCounts.canSpawn(category)) {
                  return true;
              }

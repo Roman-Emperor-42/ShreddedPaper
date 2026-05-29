@@ -11,23 +11,23 @@
  import net.minecraft.ReportedException;
 @@ -70,9 +_,9 @@
      private void scheduleNext() {
-         int candidateIndex = this.nextCandidateIndex++;
-         if (candidateIndex < this.candidateCount) {
--            int value = (this.offset + this.coprime * candidateIndex) % this.candidateCount;
--            int deltaX = value % (this.radius * 2 + 1);
--            int deltaZ = value / (this.radius * 2 + 1);
-+            long value = ((this.offset + this.coprime * candidateIndex) % this.candidateCount) * ((this.radius * 2L + 1L) * (this.radius * 2L + 1L) / this.candidateCount); // ShreddedPaper - fix respawn_radius (MC-302446)
-+            int deltaX = (int) (value % (this.radius * 2L + 1L)); // ShreddedPaper - fix respawn_radius (MC-302446)
-+            int deltaZ = (int) (value / (this.radius * 2L + 1L)); // ShreddedPaper - fix respawn_radius (MC-302446)
-             int targetX = this.spawnSuggestion.getX() + deltaX - this.radius;
-             int targetZ = this.spawnSuggestion.getZ() + deltaZ - this.radius;
-             this.scheduleCandidate(targetX, targetZ, candidateIndex, () -> {
-@@ -141,7 +_,7 @@
-                         details.setDetail("Progress", () -> candidateIndex + " out of " + this.candidateCount);
-                         this.finishedFuture.completeExceptionally(new ReportedException(report));
+         int i = this.nextCandidateIndex++;
+         if (i < this.candidateCount) {
+-            int i1 = (this.offset + this.coprime * i) % this.candidateCount;
+-            int i2 = i1 % (this.radius * 2 + 1);
+-            int i3 = i1 / (this.radius * 2 + 1);
++            long i1 = ((this.offset + this.coprime * i) % this.candidateCount) * ((this.radius * 2L + 1L) * (this.radius * 2L + 1L) / this.candidateCount); // ShreddedPaper - fix respawn_radius (MC-302446)
++            int i2 = (int) (i1 % (this.radius * 2L + 1L)); // ShreddedPaper - fix respawn_radius (MC-302446)
++            int i3 = (int) (i1 / (this.radius * 2L + 1L)); // ShreddedPaper - fix respawn_radius (MC-302446)
+             int i4 = this.spawnSuggestion.getX() + i2 - this.radius;
+             int i5 = this.spawnSuggestion.getZ() + i3 - this.radius;
+             this.scheduleCandidate(
+@@ -146,7 +_,7 @@
+                         crashReportCategory.setDetail("Progress", () -> index + " out of " + this.candidateCount);
+                         this.finishedFuture.completeExceptionally(new ReportedException(crashReport));
                      }
 -                }, this.level.chunkSource.mainThreadProcessor); // Paper - rewrite chunk system
-+                }, this.level.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(chunkX, chunkZ))); // Paper - rewrite chunk system // ShreddedPaper - run on region
++                }, this.level.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(sectionPosX, sectionPosZ))); // Paper - rewrite chunk system // ShreddedPaper - run on region
          }
      }
  

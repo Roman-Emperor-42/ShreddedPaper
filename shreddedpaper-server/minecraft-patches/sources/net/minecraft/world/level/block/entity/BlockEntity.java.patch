@@ -7,16 +7,16 @@
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.Codec;
  import java.util.HashSet;
-@@ -40,7 +_,7 @@
+@@ -37,7 +_,7 @@
  import org.slf4j.Logger;
  
- public abstract class BlockEntity implements DebugValueSource, TypedInstance<BlockEntityType<?>> {
+ public abstract class BlockEntity implements DebugValueSource {
 -    static boolean ignoreBlockEntityUpdates; // Paper - Perf: Optimize Hoppers
 +    static final ThreadLocal<Boolean> ignoreBlockEntityUpdatesThreadLocal = ThreadLocal.withInitial(() -> false); // Paper - Perf: Optimize Hoppers // ShreddedPaper - use thread local for ignoreBlockEntityUpdates
      // CraftBukkit start - data containers
      private static final org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry DATA_TYPE_REGISTRY = new org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry();
      public final org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer persistentDataContainer;
-@@ -239,7 +_,8 @@
+@@ -236,7 +_,8 @@
  
      public void setChanged() {
          if (this.level != null) {
