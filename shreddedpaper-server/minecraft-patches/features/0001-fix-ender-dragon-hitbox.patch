@@ -5,7 +5,7 @@ Subject: [PATCH] fix ender dragon hitbox
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 54078de4231e0cb688840cfae3912e9bff3c3ccc..d7bfd1c730044a51699fae63e36480a724549471 100644
+index 54078de4231e0cb688840cfae3912e9bff3c3ccc..488909c11554e644783668e2c77ebfc9b249930c 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -36,10 +36,7 @@ import java.util.Objects;
@@ -20,13 +20,12 @@ index 54078de4231e0cb688840cfae3912e9bff3c3ccc..d7bfd1c730044a51699fae63e36480a7
  import java.util.function.BooleanSupplier;
  import java.util.function.Function;
  import java.util.function.Predicate;
-@@ -227,8 +224,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -227,7 +224,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      public ThreadLocal<Boolean> handlingTickThreadLocal = ThreadLocal.withInitial(() -> false); // ShreddedPaper
      private final List<CustomSpawner> customSpawners;
      private @Nullable EndDragonFight dragonFight;
 -    final Int2ObjectMap<EnderDragonPart> dragonParts = new Int2ObjectOpenHashMap<>();
--    private final StructureManager structureManager;
-+    private final ConcurrentMap<Integer, EnderDragonPart> dragonParts = new ConcurrentHashMap<>(); // ShreddedPaper - thread-safe (concurrent put/remove from multiple region threads, iterated by getEntities)     private final StructureManager structureManager;
++    private final ConcurrentMap<Integer, EnderDragonPart> dragonParts = new ConcurrentHashMap<>(); // ShreddedPaper - thread-safe (concurrent put/remove from multiple region threads, iterated by getEntities)
+     private final StructureManager structureManager;
      private final StructureCheck structureCheck;
      private final boolean tickTime;
-     private double preciseTime; // Purpur - Configurable daylight cycle
