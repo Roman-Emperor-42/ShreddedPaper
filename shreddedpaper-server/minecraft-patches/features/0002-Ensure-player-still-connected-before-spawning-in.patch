@@ -1,0 +1,21 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Caleb Graham <graham.caleb.m@gmail.com>
+Date: Fri, 29 May 2026 02:01:35 -0500
+Subject: [PATCH] Ensure player still connected before spawning in
+
+
+diff --git a/net/minecraft/server/network/config/PrepareSpawnTask.java b/net/minecraft/server/network/config/PrepareSpawnTask.java
+index 1c8b0d69c6b96acefe21f6ae5f471521160f2c61..01351acc881cfc135b2b83193d9501fa4d43459b 100644
+--- a/net/minecraft/server/network/config/PrepareSpawnTask.java
++++ b/net/minecraft/server/network/config/PrepareSpawnTask.java
+@@ -263,8 +263,9 @@ public class PrepareSpawnTask implements ConfigurationTask {
+             this.spawnLevel.getChunkSource().addTicketWithRadius(TicketType.PLAYER_SPAWN, new ChunkPos(BlockPos.containing(this.spawnPosition)), 3);
+         }
+ 
+-        public void spawn(Connection connection, CommonListenerCookie cookie) { // ShreddedPaper - return void
++        public void spawn(final Connection connection, final CommonListenerCookie cookie) { // ShreddedPaper - return void
+             ShreddedPaper.ensureSync(this.spawnLevel, BlockPos.containing(this.spawnPosition), () -> { // ShreddedPaper - spawn on spawn positions' thread
++            if (!connection.isConnected()) return; // ShreddedPaper - ensure still connected before continuing
+             ChunkPos chunkPos = new ChunkPos(BlockPos.containing(this.spawnPosition));
+             this.spawnLevel.waitForEntities(chunkPos, 3);
+             // Paper start - configuration api - possibly use legacy saved server player instance
