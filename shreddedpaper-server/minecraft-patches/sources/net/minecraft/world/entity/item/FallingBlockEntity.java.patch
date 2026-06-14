@@ -1,0 +1,55 @@
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -71,7 +_,8 @@
+     public @Nullable CompoundTag blockData;
+     public boolean forceTickAfterTeleportToDuplicate;
+     protected static final EntityDataAccessor<BlockPos> DATA_START_POS = SynchedEntityData.defineId(FallingBlockEntity.class, EntityDataSerializers.BLOCK_POS);
+     public boolean autoExpire = true; // Paper - Expand FallingBlock API
++    private transient boolean shreddedPaperSkipToPlacement = false; // ShreddedPaper - async teleportation
+ 
+     public FallingBlockEntity(EntityType<? extends FallingBlockEntity> type, Level level) {
+         super(type, level);
+@@ -148,23 +_,31 @@
+     @Override
+     public void tick() {
+         if (this.blockState.isAir()) {
+             this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
++        } else if (this.isShreddedPaperBeingPortalled() && !this.shreddedPaperSkipToPlacement) { // ShreddedPaper - async teleportation - freeze while a deferred portal teleport is in flight so the block is not placed/discarded first
++            return;
+         } else {
+             Block block = this.blockState.getBlock();
++            if (!this.shreddedPaperSkipToPlacement) { // ShreddedPaper - async teleportation
+             this.time++;
+             this.applyGravity();
+             this.move(MoverType.SELF, this.getDeltaMovement());
+             this.applyEffectsFromBlocks();
+             // Paper start - Configurable falling blocks height nerf
+             if (this.level().paperConfig().fixes.fallingBlockHeightNerf.test(v -> this.getY() > v)) {
+                 if (this.dropItem && this.level() instanceof final ServerLevel serverLevel && serverLevel.getGameRules().get(GameRules.ENTITY_DROPS)) {
+                     this.spawnAtLocation(serverLevel, block);
+                 }
+                 this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.OUT_OF_WORLD);
+                 return;
+             }
+             // Paper end - Configurable falling blocks height nerf
+             this.handlePortal();
++            if (this.isShreddedPaperBeingPortalled()) { // ShreddedPaper - async teleportation
++                return;
++            }
++            } // ShreddedPaper - async teleportation
++            this.shreddedPaperSkipToPlacement = false; // ShreddedPaper - async teleportation
+             if (this.level() instanceof ServerLevel serverLevel && (this.isAlive() || this.forceTickAfterTeleportToDuplicate)) {
+                 BlockPos blockPos = this.blockPosition();
+                 boolean flag = this.blockState.getBlock() instanceof ConcretePowderBlock;
+@@ -265,6 +_,11 @@
+         }
+     }
+ 
++    public void shreddedPaperTickAfterPortalTeleport() { // ShreddedPaper - async teleportation
++        this.shreddedPaperSkipToPlacement = true;
++        this.tick();
++    }
++
+     public void callOnBrokenAfterFall(Block block, BlockPos pos) {
+         if (block instanceof Fallable) {
+             ((Fallable)block).onBrokenAfterFall(this.level(), pos, this);
