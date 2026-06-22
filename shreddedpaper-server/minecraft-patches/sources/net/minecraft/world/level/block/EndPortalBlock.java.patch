@@ -32,7 +32,7 @@
          float yRot;
          float xRot;
          Set<Relative> relatives;
-+        final CompletableFuture<Void> future; // ShreddedPaper - async teleportation
++        CompletableFuture<Void> future; // ShreddedPaper - async teleportation
          if (!fromEnd) {
 -            EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos).below(), true, entity); // CraftBukkit
 +            future = CompletableFuture.runAsync(() -> EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos.get()).below(), true, entity), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // CraftBukkit // ShreddedPaper - async teleportation
@@ -41,7 +41,7 @@
              relatives = Relative.union(Relative.DELTA, Set.of(Relative.X_ROT));
              if (entity instanceof ServerPlayer) {
 -                spawnPos = spawnPos.subtract(0.0, 1.0, 0.0);
-+                spawnPos.map(spawnPos2 -> spawnPos2.subtract(0.0, 1.0, 0.0)); // ShreddedPaper - async teleportation
++                future = future.thenRun(() -> spawnPos.map(spawnPos2 -> spawnPos2.subtract(0.0, 1.0, 0.0))); // ShreddedPaper - async teleportation
              }
          } else {
              yRot = respawnData.yaw();
@@ -56,7 +56,7 @@
 +            future = CompletableFuture.runAsync(() -> spawnPos.set(entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter()), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // ShreddedPaper - async teleportation
          }
  
-+        return future.thenApply(v -> { // ShreddedPaper - async teleportation
++        return future.thenApply(_ -> { // ShreddedPaper - async teleportation
          // CraftBukkit start
          relatives.removeAll(Relative.ROTATION); // remove relative rotation flags to simplify event mutation
          float absoluteYaw = !fromEnd ? yRot : entity.getYRot() + yRot;
