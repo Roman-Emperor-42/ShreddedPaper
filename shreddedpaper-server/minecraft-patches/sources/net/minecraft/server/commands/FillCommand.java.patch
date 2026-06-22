@@ -8,28 +8,29 @@
  import java.util.Collections;
  import java.util.List;
  import java.util.function.Predicate;
-@@ -176,6 +_,7 @@
-             if (level.isDebug()) {
-                 throw ERROR_FAILED.create();
-             } else {
-+                ShreddedPaper.ensureSync(level, new BlockPos(region.minX(), region.minY(), region.minZ()), () -> { // ShreddedPaper - run on correct region thread
-                 int count = 0;
- 
-                 for (BlockPos pos : BlockPos.betweenClosed(region.minX(), region.minY(), region.minZ(), region.maxX(), region.maxY(), region.maxZ())) {
-@@ -212,12 +_,14 @@
-                 }
- 
-                 if (count == 0) {
--                    throw ERROR_FAILED.create();
-+                    source.sendFailure(Component.translatable("commands.fill.failed")); // ShreddedPaper - run on correct region thread - send failure message instead of throwing
-                 } else {
-                     int finalCount = count;
-                     source.sendSuccess(() -> Component.translatable("commands.fill.success", finalCount), true);
--                    return count;
-+                    // return count; // ShreddedPaper - run on correct region thread
-                 }
-+                }); // ShreddedPaper - run on correct region thread
-+                return 1; // ShreddedPaper - run on correct region thread
-             }
+@@ -178,6 +_,7 @@
+             throw ERROR_FAILED.create();
          }
+ 
++        ShreddedPaper.ensureSync(level, new BlockPos(region.minX(), region.minY(), region.minZ()), () -> { // ShreddedPaper - run on correct region thread
+         int count = 0;
+ 
+         for (BlockPos pos : BlockPos.betweenClosed(region.minX(), region.minY(), region.minZ(), region.maxX(), region.maxY(), region.maxZ())) {
+@@ -214,12 +_,15 @@
+         }
+ 
+         if (count == 0) {
+-            throw ERROR_FAILED.create();
++            source.sendFailure(Component.translatable("commands.fill.failed")); // ShreddedPaper - run on correct region thread - send failure message instead of throwing
++            return; // ShreddedPaper - run on correct region thread - send failure message instead of throwing
+         }
+ 
+         int finalCount = count;
+         source.sendSuccess(() -> Component.translatable("commands.fill.success", finalCount), true);
+-        return count;
++        // return count; // ShreddedPaper - run on correct region thread
++        }); // ShreddedPaper - run on correct region thread
++        return 1; // ShreddedPaper - run on correct region thread
      }
+ 
+     @FunctionalInterface

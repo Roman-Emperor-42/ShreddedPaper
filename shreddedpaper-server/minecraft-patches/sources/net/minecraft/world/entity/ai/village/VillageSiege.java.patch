@@ -18,9 +18,9 @@
                  zombie = new Zombie(level);
 -                zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(zombie.blockPosition()), EntitySpawnReason.EVENT, null);
 +                zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(new BlockPos((int) spawnPos.x, (int) spawnPos.y, (int) spawnPos.z)), EntitySpawnReason.EVENT, null); // ShreddedPaper - use zombie's planned position, not 0,0
-             } catch (Exception var5) {
-                 LOGGER.warn("Failed to create zombie for village siege at {}", spawnPos, var5);
-                 com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(var5); // Paper - ServerExceptionEvent
+             } catch (Exception e) {
+                 LOGGER.warn("Failed to create zombie for village siege at {}", spawnPos, e);
+                 com.destroystokyo.paper.exception.ServerInternalException.reportInternalException(e); // Paper - ServerExceptionEvent
 @@ -108,6 +_,7 @@
  
              zombie.snapTo(spawnPos.x, spawnPos.y, spawnPos.z, level.getRandom().nextFloat() * 360.0F, 0.0F);

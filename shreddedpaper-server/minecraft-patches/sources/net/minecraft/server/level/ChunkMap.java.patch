@@ -198,32 +198,33 @@
              return;
          }
          // Paper end - ignore and warn about illegal addEntity calls instead of crashing server
-@@ -992,11 +_,12 @@
+@@ -992,12 +_,13 @@
              range = org.spigotmc.TrackingRange.getEntityTrackingRange(entity, range); // Spigot
              if (range != 0) {
                  int updateInterval = type.updateInterval();
 -                if (this.entityMap.containsKey(entity.getId())) {
 +                if (this.entityConcurrentMap.containsKey(entity.getId())) { // ShreddedPaper - use entityConcurrentMap
                      throw (IllegalStateException)Util.pauseInIde(new IllegalStateException("Entity is already tracked!"));
-                 } else {
-                     ChunkMap.TrackedEntity trackedEntity = new ChunkMap.TrackedEntity(entity, range, updateInterval, type.trackDeltas());
--                    this.entityMap.put(entity.getId(), trackedEntity);
-+                    this.entityConcurrentMap.put(entity.getId(), trackedEntity); // ShreddedPaper - use entityConcurrentMap
-+                    this.level.getChunkSource().tickingRegions.addTrackedEntity(entity); // ShreddedPaper
-                     // Paper start - optimise entity tracker
-                     if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity() != null) {
-                         throw new IllegalStateException("Entity is already tracked");
-@@ -1006,8 +_,9 @@
-                     trackedEntity.updatePlayers(this.level.players());
-                     if (entity instanceof ServerPlayer player) {
-                         this.updatePlayerStatus(player, true);
-+                        if (true) return; // ShreddedPaper - handled elsewhere
+                 }
  
--                        for (ChunkMap.TrackedEntity e : this.entityMap.values()) {
-+                        for (ChunkMap.TrackedEntity e : this.entityConcurrentMap.values()) { // ShreddedPaper - use entityConcurrentMap
-                             if (e.entity != player) {
-                                 e.updatePlayer(player);
-                             }
+                 ChunkMap.TrackedEntity trackedEntity = new ChunkMap.TrackedEntity(entity, range, updateInterval, type.trackDeltas());
+-                this.entityMap.put(entity.getId(), trackedEntity);
++                this.entityConcurrentMap.put(entity.getId(), trackedEntity); // ShreddedPaper - use entityConcurrentMap
++                this.level.getChunkSource().tickingRegions.addTrackedEntity(entity); // ShreddedPaper
+                 // Paper start - optimise entity tracker
+                 if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity() != null) {
+                     throw new IllegalStateException("Entity is already tracked");
+@@ -1007,8 +_,9 @@
+                 trackedEntity.updatePlayers(this.level.players());
+                 if (entity instanceof ServerPlayer player) {
+                     this.updatePlayerStatus(player, true);
++                    if (true) return; // ShreddedPaper - handled elsewhere
+ 
+-                    for (ChunkMap.TrackedEntity e : this.entityMap.values()) {
++                    for (ChunkMap.TrackedEntity e : this.entityConcurrentMap.values()) { // ShreddedPaper - use entityConcurrentMap
+                         if (e.entity != player) {
+                             e.updatePlayer(player);
+                         }
 @@ -1023,13 +_,14 @@
          if (entity instanceof ServerPlayer player) {
              this.updatePlayerStatus(player, false);
@@ -338,15 +339,15 @@
              if (entity.seenBy.contains(player.connection)) {
                  consumer.accept(entity.entity);
              }
-@@ -1210,6 +_,7 @@
+@@ -1209,6 +_,7 @@
          private final int range;
          private SectionPos lastSectionPos;
-         public final Set<ServerPlayerConnection> seenBy;
+         public final Set<ServerPlayerConnection> seenBy = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<>(); // Paper - Perf: optimise map impl
 +        public final ReentrantLock seenByLock = new ReentrantLock(); // ShreddedPaper - seenBy thread safety
  
          // Paper start - optimise entity tracker
          private long lastChunkUpdate = -1L;
-@@ -1235,21 +_,33 @@
+@@ -1234,21 +_,33 @@
              this.lastChunkUpdate = currChunkUpdate;
              this.lastTrackedChunk = chunk;
  
@@ -381,7 +382,7 @@
              }
          }
  
-@@ -1303,6 +_,91 @@
+@@ -1299,6 +_,91 @@
              this.range = range;
              this.lastSectionPos = SectionPos.of(entity);
          }
@@ -473,7 +474,7 @@
  
          @Override
          public boolean equals(final Object obj) {
-@@ -1316,9 +_,13 @@
+@@ -1312,9 +_,13 @@
  
          @Override
          public void sendToTrackingPlayers(final Packet<? super ClientGamePacketListener> packet) {
@@ -487,7 +488,7 @@
          }
  
          @Override
-@@ -1331,27 +_,33 @@
+@@ -1327,27 +_,33 @@
  
          @Override
          public void sendToTrackingPlayersFiltered(final Packet<? super ClientGamePacketListener> packet, final Predicate<ServerPlayer> targetPredicate) {
@@ -521,7 +522,7 @@
          }
  
          public void updatePlayer(final ServerPlayer player) {
-@@ -1385,6 +_,7 @@
+@@ -1381,6 +_,7 @@
                  }
                  // CraftBukkit end
                  if (visibleToPlayer) {
@@ -529,7 +530,7 @@
                      if (this.seenBy.add(player.connection)) {
                          // Paper start - entity tracking events
                          if (io.papermc.paper.event.player.PlayerTrackEntityEvent.getHandlerList().getRegisteredListeners().length == 0 || new io.papermc.paper.event.player.PlayerTrackEntityEvent(player.getBukkitEntity(), this.entity.getBukkitEntity()).callEvent()) {
-@@ -1398,6 +_,7 @@
+@@ -1394,6 +_,7 @@
                          // Paper end - entity tracking events
                          this.serverEntity.onPlayerAdd(); // Paper - fix desync when a player is added to the tracker
                      }

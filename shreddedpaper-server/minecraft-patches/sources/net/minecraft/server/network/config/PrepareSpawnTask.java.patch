@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/network/config/PrepareSpawnTask.java
 +++ b/net/minecraft/server/network/config/PrepareSpawnTask.java
-@@ -5,6 +_,8 @@
+@@ -4,6 +_,8 @@
  import java.util.Optional;
  import java.util.concurrent.CompletableFuture;
  import java.util.function.Consumer;
@@ -9,7 +9,7 @@
  import net.minecraft.core.BlockPos;
  import net.minecraft.network.Connection;
  import net.minecraft.network.protocol.Packet;
-@@ -133,9 +_,9 @@
+@@ -132,9 +_,9 @@
          };
      }
  
@@ -21,7 +21,7 @@
          } else {
              throw new IllegalStateException("Player spawn was not ready");
          }
-@@ -270,7 +_,9 @@
+@@ -264,7 +_,9 @@
              this.spawnLevel.getChunkSource().addTicketWithRadius(TicketType.PLAYER_SPAWN, ChunkPos.containing(BlockPos.containing(this.spawnPosition)), 3);
          }
  
@@ -32,12 +32,13 @@
              ChunkPos spawnChunk = ChunkPos.containing(BlockPos.containing(this.spawnPosition));
              this.spawnLevel.waitForEntities(spawnChunk, 3);
              // Paper start - configuration api - possibly use legacy saved server player instance
-@@ -324,7 +_,8 @@
-                 var7 = player;
+@@ -314,8 +_,9 @@
+                     player.loadAndSpawnEnderPearls(tag);
+                     player.loadAndSpawnParentVehicle(tag);
+                 });
+-                return player;
++                // return player; // ShreddedPaper - return void
              }
- 
--            return var7;
-+            // return var7; // ShreddedPaper - return void
 +            }); // ShreddedPaper - spawn on spawn positions' thread
          }
      }

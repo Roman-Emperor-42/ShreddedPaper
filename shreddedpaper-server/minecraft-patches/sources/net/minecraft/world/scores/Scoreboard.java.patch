@@ -26,7 +26,7 @@
  
      public @Nullable Objective getObjective(final @Nullable String name) {
          return this.objectivesByName.get(name);
-@@ -238,7 +_,7 @@
+@@ -234,7 +_,7 @@
          this.onObjectiveRemoved(objective);
      }
  
@@ -35,7 +35,7 @@
          this.displayObjectives.put(slot, objective);
      }
  
-@@ -247,6 +_,7 @@
+@@ -243,6 +_,7 @@
      }
  
      public @Nullable PlayerTeam getPlayerTeam(final String name) {

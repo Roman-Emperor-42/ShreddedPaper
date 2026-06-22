@@ -9,14 +9,14 @@
          }
      }
  
-@@ -19,8 +_,8 @@
-         } else {
-             double potentialChange = 0.0;
+@@ -20,8 +_,8 @@
  
--            for (PotentialCalculator.PointCharge point : this.charges) {
--                potentialChange += point.getPotentialChange(pos);
-+            for (int i = 0; i < this.charges.size(); i++) { // ShreddedPaper - prevent CME - list is only ever added to
-+                potentialChange += this.charges.get(i).getPotentialChange(pos); // ShreddedPaper - prevent CME - list is only ever added to
-             }
+         double potentialChange = 0.0;
  
-             return potentialChange * charge;
+-        for (PotentialCalculator.PointCharge point : this.charges) {
+-            potentialChange += point.getPotentialChange(pos);
++        for (int i = 0; i < this.charges.size(); i++) { // ShreddedPaper - prevent CME - list is only ever added to
++            potentialChange += this.charges.get(i).getPotentialChange(pos); // ShreddedPaper - prevent CME - list is only ever added to
+         }
+ 
+         return potentialChange * charge;

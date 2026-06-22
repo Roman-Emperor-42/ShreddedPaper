@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/entity/ai/village/poi/PoiManager.java
 +++ b/net/minecraft/world/entity/ai/village/poi/PoiManager.java
-@@ -60,7 +_,7 @@
+@@ -59,7 +_,7 @@
          return POI_DATA_SOURCE - level;
      }
  
@@ -9,7 +9,7 @@
          if (this.isVillageCenter(section)) {
              this.villageDistanceTracker.setSource(section, POI_DATA_SOURCE);
          } else {
-@@ -420,7 +_,7 @@
+@@ -419,7 +_,7 @@
          return this.getOrLoad(SectionPos.asLong(pos)).flatMap(section -> section.getDebugPoiInfo(pos)).orElse(null);
      }
  
@@ -18,7 +18,7 @@
          // Paper start - rewrite chunk system
          this.villageDistanceTracker.propagateUpdates();
          return convertBetweenLevels(this.villageDistanceTracker.getLevel(ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkSectionKey(sectionPos)));
-@@ -434,7 +_,7 @@
+@@ -433,7 +_,7 @@
      }
  
      @Override

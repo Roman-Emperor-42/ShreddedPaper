@@ -11,7 +11,7 @@
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
  import net.minecraft.core.particles.ParticleTypes;
-@@ -82,43 +_,45 @@
+@@ -82,44 +_,46 @@
      }
  
      @Override
@@ -25,51 +25,52 @@
          if (newLevel == null) {
 -            return null;
 +            return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
-         } else {
--            Vec3 spawnPos = spawnBlockPos.getBottomCenter();
-+            ObjectHolder<Vec3> spawnPos = new ObjectHolder<>(spawnBlockPos.getBottomCenter()); // ShreddedPaper - async teleportation
-             float yRot;
-             float xRot;
-             Set<Relative> relatives;
-+            final CompletableFuture<Void> future; // ShreddedPaper - async teleportation
-             if (!fromEnd) {
--                EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos).below(), true, entity); // CraftBukkit
-+                future = CompletableFuture.runAsync(() -> EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos.get()).below(), true, entity), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // CraftBukkit // ShreddedPaper - async teleportation
-                 yRot = Direction.WEST.toYRot();
-                 xRot = 0.0F;
-                 relatives = Relative.union(Relative.DELTA, Set.of(Relative.X_ROT));
-                 if (entity instanceof ServerPlayer) {
--                    spawnPos = spawnPos.subtract(0.0, 1.0, 0.0);
-+                    spawnPos.map(spawnPos2 -> spawnPos2.subtract(0.0, 1.0, 0.0)); // ShreddedPaper - async teleportation
-                 }
-             } else {
-                 yRot = respawnData.yaw();
-                 xRot = respawnData.pitch();
-                 relatives = Relative.union(Relative.DELTA, Relative.ROTATION);
-                 if (entity instanceof ServerPlayer serverPlayer) {
--                    return serverPlayer.findRespawnPositionAndUseSpawnBlock(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit
-+                    return serverPlayer.findRespawnPositionAndUseSpawnBlockAsync(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit // ShreddedPaper - async teleportation
-                 }
- 
--                spawnPos = entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter();
-+                future = CompletableFuture.runAsync(() -> spawnPos.set(entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter()), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // ShreddedPaper - async teleportation
-             }
- 
-+            return future.thenApply(v -> { // ShreddedPaper - async teleportation
-             // CraftBukkit start
-             relatives.removeAll(Relative.ROTATION); // remove relative rotation flags to simplify event mutation
-             float absoluteYaw = !fromEnd ? yRot : entity.getYRot() + yRot;
-             float absolutePitch = entity.getXRot() + xRot;
--            org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(spawnPos, newLevel, absoluteYaw, absolutePitch), org.bukkit.PortalType.ENDER, 0, 0);
-+            org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(spawnPos.get(), newLevel, absoluteYaw, absolutePitch), org.bukkit.PortalType.ENDER, 0, 0);; // ShreddedPaper - async teleportation
-             if (result == null) {
-                 return null;
-             }
-@@ -128,6 +_,7 @@
-                 ((org.bukkit.craftbukkit.CraftWorld) to.getWorld()).getHandle(), org.bukkit.craftbukkit.util.CraftLocation.toVec3(to), Vec3.ZERO, to.getYaw(), to.getPitch(), relatives, TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET), org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-             );
-             // CraftBukkit end
-+            }); // ShreddedPaper - async teleportation
          }
+ 
+-        Vec3 spawnPos = spawnBlockPos.getBottomCenter();
++        ObjectHolder<Vec3> spawnPos = new ObjectHolder<>(spawnBlockPos.getBottomCenter()); // ShreddedPaper - async teleportation
+         float yRot;
+         float xRot;
+         Set<Relative> relatives;
++        final CompletableFuture<Void> future; // ShreddedPaper - async teleportation
+         if (!fromEnd) {
+-            EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos).below(), true, entity); // CraftBukkit
++            future = CompletableFuture.runAsync(() -> EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos.get()).below(), true, entity), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // CraftBukkit // ShreddedPaper - async teleportation
+             yRot = Direction.WEST.toYRot();
+             xRot = 0.0F;
+             relatives = Relative.union(Relative.DELTA, Set.of(Relative.X_ROT));
+             if (entity instanceof ServerPlayer) {
+-                spawnPos = spawnPos.subtract(0.0, 1.0, 0.0);
++                spawnPos.map(spawnPos2 -> spawnPos2.subtract(0.0, 1.0, 0.0)); // ShreddedPaper - async teleportation
+             }
+         } else {
+             yRot = respawnData.yaw();
+             xRot = respawnData.pitch();
+             relatives = Relative.union(Relative.DELTA, Relative.ROTATION);
+             if (entity instanceof ServerPlayer serverPlayer) {
+-                return serverPlayer.findRespawnPositionAndUseSpawnBlock(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit
++                return serverPlayer.findRespawnPositionAndUseSpawnBlockAsync(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit // ShreddedPaper - async teleportation
+             }
+ 
+-            spawnPos = entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter();
++            future = CompletableFuture.runAsync(() -> spawnPos.set(entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter()), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // ShreddedPaper - async teleportation
+         }
+ 
++        return future.thenApply(v -> { // ShreddedPaper - async teleportation
+         // CraftBukkit start
+         relatives.removeAll(Relative.ROTATION); // remove relative rotation flags to simplify event mutation
+         float absoluteYaw = !fromEnd ? yRot : entity.getYRot() + yRot;
+         float absolutePitch = entity.getXRot() + xRot;
+-        org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(spawnPos, newLevel, absoluteYaw, absolutePitch), org.bukkit.PortalType.ENDER, 0, 0);
++        org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(spawnPos.get(), newLevel, absoluteYaw, absolutePitch), org.bukkit.PortalType.ENDER, 0, 0);; // ShreddedPaper - async teleportation
+         if (result == null) {
+             return null;
+         }
+@@ -129,6 +_,7 @@
+             ((org.bukkit.craftbukkit.CraftWorld) to.getWorld()).getHandle(), org.bukkit.craftbukkit.util.CraftLocation.toVec3(to), Vec3.ZERO, to.getYaw(), to.getPitch(), relatives, TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET), org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
+         );
+         // CraftBukkit end
++        }); // ShreddedPaper - async teleportation
      }
  
+     @Override

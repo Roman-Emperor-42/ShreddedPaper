@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/level/DistanceManager.java
 +++ b/net/minecraft/server/level/DistanceManager.java
-@@ -35,7 +_,7 @@
+@@ -34,7 +_,7 @@
  public abstract class DistanceManager implements ca.spottedleaf.moonrise.patches.chunk_system.level.chunk.ChunkSystemDistanceManager, ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickDistanceManager { // Paper - rewrite chunk system // Paper - chunk tick iteration optimisation
      private static final Logger LOGGER = LogUtils.getLogger();
      private static final int PLAYER_TICKET_LEVEL = ChunkLevel.byStatus(FullChunkStatus.ENTITY_TICKING);
@@ -9,7 +9,7 @@
      // Paper - rewrite chunk system
      public final TicketStorage ticketStorage;
      // Paper - chunk tick iteration optimisation
-@@ -100,25 +_,29 @@
+@@ -99,25 +_,29 @@
      }
  
      public void addPlayer(final SectionPos pos, final ServerPlayer player) {
@@ -55,7 +55,7 @@
      }
  
      private int getPlayerTicketLevel() {
-@@ -233,8 +_,11 @@
+@@ -230,8 +_,11 @@
          }
  
          private boolean havePlayer(final long chunkPos) {

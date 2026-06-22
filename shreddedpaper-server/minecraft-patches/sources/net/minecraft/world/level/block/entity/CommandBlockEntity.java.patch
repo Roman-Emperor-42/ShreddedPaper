@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/level/block/entity/CommandBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/CommandBlockEntity.java
-@@ -44,6 +_,13 @@
+@@ -39,6 +_,13 @@
          }
          // CraftBukkit end
  

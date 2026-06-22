@@ -692,7 +692,7 @@
      }
      // Paper end - optimize redstone (Alternate Current)
  
-@@ -2910,12 +_,12 @@
+@@ -2905,12 +_,12 @@
          @Override
          public void onTickingStart(final Entity entity) {
              if (entity instanceof net.minecraft.world.entity.Marker && !paperConfig().entities.markers.tick) return; // Paper - Configurable marker ticking
@@ -707,7 +707,7 @@
              // Paper start - Reset pearls when they stop being ticked
              if (ServerLevel.this.paperConfig().fixes.disableUnloadedChunkEnderpearlExploit && ServerLevel.this.paperConfig().misc.legacyEnderPearlBehavior && entity instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl pearl) {
                  pearl.setOwner(null);
-@@ -2925,10 +_,11 @@
+@@ -2920,10 +_,11 @@
  
          @Override
          public void onTrackingStart(final Entity entity) {
@@ -720,7 +720,7 @@
                  if (player.isReceivingWaypoints()) {
                      ServerLevel.this.getWaypointManager().addPlayer(player);
                  }
-@@ -2941,14 +_,14 @@
+@@ -2936,14 +_,14 @@
              }
  
              if (entity instanceof Mob mob) {
@@ -737,7 +737,7 @@
              }
  
              if (entity instanceof EnderDragon dragon) {
-@@ -2975,7 +_,7 @@
+@@ -2970,7 +_,7 @@
  
          @Override
          public void onTrackingEnd(final Entity entity) {
@@ -746,7 +746,7 @@
              // Spigot start // TODO I don't think this is needed anymore
              if (entity instanceof Player player) {
                  for (final ServerLevel level : ServerLevel.this.getServer().getAllLevels()) {
-@@ -2984,10 +_,12 @@
+@@ -2979,10 +_,12 @@
                              continue;
                          }
  
@@ -759,7 +759,7 @@
                      }
                  }
              }
-@@ -3006,20 +_,21 @@
+@@ -3001,20 +_,21 @@
              // Spigot end
              ServerLevel.this.getChunkSource().removeEntity(entity);
              if (entity instanceof ServerPlayer player) {
@@ -783,7 +783,7 @@
              }
  
              if (entity instanceof EnderDragon dragon) {
-@@ -3044,6 +_,9 @@
+@@ -3039,6 +_,9 @@
          @Override
          public void onSectionChange(final Entity entity) {
              entity.updateDynamicGameEventListener(DynamicGameEventListener::move);

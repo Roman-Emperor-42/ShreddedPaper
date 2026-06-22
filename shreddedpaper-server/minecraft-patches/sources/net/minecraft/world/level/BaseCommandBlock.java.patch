@@ -23,7 +23,7 @@
  
      public int getSuccessCount() {
          return this.successCount;
-@@ -209,9 +_,11 @@
+@@ -208,9 +_,11 @@
          @Override
          public void sendSystemMessage(final Component message) {
              if (this.trackOutput && !this.closed) { // Paper - add back source when output disabled

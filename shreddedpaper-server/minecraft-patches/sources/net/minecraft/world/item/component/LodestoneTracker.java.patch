@@ -7,12 +7,12 @@
  import com.mojang.serialization.Codec;
  import com.mojang.serialization.codecs.RecordCodecBuilder;
  import io.netty.buffer.ByteBuf;
-@@ -29,7 +_,7 @@
-                 return this;
-             } else {
-                 BlockPos blockPos = this.target.get().pos();
--                return level.isInWorldBounds(blockPos) && (!level.hasChunkAt(blockPos) || level.getPoiManager().existsAtPosition(PoiTypes.LODESTONE, blockPos)) // Paper - Prevent compass from loading chunks
-+                return level.isInWorldBounds(blockPos) && (!TickThread.isTickThreadFor(level, blockPos) || !level.hasChunkAt(blockPos) || level.getPoiManager().existsAtPosition(PoiTypes.LODESTONE, blockPos)) // Paper - Prevent compass from loading chunks // ShreddedPaper - Prevent compass from accessing outside our thread
-                     ? this
-                     : new LodestoneTracker(Optional.empty(), true);
+@@ -30,7 +_,7 @@
              }
+ 
+             BlockPos blockPos = this.target.get().pos();
+-            return level.isInWorldBounds(blockPos) && (!level.hasChunkAt(blockPos) || level.getPoiManager().existsAtPosition(PoiTypes.LODESTONE, blockPos)) // Paper - Prevent compass from loading chunks
++            return level.isInWorldBounds(blockPos) && (!TickThread.isTickThreadFor(level, blockPos) || !level.hasChunkAt(blockPos) || level.getPoiManager().existsAtPosition(PoiTypes.LODESTONE, blockPos)) // Paper - Prevent compass from loading chunks // ShreddedPaper - Prevent compass from accessing outside our thread
+                 ? this
+                 : new LodestoneTracker(Optional.empty(), true);
+         } else {

@@ -44,7 +44,7 @@
              ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler.pushChunkWait(this.level, chunkX, chunkZ);
              this.mainThreadProcessor.managedBlock(completable::isDone);
              ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler.popChunkWait();
-@@ -198,6 +_,7 @@
+@@ -197,6 +_,7 @@
          , final SavedDataStorage savedDataStorage // Paper - initialize SavedDataStorage earlier
      ) {
          this.level = level;
@@ -52,7 +52,7 @@
          this.mainThreadProcessor = new ServerChunkCache.MainThreadExecutor(level);
          this.mainThread = Thread.currentThread();
          Path dataFolder = levelStorage.getDimensionPath(level.dimension()).resolve("data");
-@@ -351,14 +_,14 @@
+@@ -349,14 +_,14 @@
      }
  
      public CompletableFuture<ChunkResult<ChunkAccess>> getChunkFuture(final int x, final int z, final ChunkStatus targetStatus, final boolean loadOrGenerate) {
@@ -69,7 +69,7 @@
                  )
                  .thenCompose(chunk -> (CompletionStage<ChunkResult<ChunkAccess>>)chunk);
          }
-@@ -433,6 +_,7 @@
+@@ -431,6 +_,7 @@
      }
  
      public boolean pollTask() {
@@ -77,7 +77,7 @@
          return this.mainThreadProcessor.pollTask();
      }
  
-@@ -481,28 +_,37 @@
+@@ -479,28 +_,37 @@
      // CraftBukkit end
  
      @Override
@@ -120,7 +120,7 @@
          long time = this.level.getGameTime();
          long timeDiff = time - this.lastInhabitedUpdate;
          this.lastInhabitedUpdate = time;
-@@ -511,34 +_,41 @@
+@@ -509,34 +_,41 @@
              profiler.push("pollingChunks");
              if (this.level.tickRateManager().runsNormally() && this.level.paperConfig().unsupportedSettings.ticking.chunks) { // Paper - option to disable ticking
                  profiler.push("tickingChunks");
@@ -174,7 +174,7 @@
          if ((this.spawnFriendlies || this.spawnEnemies) && this.level.paperConfig().entities.spawning.perPlayerMobSpawns) { // don't count mobs when animals and monsters are disabled
              // re-set mob counts
              for (ServerPlayer player : this.level.players()) {
-@@ -558,11 +_,13 @@
+@@ -556,11 +_,13 @@
          } else {
              spawnCookie = NaturalSpawner.createState(chunkCount, this.level.getAllEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
          }
@@ -188,7 +188,7 @@
          if (doMobSpawning && (this.spawnEnemies || this.spawnFriendlies)) { // Paper
              // Paper start - PlayerNaturallySpawnCreaturesEvent
              for (ServerPlayer player : this.level.players()) {
-@@ -577,37 +_,42 @@
+@@ -575,37 +_,42 @@
          } else {
              spawningCategories = List.of();
          }
@@ -253,7 +253,7 @@
          final LevelChunk chunk, final long timeDiff, final List<MobCategory> spawningCategories, final NaturalSpawner.SpawnState spawnCookie
      ) {
          ChunkPos chunkPos = chunk.getPos();
-@@ -665,16 +_,16 @@
+@@ -663,16 +_,16 @@
          int zc = SectionPos.blockToSectionCoord(pos.getZ());
          ChunkHolder chunk = this.getVisibleChunkIfPresent(ChunkPos.pack(xc, zc));
          if (chunk != null && chunk.blockChanged(pos)) {
@@ -273,7 +273,7 @@
              }
          });
      }
-@@ -790,7 +_,7 @@
+@@ -788,7 +_,7 @@
  
      public void onChunkReadyToSend(final ChunkHolder chunk) {
          if (chunk.hasChangesToBroadcast()) {
@@ -282,7 +282,7 @@
          }
      }
  
-@@ -827,13 +_,28 @@
+@@ -824,13 +_,29 @@
          }
  
          @Override
@@ -303,13 +303,14 @@
 +                });
 +            }
 +            // ShreddedPaper end
-             // Paper start - rewrite chunk system
-             final ServerChunkCache serverChunkCache = ServerChunkCache.this;
-             if (serverChunkCache.runDistanceManagerUpdates()) {
++
+             if (ServerChunkCache.this.runDistanceManagerUpdates()) {
                  return true;
-             } else {
--                return super.pollTask() | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)serverChunkCache.level).moonrise$getChunkTaskScheduler().executeMainThreadTask();
-+                return (!ShreddedPaperTickThread.isShreddedPaperTickThread() && super.pollTask()) | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)serverChunkCache.level).moonrise$getChunkTaskScheduler().executeMainThreadTask(); // ShreddedPaper - don't run main thread tasks on workers
              }
-             // Paper end - rewrite chunk system
+ 
+             // Paper - rewrite chunk system
+-            return super.pollTask() | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)ServerChunkCache.this.level).moonrise$getChunkTaskScheduler().executeMainThreadTask(); // Paper - rewrite chunk system
++            return (!ShreddedPaperTickThread.isShreddedPaperTickThread() && super.pollTask()) | ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)ServerChunkCache.this.level).moonrise$getChunkTaskScheduler().executeMainThreadTask(); // Paper - rewrite chunk system // ShreddedPaper - don't run main thread tasks on workers
          }
+     }
+ }

@@ -15,7 +15,7 @@
  import net.minecraft.world.phys.BlockHitResult;
  import net.minecraft.world.phys.Vec3;
  import net.minecraft.world.phys.shapes.VoxelShape;
-@@ -129,7 +_,7 @@
+@@ -128,7 +_,7 @@
          // this.gameTicks = net.minecraft.server.MinecraftServer.currentTick; // CraftBukkit
          this.gameTicks = (int) this.level.getLagCompensationTick(); // Paper - lag compensate eating
          if (this.hasDelayedDestroy) {
@@ -24,7 +24,7 @@
              if (blockState == null || blockState.isAir()) { // Paper - Don't allow digging into unloaded chunks
                  this.hasDelayedDestroy = false;
              } else {
-@@ -141,7 +_,7 @@
+@@ -140,7 +_,7 @@
              }
          } else if (this.isDestroyingBlock) {
              // Paper start - Don't allow digging into unloaded chunks; don't want to do same logic as above, return instead
@@ -33,37 +33,37 @@
              if (blockState == null) {
                  this.isDestroyingBlock = false;
                  return;
-@@ -390,7 +_,7 @@
-             } else {
-                 // CraftBukkit start
-                 org.bukkit.block.BlockState bState = bblock.getState();
--                this.level.captureDrops = new java.util.ArrayList<>();
-+                this.level.captureDropsThreadLocal.set(new java.util.ArrayList<>()); // ShreddedPaper - use thread local
-                 // CraftBukkit end
-                 BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
-                 boolean changed = this.level.removeBlock(pos, false);
-@@ -420,8 +_,8 @@
-                     // return true; // CraftBukkit
-                 }
-                 // CraftBukkit start
--                java.util.List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.captureDrops; // Paper - capture all item additions to the world
--                this.level.captureDrops = null; // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff
-+                java.util.List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.captureDropsThreadLocal.get(); // Paper - capture all item additions to the world // ShreddedPaper - use thread local
-+                this.level.captureDropsThreadLocal.remove(); // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff // ShreddedPaper - use thread local
-                 if (event.isDropItems()) {
-                     org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
-                 }
-@@ -437,6 +_,13 @@
-                     }
-                 }
-                 // Paper end - Trigger bee_nest_destroyed trigger in the correct place
-+
-+                // ShreddedPaper start - broadcast block changes immediately if on the wrong thread
-+                LevelChunk levelChunk = this.level.getChunkIfLoaded(pos);
-+                if (levelChunk != null) {
-+                    levelChunk.moonrise$getChunkHolder().vanillaChunkHolder.broadcastChanges(levelChunk);
-+                }
-+                // ShreddedPaper end - broadcast block changes immediately if on the wrong thread
+@@ -392,7 +_,7 @@
  
-                 return true;
-                 // CraftBukkit end
+         // CraftBukkit start
+         org.bukkit.block.BlockState bState = bblock.getState();
+-        this.level.captureDrops = new java.util.ArrayList<>();
++        this.level.captureDropsThreadLocal.set(new java.util.ArrayList<>()); // ShreddedPaper - use thread local
+         // CraftBukkit end
+         BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
+         boolean changed = this.level.removeBlock(pos, false);
+@@ -418,8 +_,8 @@
+         } // CraftBukkit
+ 
+         // CraftBukkit start
+-        List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.captureDrops; // Paper - capture all item additions to the world
+-        this.level.captureDrops = null; // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff
++        java.util.List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.captureDropsThreadLocal.get(); // Paper - capture all item additions to the world // ShreddedPaper - use thread local
++        this.level.captureDropsThreadLocal.remove(); // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff // ShreddedPaper - use thread local
+         if (event.isDropItems()) {
+             org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
+         }
+@@ -436,6 +_,13 @@
+         }
+         // Paper end - Trigger bee_nest_destroyed trigger in the correct place
+         // CraftBukkit end
++
++        // ShreddedPaper start - broadcast block changes immediately if on the wrong thread
++        LevelChunk levelChunk = this.level.getChunkIfLoaded(pos);
++        if (levelChunk != null) {
++            levelChunk.moonrise$getChunkHolder().vanillaChunkHolder.broadcastChanges(levelChunk);
++        }
++        // ShreddedPaper end - broadcast block changes immediately if on the wrong thread
+ 
+         return true;
+     }

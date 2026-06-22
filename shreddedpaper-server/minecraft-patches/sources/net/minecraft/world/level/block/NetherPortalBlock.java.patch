@@ -30,23 +30,22 @@
          if (newLevel == null) {
 -            return null;
 +            return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
-         } else {
-             boolean toNether = newLevel.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.NETHER; // CraftBukkit
-             WorldBorder newWorldBorder = newLevel.getWorldBorder();
-@@ -169,17 +_,17 @@
-             // CraftBukkit start
-             org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(approximateExitPos, newLevel), org.bukkit.PortalType.NETHER, portalSearchRadius, newLevel.paperConfig().environment.portalCreateRadius); // Paper - use custom portal search radius
-             if (result == null) {
--                return null;
-+                return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
-             }
-             newLevel = ((org.bukkit.craftbukkit.CraftWorld) result.to().getWorld()).getHandle();
-             newWorldBorder = newLevel.getWorldBorder();
-             approximateExitPos = newWorldBorder.clampToBounds(result.to().getX(), result.to().getY(), result.to().getZ());
--            return this.getExitPortal(newLevel, entity, portalEntryPos, approximateExitPos, toNether, newWorldBorder, result);
-+            return this.getExitPortalAsync(newLevel, entity, portalEntryPos, approximateExitPos, toNether, newWorldBorder, result);  // ShreddedPaper - async teleportation
-             // CraftBukkit end
          }
+ 
+         boolean toNether = newLevel.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.NETHER; // CraftBukkit
+@@ -170,16 +_,16 @@
+         // CraftBukkit start
+         org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(approximateExitPos, newLevel), org.bukkit.PortalType.NETHER, portalSearchRadius, newLevel.paperConfig().environment.portalCreateRadius); // Paper - use custom portal search radius
+         if (result == null) {
+-            return null;
++            return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
+         }
+         newLevel = ((org.bukkit.craftbukkit.CraftWorld) result.to().getWorld()).getHandle();
+         newWorldBorder = newLevel.getWorldBorder();
+         approximateExitPos = newWorldBorder.clampToBounds(result.to().getX(), result.to().getY(), result.to().getZ());
+-        return this.getExitPortal(newLevel, entity, portalEntryPos, approximateExitPos, toNether, newWorldBorder, result);
++        return this.getExitPortalAsync(newLevel, entity, portalEntryPos, approximateExitPos, toNether, newWorldBorder, result);  // ShreddedPaper - async teleportation
+         // CraftBukkit end
      }
  
 -    private @Nullable TeleportTransition getExitPortal(

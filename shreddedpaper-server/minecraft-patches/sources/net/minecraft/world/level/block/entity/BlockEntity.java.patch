@@ -7,7 +7,7 @@
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.Codec;
  import java.util.HashSet;
-@@ -40,7 +_,7 @@
+@@ -39,7 +_,7 @@
  import org.slf4j.Logger;
  
  public abstract class BlockEntity implements DebugValueSource, TypedInstance<BlockEntityType<?>> {
@@ -16,7 +16,7 @@
      // CraftBukkit start - data containers
      private static final org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry DATA_TYPE_REGISTRY = new org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry();
      public final org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer persistentDataContainer;
-@@ -239,7 +_,8 @@
+@@ -224,7 +_,8 @@
  
      public void setChanged() {
          if (this.level != null) {

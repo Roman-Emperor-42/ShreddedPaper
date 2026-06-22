@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/gui/MinecraftServerGui.java
 +++ b/net/minecraft/server/gui/MinecraftServerGui.java
-@@ -52,7 +_,7 @@
+@@ -51,7 +_,7 @@
          } catch (Exception var3) {
          }
  
@@ -9,7 +9,7 @@
          final MinecraftServerGui gui = new MinecraftServerGui(server);
          frame.setDefaultCloseOperation(2);
          frame.add(gui);
-@@ -60,7 +_,7 @@
+@@ -59,7 +_,7 @@
          frame.setLocationRelativeTo(null);
          frame.setVisible(true);
          // Paper start - Improve ServerGUI
@@ -18,7 +18,7 @@
          try {
              frame.setIconImage(javax.imageio.ImageIO.read(java.util.Objects.requireNonNull(MinecraftServerGui.class.getClassLoader().getResourceAsStream("logo.png"))));
          } catch (java.io.IOException ignore) {
-@@ -70,7 +_,7 @@
+@@ -69,7 +_,7 @@
              @Override
              public void windowClosing(final WindowEvent event) {
                  if (!gui.isClosing.getAndSet(true)) {

@@ -25,11 +25,11 @@
 -        T data = this.get(type);
 -        if (data != null) {
 -            return data;
--        } else {
--            T newData = (T)type.constructor().get();
--            this.set(type, newData);
--            return newData;
 -        }
+-
+-        T newData = (T)type.constructor().get();
+-        this.set(type, newData);
+-        return newData;
 +        // ShreddedPaper start - thread-safe
 +        return (T) this.cache.compute(type, (key, optional) -> {
 +            if (optional == null) {

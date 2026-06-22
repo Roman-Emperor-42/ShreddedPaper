@@ -115,46 +115,46 @@
              }
              blockstate.setBlock(blockState);
              blockstate.setFlags(updateFlags);
-@@ -1121,14 +_,14 @@
-             Block block = blockState.getBlock();
-             // CraftBukkit start - capture blockstates
-             boolean captured = false;
--            if (this.captureBlockStates) {
-+            if (this.captureBlockStatesThreadLocal.get()) { // ShreddedPaper - use thread local
-                 final CraftBlockState snapshot;
--                if (!this.capturedBlockStates.containsKey(pos)) {
-+                if (!this.capturedBlockStatesThreadLocal.get().containsKey(pos)) { // ShreddedPaper - use thread local
-                     snapshot = (CraftBlockState) org.bukkit.craftbukkit.block.CraftBlock.at(this, pos).getState(); // Paper - use CB getState to get a suitable snapshot
--                    this.capturedBlockStates.put(pos.immutable(), snapshot);
-+                    this.capturedBlockStatesThreadLocal.get().put(pos.immutable(), snapshot); // ShreddedPaper - use thread local
-                     captured = true;
-                 } else {
--                    snapshot = this.capturedBlockStates.get(pos);
-+                    snapshot = this.capturedBlockStatesThreadLocal.get().get(pos); // ShreddedPaper - use thread local
-                 }
-                 snapshot.setFlags(updateFlags); // Paper - always set the flag of the most recent call to mitigate issues with multiple update at the same pos with different flags
+@@ -1124,14 +_,14 @@
+         Block block = blockState.getBlock();
+         // CraftBukkit start - capture blockstates
+         boolean captured = false;
+-        if (this.captureBlockStates) {
++        if (this.captureBlockStatesThreadLocal.get()) { // ShreddedPaper - use thread local
+             final CraftBlockState snapshot;
+-            if (!this.capturedBlockStates.containsKey(pos)) {
++            if (!this.capturedBlockStatesThreadLocal.get().containsKey(pos)) { // ShreddedPaper - use thread local
+                 snapshot = (CraftBlockState) org.bukkit.craftbukkit.block.CraftBlock.at(this, pos).getState(); // Paper - use CB getState to get a suitable snapshot
+-                this.capturedBlockStates.put(pos.immutable(), snapshot);
++                this.capturedBlockStatesThreadLocal.get().put(pos.immutable(), snapshot); // ShreddedPaper - use thread local
+                 captured = true;
+             } else {
+-                snapshot = this.capturedBlockStates.get(pos);
++                snapshot = this.capturedBlockStatesThreadLocal.get().get(pos); // ShreddedPaper - use thread local
              }
-@@ -1137,8 +_,8 @@
-             this.chunkPacketBlockController.onBlockChange(this, pos, blockState, oldState, updateFlags, updateLimit); // Paper - Anti-Xray
-             if (oldState == null) {
-                 // CraftBukkit start - remove blockstate if failed (or the same)
--                if (this.captureBlockStates && captured) {
--                    this.capturedBlockStates.remove(pos);
-+                if (this.captureBlockStatesThreadLocal.get() && captured) { // ShreddedPaper - use thread local
-+                    this.capturedBlockStatesThreadLocal.get().remove(pos); // ShreddedPaper - use thread local
-                 }
-                 // CraftBukkit end
-                 return false;
-@@ -1175,7 +_,7 @@
-                 */ // CraftBukkit
+             snapshot.setFlags(updateFlags); // Paper - always set the flag of the most recent call to mitigate issues with multiple update at the same pos with different flags
+         }
+@@ -1140,8 +_,8 @@
+         this.chunkPacketBlockController.onBlockChange(this, pos, blockState, oldState, updateFlags, updateLimit); // Paper - Anti-Xray
+         if (oldState == null) {
+             // CraftBukkit start - remove blockstate if failed (or the same)
+-            if (this.captureBlockStates && captured) {
+-                this.capturedBlockStates.remove(pos);
++            if (this.captureBlockStatesThreadLocal.get() && captured) { // ShreddedPaper - use thread local
++                this.capturedBlockStatesThreadLocal.get().remove(pos); // ShreddedPaper - use thread local
+             }
+             // CraftBukkit end
+             return false;
+@@ -1179,7 +_,7 @@
+         */ // CraftBukkit
  
-                 // CraftBukkit start
--                if (!this.captureBlockStates) { // Don't notify clients or update physics while capturing blockstates
-+                if (!this.captureBlockStatesThreadLocal.get()) { // Don't notify clients or update physics while capturing blockstates // ShreddedPaper - use thread local
-                     // Modularize client and physic updates
-                     // Spigot start
-                     try {
-@@ -1351,8 +_,8 @@
+         // CraftBukkit start
+-        if (!this.captureBlockStates) { // Don't notify clients or update physics while capturing blockstates
++        if (!this.captureBlockStatesThreadLocal.get()) { // Don't notify clients or update physics while capturing blockstates // ShreddedPaper - use thread local
+             // Modularize client and physic updates
+             // Spigot start
+             try {
+@@ -1350,8 +_,8 @@
      @Override
      public BlockState getBlockState(final BlockPos pos) {
          // CraftBukkit start - tree generation
@@ -165,7 +165,7 @@
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1523,15 +_,25 @@
+@@ -1522,15 +_,25 @@
  
      public void addBlockEntityTicker(final TickingBlockEntity ticker) {
          if (!this.paperConfig().unsupportedSettings.ticking.blockEntities) return; // Paper - option to disable ticking
@@ -196,7 +196,7 @@
  
          // Paper - Fix MC-117075 use removeAll - remove iterator in favour of indexed for loop, ensuring compile error if something uses iter incorrectly
          boolean tickBlockEntities = this.tickRateManager().runsNormally();
-@@ -1540,8 +_,8 @@
+@@ -1539,8 +_,8 @@
          // Paper start - Fix MC-117075 use removeAll
          final it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<@Nullable TickingBlockEntity> toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<>();
          toRemove.add(null);
@@ -207,7 +207,7 @@
          // Paper end - Fix MC-117075 use removeAll
              if (ticker.isRemoved()) {
                  toRemove.add(ticker); // Paper - Fix MC-117075 use removeAll
-@@ -1555,7 +_,7 @@
+@@ -1554,7 +_,7 @@
              }
          }
  
@@ -216,7 +216,7 @@
          this.tickingBlockEntities = false;
      }
  
-@@ -1570,7 +_,7 @@
+@@ -1569,7 +_,7 @@
              entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
              // Paper end - Prevent block entity and entity crashes
          }
@@ -225,7 +225,7 @@
      }
  
      // Paper start - Option to prevent armor stands from doing entity lookups
-@@ -1723,7 +_,7 @@
+@@ -1722,7 +_,7 @@
      public @Nullable BlockEntity getBlockEntity(final BlockPos pos) {
          // Paper start - Perf: Optimize capturedTileEntities lookup
          net.minecraft.world.level.block.entity.BlockEntity blockEntity;
@@ -234,7 +234,7 @@
              return blockEntity;
          }
          // Paper end - Perf: Optimize capturedTileEntities lookup
-@@ -1740,8 +_,8 @@
+@@ -1739,8 +_,8 @@
          BlockPos pos = blockEntity.getBlockPos();
          if (this.isInValidBounds(pos)) {
              // CraftBukkit start
