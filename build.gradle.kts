@@ -2,7 +2,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
-    id("io.papermc.paperweight.patcher") version "2.0.0-SNAPSHOT"
+    id("io.papermc.paperweight.patcher") version "2.0.0-beta.21"
 }
 
 paperweight {
@@ -46,15 +46,6 @@ subprojects {
         }
     }
 
-    repositories {
-        mavenCentral()
-        maven(paperMavenPublicUrl)
-    }
-
-    tasks.withType<AbstractArchiveTask>().configureEach {
-        isPreserveFileTimestamps = false
-        isReproducibleFileOrder = true
-    }
     tasks.withType<JavaCompile> {
         options.encoding = Charsets.UTF_8.name()
         options.release = 25
