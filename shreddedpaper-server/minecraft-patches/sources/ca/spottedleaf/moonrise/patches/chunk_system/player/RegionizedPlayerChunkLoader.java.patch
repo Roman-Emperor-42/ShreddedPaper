@@ -33,6 +33,16 @@
          private volatile boolean removed;
  
          public PlayerChunkLoaderData(final ServerLevel world, final ServerPlayer player) {
+@@ -461,7 +_,9 @@
+             this.player.connection.send(new ClientboundForgetLevelChunkPacket(new ChunkPos(chunkX, chunkZ)));
+             // Paper start - PlayerChunkUnloadEvent
+             if (io.papermc.paper.event.packet.PlayerChunkUnloadEvent.getHandlerList().getRegisteredListeners().length > 0) {
++                ShreddedPaper.ensureSync(player.level(), new ChunkPos(chunkX, chunkZ), () -> { // ShreddedPaper - run on chunk's thread
+                 new io.papermc.paper.event.packet.PlayerChunkUnloadEvent(player.getBukkitEntity().getWorld().getChunkAt(new ChunkPos(chunkX, chunkZ).longKey()), player.getBukkitEntity()).callEvent();
++                });// ShreddedPaper - run on chunk's thread
+             }
+             // Paper end - PlayerChunkUnloadEvent
+         }
 @@ -659,7 +_,7 @@
              return true;
          }
