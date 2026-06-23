@@ -65,6 +65,10 @@ subprojects {
         }
     }
 
+    repositories {
+        maven("https://repo.papermc.io/repository/maven-public/")
+    }
+
     extensions.configure<PublishingExtension> {
         repositories {
             /*
