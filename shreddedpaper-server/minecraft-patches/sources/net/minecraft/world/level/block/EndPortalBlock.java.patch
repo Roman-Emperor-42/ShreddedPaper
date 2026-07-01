@@ -27,8 +27,8 @@
 +            return CompletableFuture.completedFuture(null); // ShreddedPaper - async teleportation
          }
  
--        Vec3 spawnPos = spawnBlockPos.getBottomCenter();
-+        ObjectHolder<Vec3> spawnPos = new ObjectHolder<>(spawnBlockPos.getBottomCenter()); // ShreddedPaper - async teleportation
+-        Vec3 spawnPos = Vec3.atBottomCenterOf(spawnBlockPos);
++        final ObjectHolder<Vec3> spawnPos = new ObjectHolder<>(Vec3.atBottomCenterOf(spawnBlockPos)); // ShreddedPaper - async teleportation
          float yRot;
          float xRot;
          Set<Relative> relatives;
@@ -52,8 +52,8 @@
 +                return serverPlayer.findRespawnPositionAndUseSpawnBlockAsync(false, TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.END_PORTAL); // CraftBukkit // ShreddedPaper - async teleportation
              }
  
--            spawnPos = entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter();
-+            future = CompletableFuture.runAsync(() -> spawnPos.set(entity.adjustSpawnLocation(newLevel, spawnBlockPos).getBottomCenter()), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // ShreddedPaper - async teleportation
+-            spawnPos = Vec3.atBottomCenterOf(entity.adjustSpawnLocation(newLevel, spawnBlockPos));
++            future = CompletableFuture.runAsync(() -> spawnPos.set(Vec3.atBottomCenterOf(entity.adjustSpawnLocation(newLevel, spawnBlockPos))), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // ShreddedPaper - async teleportation
          }
  
 +        return future.thenApply(_ -> { // ShreddedPaper - async teleportation

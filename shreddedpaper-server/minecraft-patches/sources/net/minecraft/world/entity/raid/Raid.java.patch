@@ -6,9 +6,9 @@
  import java.util.stream.Stream;
 +import io.multipaper.shreddedpaper.ShreddedPaper;
  import net.minecraft.SharedConstants;
- import net.minecraft.advancements.CriteriaTriggers;
+ import net.minecraft.advancements.triggers.CriteriaTriggers;
  import net.minecraft.core.BlockPos;
-@@ -422,12 +_,15 @@
+@@ -423,12 +_,15 @@
                          for (UUID heroUUID : this.heroesOfTheVillage) {
                              Entity entity = level.getEntity(heroUUID);
                              if (entity instanceof LivingEntity hero && !entity.isSpectator()) {

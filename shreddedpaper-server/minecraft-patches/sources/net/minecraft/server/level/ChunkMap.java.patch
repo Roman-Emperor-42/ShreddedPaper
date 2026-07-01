@@ -41,7 +41,7 @@
  import org.slf4j.Logger;
  
 @@ -139,7 +_,8 @@
-     public final ChunkMap.DistanceManager distanceManager;
+     private final ChunkMap.DistanceManager distanceManager;
      private final String storageName;
      private final PlayerMap playerMap = new PlayerMap();
 -    public final Int2ObjectMap<ChunkMap.TrackedEntity> entityMap = new Int2ObjectOpenHashMap<>();
@@ -107,7 +107,7 @@
      }
      // Paper end - optimise chunk tick iteration
  
--    void collectSpawningChunks(final List<LevelChunk> output) {
+-    public void collectSpawningChunks(final List<LevelChunk> output) {
 -        // Paper start - optimise chunk tick iteration
 -        final ca.spottedleaf.moonrise.common.list.ReferenceList<net.minecraft.world.level.chunk.LevelChunk> tickingChunks = ((ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickServerLevel)this.level).moonrise$getPlayerTickingChunks();
 -
@@ -148,7 +148,7 @@
 +//    }
 +    // ShreddedPaper end - unused
  
-     void forEachBlockTickingChunk(final Consumer<LevelChunk> tickingChunkConsumer) {
+     public void forEachBlockTickingChunk(final Consumer<LevelChunk> tickingChunkConsumer) {
          this.distanceManager.forEachEntityTickingChunk(chunkPos -> {
 @@ -814,7 +_,9 @@
  
@@ -186,8 +186,8 @@
          }
  
          return ret == null ? new ArrayList<>() : ret;
-@@ -979,9 +_,9 @@
-     public void addEntity(final Entity entity) {
+@@ -983,9 +_,9 @@
+     protected void addEntity(final Entity entity) {
          org.spigotmc.AsyncCatcher.catchOp("entity track"); // Spigot
          // Paper start - ignore and warn about illegal addEntity calls instead of crashing server
 -        if (!entity.valid || entity.level() != this.level || this.entityMap.containsKey(entity.getId())) {
@@ -198,7 +198,7 @@
              return;
          }
          // Paper end - ignore and warn about illegal addEntity calls instead of crashing server
-@@ -992,12 +_,13 @@
+@@ -996,12 +_,13 @@
              range = org.spigotmc.TrackingRange.getEntityTrackingRange(entity, range); // Spigot
              if (range != 0) {
                  int updateInterval = type.updateInterval();
@@ -214,7 +214,7 @@
                  // Paper start - optimise entity tracker
                  if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity() != null) {
                      throw new IllegalStateException("Entity is already tracked");
-@@ -1007,8 +_,9 @@
+@@ -1011,8 +_,9 @@
                  trackedEntity.updatePlayers(this.level.players());
                  if (entity instanceof ServerPlayer player) {
                      this.updatePlayerStatus(player, true);
@@ -225,7 +225,7 @@
                          if (e.entity != player) {
                              e.updatePlayer(player);
                          }
-@@ -1023,13 +_,14 @@
+@@ -1027,13 +_,14 @@
          if (entity instanceof ServerPlayer player) {
              this.updatePlayerStatus(player, false);
  
@@ -242,7 +242,7 @@
              trackedEntity.broadcastRemoved();
          }
          ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$setTrackedEntity(null); // Paper - optimise entity tracker
-@@ -1037,22 +_,25 @@
+@@ -1041,22 +_,25 @@
  
      // Paper start - optimise entity tracker
      private void newTrackerTick() {
@@ -282,7 +282,7 @@
      }
      // Paper end - optimise entity tracker
  
-@@ -1068,7 +_,7 @@
+@@ -1072,7 +_,7 @@
          List<ServerPlayer> movedPlayers = Lists.newArrayList();
          List<ServerPlayer> players = this.level.players();
  
@@ -291,7 +291,7 @@
              SectionPos oldPos = trackedEntity.lastSectionPos;
              SectionPos newPos = SectionPos.of(trackedEntity.entity);
              boolean sectionPosChanged = !Objects.equals(oldPos, newPos);
-@@ -1088,14 +_,14 @@
+@@ -1091,14 +_,14 @@
          }
  
          if (!movedPlayers.isEmpty()) {
@@ -308,7 +308,7 @@
          if (trackedEntity != null) {
              trackedEntity.sendToTrackingPlayers(packet);
          }
-@@ -1104,26 +_,26 @@
+@@ -1107,26 +_,26 @@
      public void sendToTrackingPlayersFiltered(
          final Entity entity, final Packet<? super ClientGamePacketListener> packet, final Predicate<ServerPlayer> targetPredicate
      ) {
@@ -339,7 +339,7 @@
              if (entity.seenBy.contains(player.connection)) {
                  consumer.accept(entity.entity);
              }
-@@ -1209,6 +_,7 @@
+@@ -1212,6 +_,7 @@
          private final int range;
          private SectionPos lastSectionPos;
          public final Set<ServerPlayerConnection> seenBy = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<>(); // Paper - Perf: optimise map impl
@@ -347,7 +347,7 @@
  
          // Paper start - optimise entity tracker
          private long lastChunkUpdate = -1L;
-@@ -1234,21 +_,33 @@
+@@ -1237,21 +_,33 @@
              this.lastChunkUpdate = currChunkUpdate;
              this.lastTrackedChunk = chunk;
  
@@ -382,7 +382,7 @@
              }
          }
  
-@@ -1299,6 +_,91 @@
+@@ -1302,6 +_,91 @@
              this.range = range;
              this.lastSectionPos = SectionPos.of(entity);
          }
@@ -474,7 +474,7 @@
  
          @Override
          public boolean equals(final Object obj) {
-@@ -1312,9 +_,13 @@
+@@ -1315,9 +_,13 @@
  
          @Override
          public void sendToTrackingPlayers(final Packet<? super ClientGamePacketListener> packet) {
@@ -488,7 +488,7 @@
          }
  
          @Override
-@@ -1327,27 +_,33 @@
+@@ -1330,27 +_,33 @@
  
          @Override
          public void sendToTrackingPlayersFiltered(final Packet<? super ClientGamePacketListener> packet, final Predicate<ServerPlayer> targetPredicate) {
@@ -522,7 +522,7 @@
          }
  
          public void updatePlayer(final ServerPlayer player) {
-@@ -1381,6 +_,7 @@
+@@ -1384,6 +_,7 @@
                  }
                  // CraftBukkit end
                  if (visibleToPlayer) {
@@ -530,7 +530,7 @@
                      if (this.seenBy.add(player.connection)) {
                          // Paper start - entity tracking events
                          if (io.papermc.paper.event.player.PlayerTrackEntityEvent.getHandlerList().getRegisteredListeners().length == 0 || new io.papermc.paper.event.player.PlayerTrackEntityEvent(player.getBukkitEntity(), this.entity.getBukkitEntity()).callEvent()) {
-@@ -1394,6 +_,7 @@
+@@ -1397,6 +_,7 @@
                          // Paper end - entity tracking events
                          this.serverEntity.onPlayerAdd(); // Paper - fix desync when a player is added to the tracker
                      }

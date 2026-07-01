@@ -16,7 +16,7 @@
      private final org.bukkit.craftbukkit.map.RenderData vanillaRender = new org.bukkit.craftbukkit.map.RenderData(); // Paper - Use Vanilla map renderer when possible
      public final List<MapItemSavedData.HoldingPlayer> carriedBy = Lists.newArrayList();
      public final Map<Player, MapItemSavedData.HoldingPlayer> carriedByPlayers = Maps.newHashMap();
-@@ -181,7 +_,7 @@
+@@ -179,7 +_,7 @@
          return new MapItemSavedData(0, 0, scale, false, false, isLocked, dimension);
      }
  
@@ -25,7 +25,7 @@
          MapItemSavedData result = new MapItemSavedData(
              this.centerX, this.centerZ, this.scale, this.trackingPosition, this.unlimitedTracking, true, this.dimension
          );
-@@ -201,7 +_,7 @@
+@@ -199,7 +_,7 @@
          return stack -> stack == mapStack || stack.is(mapStack.getItem()) && Objects.equals(mapId, stack.get(DataComponents.MAP_ID));
      }
  
@@ -34,7 +34,7 @@
          if (!this.carriedByPlayers.containsKey(tickingPlayer)) {
              MapItemSavedData.HoldingPlayer holdingPlayer = new MapItemSavedData.HoldingPlayer(tickingPlayer);
              this.carriedByPlayers.put(tickingPlayer, holdingPlayer);
-@@ -404,7 +_,7 @@
+@@ -402,7 +_,7 @@
          }
      }
  
@@ -43,7 +43,7 @@
          MapItemSavedData.HoldingPlayer holdingPlayer = this.carriedByPlayers.get(player);
          return holdingPlayer == null ? null : holdingPlayer.nextUpdatePacket(id);
      }
-@@ -518,7 +_,7 @@
+@@ -516,7 +_,7 @@
          return false;
      }
  

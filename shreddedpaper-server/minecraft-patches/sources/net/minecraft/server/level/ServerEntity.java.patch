@@ -16,7 +16,7 @@
                  }
              }
  
-@@ -352,7 +_,7 @@
+@@ -357,7 +_,7 @@
              if (!slots.isEmpty()) {
                  broadcast.accept(new ClientboundSetEquipmentPacket(this.entity.getId(), slots, true)); // Paper - data sanitization
              }

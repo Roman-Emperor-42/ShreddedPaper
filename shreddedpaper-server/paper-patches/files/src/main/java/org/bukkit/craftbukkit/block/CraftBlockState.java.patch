@@ -8,10 +8,10 @@
  import java.lang.ref.WeakReference;
  import java.util.List;
 @@ -214,6 +_,7 @@
-         if (!this.isPlaced()) {
              return true;
          }
-+        TickThread.ensureTickThread(this.world.getHandle(), this.position, "BlockState update");
-         LevelAccessor access = this.getWorldHandle();
-         CraftBlock block = this.getBlock();
  
++        TickThread.ensureTickThread(this.world.getHandle(), this.position, "BlockState update");
+         CraftBlock block = this.getBlock();
+         if (block.getType() != this.getType()) {
+             if (!force) {

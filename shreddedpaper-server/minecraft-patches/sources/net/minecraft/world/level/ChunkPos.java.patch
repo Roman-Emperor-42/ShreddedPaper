@@ -8,7 +8,7 @@
  import io.netty.buffer.ByteBuf;
  import java.util.Spliterators.AbstractSpliterator;
  import java.util.function.Consumer;
-@@ -18,14 +_,19 @@
+@@ -17,14 +_,19 @@
  import org.jspecify.annotations.Nullable;
  
  // Paper start
@@ -35,7 +35,7 @@
      // Paper end
      public static final Codec<ChunkPos> CODEC = Codec.INT_STREAM
          .<ChunkPos>comapFlatMap(input -> Util.fixedSize(input, 2).map(ints -> new ChunkPos(ints[0], ints[1])), pos -> IntStream.of(pos.x, pos.z))
-@@ -63,6 +_,16 @@
+@@ -60,6 +_,16 @@
      public static ChunkPos unpack(final long key) {
          return new ChunkPos((int)key, (int)(key >> 32));
      }

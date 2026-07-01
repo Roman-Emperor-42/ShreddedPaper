@@ -5,7 +5,7 @@
  
      public void update(final Level level, final Entity player, final MapItemSavedData data) {
 +        synchronized (data) { // ShreddedPaper - thread-safe
-         if (level.dimension() == data.dimension && player instanceof Player) {
+         if (level.dimension() == data.dimension && player instanceof Player player2) {
              int scale = 1 << data.scale;
              int centerX = data.centerX;
 @@ -188,6 +_,7 @@

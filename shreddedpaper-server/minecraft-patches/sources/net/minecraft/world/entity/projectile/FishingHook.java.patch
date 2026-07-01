@@ -6,10 +6,10 @@
  import java.util.List;
 +
 +import io.multipaper.shreddedpaper.ShreddedPaper;
- import net.minecraft.advancements.CriteriaTriggers;
+ import net.minecraft.advancements.triggers.CriteriaTriggers;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.particles.ParticleTypes;
-@@ -210,7 +_,12 @@
+@@ -211,7 +_,12 @@
                          if (!this.hookedIn.isRemoved() && this.hookedIn.canInteractWithLevel() && this.hookedIn.level().dimension() == this.level().dimension()
                              )
                           {

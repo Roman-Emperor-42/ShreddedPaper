@@ -26,7 +26,7 @@
                          details.setDetail("Progress", () -> candidateIndex + " out of " + this.candidateCount);
                          this.finishedFuture.completeExceptionally(new ReportedException(report));
                      }
--                }, this.level.chunkSource.mainThreadProcessor); // Paper - rewrite chunk system
+-                }, this.level.getChunkSource().mainThreadProcessor); // Paper - rewrite chunk system
 +                }, this.level.getChunkSource().tickingRegions.executorFor(RegionPos.forChunk(chunkX, chunkZ))); // Paper - rewrite chunk system // ShreddedPaper - run on region
          }
      }

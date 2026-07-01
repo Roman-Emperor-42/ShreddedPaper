@@ -9,7 +9,7 @@
  import io.papermc.paper.FeatureHooks;
  import java.util.ArrayList;
  import java.util.Arrays;
-@@ -74,6 +_,7 @@
+@@ -72,6 +_,7 @@
      }
  
      public ChunkAccess getHandle(ChunkStatus chunkStatus) {

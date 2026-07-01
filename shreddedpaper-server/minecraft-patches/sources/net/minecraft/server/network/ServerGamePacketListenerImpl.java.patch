@@ -15,16 +15,16 @@
  import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
  import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-@@ -376,7 +_,7 @@
+@@ -378,7 +_,7 @@
          }
  
          if (this.server.isPaused() || !this.tickPlayer()) {
 -            this.keepConnectionAlive();
 +            // this.keepConnectionAlive(); // ShreddedPaper - called elsewhere
              this.chatSpamThrottler.tick();
+             this.commandSpamThrottler.tick();
              this.dropSpamThrottler.tick();
-             this.tabSpamThrottler.tick(); // Paper - configurable tab spam limits
-@@ -634,6 +_,12 @@
+@@ -637,6 +_,12 @@
                      return;
                  }
                  // Paper end - Prevent moving into unloaded chunks
@@ -37,7 +37,7 @@
                  if (movedDist - expectedDist > Math.max(100.0, Mth.square(org.spigotmc.SpigotConfig.movedTooQuicklyMultiplier * (float) i * speed)) && !this.isSingleplayerOwner()) {
                      // CraftBukkit end
                      LOGGER.warn(
-@@ -1417,7 +_,7 @@
+@@ -1423,7 +_,7 @@
              Consumer<List<FilteredText>> handler = title.isPresent()
                  ? filteredContents -> this.signBook(filteredContents.get(0), filteredContents.subList(1, filteredContents.size()), slot, hasSignPerm) // Purpur - Allow color codes in books
                  : filteredContents -> this.updateBookContents(filteredContents, slot, hasEditPerm); // Purpur - Allow color codes in books
@@ -46,7 +46,7 @@
          }
      }
  
-@@ -1613,6 +_,12 @@
+@@ -1616,6 +_,12 @@
                                          // Paper end - Add fail move event
                                      }
                                      // Paper end - Prevent moving into unloaded chunks
@@ -59,7 +59,7 @@
  
                                      if (this.shouldCheckPlayerMovement(isFallFlying)) {
                                          float metersPerTick = isFallFlying ? 300.0F : 100.0F;
-@@ -2354,7 +_,9 @@
+@@ -2326,7 +_,9 @@
              for (ServerLevel level : this.server.getAllLevels()) {
                  Entity entity = packet.getEntity(level);
                  if (entity != null) {
@@ -69,7 +69,7 @@
                      return;
                  }
              }
-@@ -2371,12 +_,15 @@
+@@ -2343,12 +_,15 @@
  
      @Override
      public void onDisconnect(final DisconnectionDetails details) {
@@ -85,7 +85,7 @@
      }
  
      private void removePlayerFromWorld() {
-@@ -2636,7 +_,7 @@
+@@ -2608,7 +_,7 @@
              this.player.resetLastActionTime();
              // CraftBukkit start
              if (sync) {
@@ -94,7 +94,7 @@
              } else {
                  chatHandler.run();
              }
-@@ -3087,23 +_,27 @@
+@@ -3070,22 +_,26 @@
          switch (action) {
              case PERFORM_RESPAWN:
                  if (this.player.wonGame) {
@@ -118,13 +118,12 @@
                      this.restartClientLoadTimerAfterRespawn();
                      if (this.server.isHardcore()) {
                          this.player.setGameMode(GameType.SPECTATOR, org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.HARDCORE_DEATH, null); // Paper - Expand PlayerGameModeChangeEvent
-                         this.player.level().getGameRules().set(GameRules.SPECTATORS_GENERATE_CHUNKS, false, this.player.level()); // CraftBukkit - per-world
                      }
 +                    }); // ShreddedPaper - async respawn
                  }
                  break;
              case REQUEST_STATS:
-@@ -3650,7 +_,7 @@
+@@ -3632,7 +_,7 @@
          }
          List<String> lines = Stream.of(linesArray).map(ChatFormatting::stripFormatting).collect(Collectors.toList());
          // Paper end - Limit client sign length
@@ -133,7 +132,7 @@
      }
  
      private void updateSignText(final ServerboundSignUpdatePacket packet, final List<FilteredText> lines) {
-@@ -3908,7 +_,7 @@
+@@ -3890,7 +_,7 @@
  
      @Override
      public void disconnectAsync(final net.minecraft.network.DisconnectionDetails disconnectionInfo) {

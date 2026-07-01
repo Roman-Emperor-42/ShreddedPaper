@@ -17,7 +17,7 @@
  
      @Override
      public MapCodec<? extends SaplingBlock> codec() {
-@@ -54,18 +_,18 @@
+@@ -54,22 +_,22 @@
              level.setBlock(pos, state.cycle(STAGE), Block.UPDATE_NONE);
          } else {
              // CraftBukkit start
@@ -27,20 +27,25 @@
              } else {
 -                level.captureTreeGeneration = true;
 +                level.captureTreeGenerationThreadLocal.set(true); // ShreddedPaper - use thread local
-                 this.treeGrower.growTree(level, level.getChunkSource().getGenerator(), pos, state, random);
--                level.captureTreeGeneration = false;
--                if (!level.capturedBlockStates.isEmpty()) {
--                    org.bukkit.TreeType treeType = SaplingBlock.treeType;
--                    SaplingBlock.treeType = null;
-+                level.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
-+                if (!level.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
-+                    org.bukkit.TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
-+                    SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(pos, level);
--                    java.util.List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStates.values());
+                 java.util.List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates;
+                 org.bukkit.TreeType treeType;
+                 try {
+                     this.treeGrower.growTree(level, level.getChunkSource().getGenerator(), pos, state, random);
+                 } finally {
+-                    level.captureTreeGeneration = false;
+-
+-                    capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStates.values());
 -                    level.capturedBlockStates.clear();
-+                    java.util.List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
+-
+-                    treeType = SaplingBlock.treeType;
+-                    SaplingBlock.treeType = null;
++                    level.captureTreeGenerationThreadLocal.remove(); // ShreddedPaper - use thread local
++
++                    capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
 +                    level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-                     org.bukkit.event.world.StructureGrowEvent event = null;
-                     if (treeType != null) {
-                         event = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, blocks);
++
++                    treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
++                    SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
+                 }
+                 if (!capturedBlockStates.isEmpty()) {
+                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(pos, level);

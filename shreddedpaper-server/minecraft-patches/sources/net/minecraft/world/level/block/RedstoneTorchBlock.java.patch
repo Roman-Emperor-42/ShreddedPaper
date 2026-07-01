@@ -8,7 +8,7 @@
  import java.util.List;
  import java.util.Map;
  import java.util.WeakHashMap;
-@@ -74,7 +_,7 @@
+@@ -69,7 +_,7 @@
      protected void tick(final BlockState state, final ServerLevel level, final BlockPos pos, final RandomSource random) {
          boolean neighborSignal = this.hasNeighborSignal(level, pos, state);
          // Paper start - Faster redstone torch rapid clock removal
@@ -17,7 +17,7 @@
          if (toggles != null) {
              RedstoneTorchBlock.Toggle curr;
              while ((curr = toggles.peek()) != null && level.getGameTime() - curr.when > 60L) {
-@@ -142,10 +_,12 @@
+@@ -147,10 +_,12 @@
  
      private static boolean isToggledTooFrequently(final Level level, final BlockPos pos, final boolean add) {
          // Paper start - Faster redstone torch rapid clock removal

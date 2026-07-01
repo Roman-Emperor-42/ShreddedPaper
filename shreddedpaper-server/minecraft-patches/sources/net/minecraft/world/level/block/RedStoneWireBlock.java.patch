@@ -60,10 +60,10 @@
      protected int getSignal(final BlockState state, final BlockGetter level, final BlockPos pos, final Direction direction) {
 -        if (this.shouldSignal && direction != Direction.DOWN) {
 +        if (this.shouldSignalThreadLocal.get() && direction != Direction.DOWN) { // ShreddedPaper - use thread local for shouldSignal
-             int power = state.getValue(POWER);
+             int power = this.ownSignal(state, level, pos);
              if (power == 0) {
                  return Redstone.SIGNAL_MIN;
-@@ -467,7 +_,7 @@
+@@ -472,7 +_,7 @@
  
      @Override
      protected boolean isSignalSource(final BlockState state) {

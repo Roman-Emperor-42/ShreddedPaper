@@ -23,8 +23,8 @@
      };
 -    private final Map<BlockPos, LevelChunk.RebindableTickingBlockEntityWrapper> tickersInLevel = Maps.newHashMap();
 +    private final Map<BlockPos, LevelChunk.RebindableTickingBlockEntityWrapper> tickersInLevel = Maps.newConcurrentMap(); // ShreddedPaper - use concurrent map
-     public boolean loaded;
-     public final ServerLevel level; // CraftBukkit - type
+     private boolean loaded;
+     private final ServerLevel level; // CraftBukkit - type
      private @Nullable Supplier<FullChunkStatus> fullStatus;
 @@ -93,6 +_,8 @@
      private final Int2ObjectMap<GameEventListenerRegistry> gameEventListenerRegistrySections;
@@ -48,12 +48,12 @@
  
      public @Nullable BlockEntity getBlockEntity(final BlockPos pos, final LevelChunk.EntityCreationType creationType) {
          // CraftBukkit start
--        BlockEntity blockEntity = this.level.capturedTileEntities.get(pos);
-+        BlockEntity blockEntity = this.level.capturedTileEntitiesThreadLocal.get().get(pos); // ShreddedPaper - use thread local
+-        BlockEntity blockEntity = this.level.capturedBlockEntities.get(pos);
++        BlockEntity blockEntity = this.level.capturedBlockEntitiesThreadLocal.get().get(pos); // ShreddedPaper - use thread local
          if (blockEntity == null) {
              blockEntity = this.blockEntities.get(pos);
          }
-@@ -656,13 +_,13 @@
+@@ -655,13 +_,13 @@
  
                  org.bukkit.World world = this.level.getWorld();
                  if (world != null) {

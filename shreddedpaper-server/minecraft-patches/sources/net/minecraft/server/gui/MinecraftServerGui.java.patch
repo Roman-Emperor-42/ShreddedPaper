@@ -1,15 +1,15 @@
 --- a/net/minecraft/server/gui/MinecraftServerGui.java
 +++ b/net/minecraft/server/gui/MinecraftServerGui.java
-@@ -51,7 +_,7 @@
+@@ -53,7 +_,7 @@
          } catch (Exception var3) {
          }
  
 -        final JFrame frame = new JFrame("Purpur Minecraft server"); // Purpur - Improve GUI
 +        final JFrame frame = new JFrame("ShreddedPaper Minecraft server"); // Purpur - Improve GUI // ShreddedPaper
          final MinecraftServerGui gui = new MinecraftServerGui(server);
-         frame.setDefaultCloseOperation(2);
+         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
          frame.add(gui);
-@@ -59,7 +_,7 @@
+@@ -61,7 +_,7 @@
          frame.setLocationRelativeTo(null);
          frame.setVisible(true);
          // Paper start - Improve ServerGUI
@@ -18,7 +18,7 @@
          try {
              frame.setIconImage(javax.imageio.ImageIO.read(java.util.Objects.requireNonNull(MinecraftServerGui.class.getClassLoader().getResourceAsStream("logo.png"))));
          } catch (java.io.IOException ignore) {
-@@ -69,7 +_,7 @@
+@@ -71,7 +_,7 @@
              @Override
              public void windowClosing(final WindowEvent event) {
                  if (!gui.isClosing.getAndSet(true)) {

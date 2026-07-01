@@ -1,119 +1,42 @@
 --- a/net/minecraft/world/item/ItemStack.java
 +++ b/net/minecraft/world/item/ItemStack.java
-@@ -384,28 +_,30 @@
+@@ -383,8 +_,8 @@
          boolean isBonemeal = usedItem == Items.BONE_MEAL;
  
          if (!(usedItem instanceof BucketItem)) {
 -            level.captureBlockStates = true;
+-            level.captureTreeGeneration = isBonemeal;
 +            level.captureBlockStatesThreadLocal.set(true); // ShreddedPaper - use thread local
-             if (isBonemeal) {
--                level.captureTreeGeneration = true;
-+                level.captureTreeGenerationThreadLocal.set(true); // ShreddedPaper - use thread local
-             }
++            level.captureTreeGenerationThreadLocal.set(isBonemeal); // ShreddedPaper - use thread local
          }
-         InteractionResult result;
+ 
+         List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates;
+@@ -394,17 +_,17 @@
          try {
-+            level.capturedTileEntitiesThreadLocal.get().clear(); // ShreddedPaper - use thread local - clear beforehand
-+            level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local - clear beforehand
              result = usedItem.useOn(context);
          } finally {
 -            level.captureBlockStates = false;
-+            level.captureBlockStatesThreadLocal.set(false); // ShreddedPaper - use thread local
-         }
-         DataComponentPatch newPatch = this.components.asPatch();
-         int newCount = this.getCount();
-         this.setCount(previousCount);
-         this.restorePatch(previousPatch);
--        if (result.consumesAction() && level.captureTreeGeneration && !level.capturedBlockStates.isEmpty()) {
 -            level.captureTreeGeneration = false;
-+        if (result.consumesAction() && level.captureTreeGenerationThreadLocal.get() && !level.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
-+            level.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
-             org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(pos, level);
--            org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeType;
+-
+-            capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStates.values());
+-            level.capturedBlockStates.clear();
+-
+-            capturedBlockEntities = new java.util.ArrayList<>(level.capturedBlockEntities.values());
+-            level.capturedBlockEntities.clear();
+-
+-            treeType = net.minecraft.world.level.block.SaplingBlock.treeType;
 -            net.minecraft.world.level.block.SaplingBlock.treeType = null;
--            List<org.bukkit.craftbukkit.block.CraftBlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStates.values());
--            level.capturedBlockStates.clear();
-+            org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
++            level.captureBlockStatesThreadLocal.remove(); // ShreddedPaper - use thread local
++            level.captureTreeGenerationThreadLocal.remove(); // ShreddedPaper - use thread local
++
++            capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
++            level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
++
++            capturedBlockEntities = new java.util.ArrayList<>(level.capturedBlockEntitiesThreadLocal.get().values()); // ShreddedPaper - use thread local
++            level.capturedBlockEntitiesThreadLocal.get().clear(); // ShreddedPaper - use thread local
++
++            treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
 +            net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-+            List<org.bukkit.craftbukkit.block.CraftBlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
-+            level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-             org.bukkit.event.world.StructureGrowEvent structureEvent = null;
-             if (treeType != null) {
-                 structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, isBonemeal, (org.bukkit.entity.Player) player.getBukkitEntity(), (List<org.bukkit.block.BlockState>) (List<? extends org.bukkit.block.BlockState>) blocks);
-@@ -430,15 +_,15 @@
-                 player.awardStat(Stats.ITEM_USED.get(usedItem)); // SPIGOT-7236 - award stat
-             }
- 
--            SignItem.openSign = null; // SPIGOT-6758 - Reset on early return
-+            SignItem.openSignThreadLocal.remove(); // SPIGOT-6758 - Reset on early return // ShreddedPaper - thread local for openSign
-             return result;
          }
--        level.captureTreeGeneration = false;
-+        level.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
-         if (player != null && result instanceof InteractionResult.Success success && success.wasItemInteraction()) {
-             InteractionHand hand = context.getHand();
-             org.bukkit.event.block.BlockPlaceEvent placeEvent = null;
--            List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStates.values());
--            level.capturedBlockStates.clear();
-+            List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
-+            level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-             if (blocks.size() > 1) {
-                 placeEvent = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockMultiPlaceEvent(level, player, hand, blocks, pos);
-             } else if (blocks.size() == 1 && usedItem != Items.POWDER_SNOW_BUCKET) { // Paper - Fix cancelled powdered snow bucket placement
-@@ -449,14 +_,14 @@
-                 result = InteractionResult.FAIL; // cancel placement
-                 // PAIL: Remove this when MC-99075 fixed
-                 player.containerMenu.forceHeldSlot(hand);
--                level.capturedTileEntities.clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot
-+                level.capturedTileEntitiesThreadLocal.get().clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot // ShreddedPaper - use thread local
-                 // revert back all captured blocks
-                 for (org.bukkit.block.BlockState blockstate : blocks) {
-                     ((org.bukkit.craftbukkit.block.CraftBlockState) blockstate).revertPlace();
-                     ((org.bukkit.craftbukkit.block.CraftBlock) blockstate.getBlock()).getBlockState().getBlock().forgetPlacer(); // Purpur - Store placer on Block when placed
-                 }
  
--                SignItem.openSign = null; // SPIGOT-6758 - Reset on early return
-+                SignItem.openSignThreadLocal.remove(); // SPIGOT-6758 - Reset on early return // ShreddedPaper - thread local for openSign
-             } else {
-                 // Change the stack to its new contents if it hasn't been tampered with.
-                 if (this.getCount() == previousCount && Objects.equals(this.components.asPatch(), previousPatch)) {
-@@ -464,7 +_,7 @@
-                     this.setCount(newCount);
-                 }
- 
--                for (java.util.Map.Entry<BlockPos, net.minecraft.world.level.block.entity.BlockEntity> e : level.capturedTileEntities.entrySet()) {
-+                for (java.util.Map.Entry<BlockPos, net.minecraft.world.level.block.entity.BlockEntity> e : level.capturedTileEntitiesThreadLocal.get().entrySet()) { // ShreddedPaper - use thread local
-                     level.setBlockEntity(e.getValue());
-                 }
- 
-@@ -500,15 +_,15 @@
-                 }
- 
-                 // SPIGOT-4678
--                if (usedItem instanceof SignItem && SignItem.openSign != null) {
-+                if (usedItem instanceof SignItem && SignItem.openSignThreadLocal.get() != null) { // ShreddedPaper - thread local for openSign
-                     try {
--                        if (level.getBlockEntity(SignItem.openSign) instanceof net.minecraft.world.level.block.entity.SignBlockEntity blockEntity) {
--                            if (level.getBlockState(SignItem.openSign).getBlock() instanceof net.minecraft.world.level.block.SignBlock signBlock) {
-+                        if (level.getBlockEntity(SignItem.openSignThreadLocal.get()) instanceof net.minecraft.world.level.block.entity.SignBlockEntity blockEntity) { // ShreddedPaper - thread local for openSign
-+                            if (level.getBlockState(SignItem.openSignThreadLocal.get()).getBlock() instanceof net.minecraft.world.level.block.SignBlock signBlock) { // ShreddedPaper - thread local for openSign
-                                 signBlock.openTextEdit(player, blockEntity, true, io.papermc.paper.event.player.PlayerOpenSignEvent.Cause.PLACE); // CraftBukkit // Paper - Add PlayerOpenSignEvent
-                             }
-                         }
-                     } finally {
--                        SignItem.openSign = null;
-+                        SignItem.openSignThreadLocal.remove(); // ShreddedPaper - thread local for openSign
-                     }
-                 }
- 
-@@ -535,8 +_,8 @@
-                 player.awardStat(Stats.ITEM_USED.get(usedItem));
-             }
-         }
--        level.capturedTileEntities.clear();
--        level.capturedBlockStates.clear();
-+        level.capturedTileEntitiesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-+        level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-         // CraftBukkit end
- 
-         return result;
+         DataComponentPatch newPatch = this.components.asPatch();

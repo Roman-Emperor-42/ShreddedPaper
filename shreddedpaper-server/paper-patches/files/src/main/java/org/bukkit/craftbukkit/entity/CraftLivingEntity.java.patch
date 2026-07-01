@@ -6,13 +6,13 @@
 +import ca.spottedleaf.moonrise.common.util.TickThread;
  import com.google.common.base.Preconditions;
  import com.google.common.collect.Sets;
- import java.util.ArrayList;
-@@ -508,7 +_,7 @@
+ import io.papermc.paper.adventure.PaperAdventure;
+@@ -505,7 +_,7 @@
  
      @Override
-     public boolean addPotionEffect(PotionEffect effect, boolean force) {
+     public boolean addPotionEffect(PotionEffect effect) {
 -        org.spigotmc.AsyncCatcher.catchOp("effect add"); // Paper
 +        TickThread.ensureTickThread(this.getHandle(), "effect add"); // Paper // ShreddedPaper
-         this.getHandle().addEffect(org.bukkit.craftbukkit.potion.CraftPotionUtil.fromBukkit(effect), EntityPotionEffectEvent.Cause.PLUGIN); // Paper - Don't ignore icon
-         return true;
+         return this.getHandle().addEffect(org.bukkit.craftbukkit.potion.CraftPotionUtil.fromBukkit(effect), EntityPotionEffectEvent.Cause.PLUGIN); // Paper - Don't ignore icon
      }
+ 

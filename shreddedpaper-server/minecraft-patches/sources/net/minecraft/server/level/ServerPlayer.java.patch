@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -22,6 +_,9 @@
+@@ -23,6 +_,9 @@
  import java.util.UUID;
  import java.util.concurrent.CompletableFuture;
  import java.util.stream.Collectors;
@@ -10,23 +10,23 @@
  import net.minecraft.ChatFormatting;
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
-@@ -248,6 +_,7 @@
+@@ -252,6 +_,7 @@
      private @Nullable Entity camera;
-     public boolean isChangingDimension;
+     private boolean isChangingDimension;
      public boolean seenCredits = false;
 +    public boolean hasMaximumTrackerBypassPermission; // ShreddedPaper
      private final ServerRecipeBook recipeBook;
      private @Nullable Vec3 levitationStartPos;
      private int levitationStartTime;
-@@ -260,6 +_,7 @@
-     private @Nullable Vec3 enteredLavaOnVehiclePosition;
+@@ -266,6 +_,7 @@
+     private @Nullable Entity currentExplosionCause;
      private SectionPos lastSectionPos = SectionPos.of(0, 0, 0);
      private ChunkTrackingView chunkTrackingView = ChunkTrackingView.EMPTY;
 +    public ChunkPos previousChunkPosRegion; // ShreddedPaper
      private ServerPlayer.@Nullable RespawnConfig respawnConfig;
      private final TextFilter textFilter;
      private boolean textFilteringEnabled;
-@@ -639,6 +_,8 @@
+@@ -648,6 +_,8 @@
          if (!pearlLevelKey.isEmpty()) {
              ServerLevel pearlLevel = this.level().getServer().getLevel(pearlLevelKey.get());
              if (pearlLevel != null) {
@@ -35,7 +35,7 @@
                  Entity pearl = EntityType.loadEntityRecursive(
                      pearlInput, pearlLevel, EntitySpawnReason.LOAD, entity -> !pearlLevel.addWithUUID(entity) ? null : entity
                  );
-@@ -647,6 +_,7 @@
+@@ -656,6 +_,7 @@
                  } else {
                      LOGGER.warn("Failed to spawn player ender pearl in level ({}), skipping", pearlLevelKey.get());
                  }
@@ -43,7 +43,7 @@
              } else {
                  LOGGER.warn("Trying to load ender pearl without level ({}) being loaded, skipping", pearlLevelKey.get());
              }
-@@ -756,9 +_,11 @@
+@@ -755,9 +_,11 @@
  
          Entity camera = this.getCamera();
          if (camera != this) {
@@ -56,7 +56,7 @@
                  if (this.wantsToStopRiding()) {
                      this.setCamera(this);
                  }
-@@ -1349,45 +_,49 @@
+@@ -1355,45 +_,49 @@
      public record RespawnResult(TeleportTransition transition, boolean isBedSpawn, boolean isAnchorSpawn) {
      }
  
@@ -121,7 +121,7 @@
          org.bukkit.entity.Player respawnPlayer = this.getBukkitEntity();
          org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(
              teleportTransition.position(),
-@@ -1400,8 +_,8 @@
+@@ -1406,8 +_,8 @@
          org.bukkit.event.player.PlayerRespawnEvent respawnEvent = new org.bukkit.event.player.PlayerRespawnEvent(
              respawnPlayer,
              location,
@@ -132,7 +132,7 @@
              teleportTransition.missingRespawnBlock(),
              respawnReason
          );
-@@ -1414,8 +_,8 @@
+@@ -1420,8 +_,8 @@
          // Spigot end
  
          // Paper start - consume anchor charge if location hasn't changed
@@ -143,7 +143,7 @@
          }
          // Paper end - consume anchor charge if location hasn't changed
          location = respawnEvent.getRespawnLocation();
-@@ -1433,10 +_,11 @@
+@@ -1439,10 +_,11 @@
                  teleportTransition.postTeleportTransition(),
                  teleportTransition.cause()
              ),
@@ -157,7 +157,7 @@
      }
  
      public boolean isReceivingWaypoints() {
-@@ -1457,7 +_,7 @@
+@@ -1463,7 +_,7 @@
          super.onAttributeUpdated(attribute);
      }
  
@@ -166,7 +166,7 @@
          final ServerLevel level, final ServerPlayer.RespawnConfig respawnConfig, final boolean consumeSpawnBlock
      ) {
          LevelData.RespawnData respawnData = respawnConfig.respawnData;
-@@ -1465,6 +_,7 @@
+@@ -1471,6 +_,7 @@
          float yaw = respawnData.yaw();
          float pitch = respawnData.pitch();
          boolean forced = respawnConfig.forced;
@@ -174,9 +174,9 @@
          BlockState blockState = level.getBlockState(pos);
          Block block = blockState.getBlock();
          if (block instanceof RespawnAnchorBlock && (forced || blockState.getValue(RespawnAnchorBlock.CHARGE) > 0) && RespawnAnchorBlock.canSetSpawn(level, pos)
-@@ -1473,7 +_,16 @@
+@@ -1479,7 +_,16 @@
              Runnable consumeAnchorCharge = null; // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
-             Optional<Vec3> standUpPosition = RespawnAnchorBlock.findStandUpPosition(EntityType.PLAYER, level, pos);
+             Optional<Vec3> standUpPosition = RespawnAnchorBlock.findStandUpPosition(EntityTypes.PLAYER, level, pos);
              if (!forced && consumeSpawnBlock && standUpPosition.isPresent()) {
 -                consumeAnchorCharge = () -> level.setBlock(pos, blockState.setValue(RespawnAnchorBlock.CHARGE, blockState.getValue(RespawnAnchorBlock.CHARGE) - 1), Block.UPDATE_ALL); // Paper - Fix SPIGOT-5989 (don't use charge until after respawn event)
 +                // ShreddedPaper start - respawn anchor block update async
@@ -192,7 +192,7 @@
              }
              final Runnable finalConsumeAnchorCharge = consumeAnchorCharge; // Paper - Fix SPIGOT-5989
  
-@@ -1495,6 +_,7 @@
+@@ -1501,6 +_,7 @@
                  ? Optional.of(new ServerPlayer.RespawnPosAngle(new Vec3(pos.getX() + 0.5, pos.getY() + 0.1, pos.getZ() + 0.5), yaw, pitch, false, false, null)) // Paper - Fix SPIGOT-5989
                  : Optional.empty();
          }
@@ -200,7 +200,7 @@
      }
  
      public void showEndCredits() {
-@@ -2686,6 +_,7 @@
+@@ -2696,6 +_,7 @@
      }
  
      public void setCamera(final @Nullable Entity newCamera) {
@@ -208,7 +208,7 @@
          Entity oldCamera = this.getCamera();
          this.camera = newCamera == null ? this : newCamera;
          if (oldCamera != this.camera) {
-@@ -2715,6 +_,7 @@
+@@ -2725,6 +_,7 @@
              this.connection.send(new ClientboundSetCameraPacket(this.camera));
              this.connection.resetPosition();
          }
@@ -216,7 +216,7 @@
      }
  
      @Override
-@@ -2984,6 +_,8 @@
+@@ -2994,6 +_,8 @@
              for (MobEffectInstance effect : livingEntity.getActiveEffects()) {
                  this.connection.send(new ClientboundRemoveMobEffectPacket(oldVehicle.getId(), effect.getEffect()));
              }

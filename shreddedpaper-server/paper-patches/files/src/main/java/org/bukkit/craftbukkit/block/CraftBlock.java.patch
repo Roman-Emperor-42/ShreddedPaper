@@ -7,7 +7,7 @@
  import com.google.common.base.Preconditions;
  import java.util.ArrayList;
  import java.util.Collection;
-@@ -79,6 +_,7 @@
+@@ -78,6 +_,7 @@
      }
  
      public net.minecraft.world.level.block.state.BlockState getBlockState() {
@@ -15,7 +15,7 @@
          return this.level.getBlockState(this.position);
      }
  
-@@ -155,6 +_,7 @@
+@@ -154,6 +_,7 @@
  
      @Override
      public byte getData() {
@@ -23,15 +23,15 @@
          return CraftMagicNumbers.toLegacyData(this.getBlockState());
      }
  
-@@ -186,6 +_,7 @@
+@@ -185,6 +_,7 @@
      }
  
      boolean setBlockState(final net.minecraft.world.level.block.state.BlockState state, final boolean applyPhysics) {
 +        if (this.level instanceof ServerLevel serverLevel) TickThread.ensureTickThread(serverLevel, this.position, "Cannot set block asynchronously!");
-         return setBlockState(this.level, this.position, this.getBlockState(), state, applyPhysics);
+         return setBlockState(this.level, this.position, state, applyPhysics);
      }
  
-@@ -221,6 +_,7 @@
+@@ -201,6 +_,7 @@
  
      @Override
      public Material getType() {
@@ -39,26 +39,31 @@
          return this.getBlockState().getBukkitMaterial();
      }
  
-@@ -526,15 +_,15 @@
-         UseOnContext context = new UseOnContext(world, null, InteractionHand.MAIN_HAND, Items.BONE_MEAL.getDefaultInstance(), new BlockHitResult(Vec3.ZERO, direction, this.getPosition(), false));
+@@ -507,19 +_,19 @@
  
          // SPIGOT-6895: Call StructureGrowEvent and BlockFertilizeEvent
+         List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates;
 -        world.captureTreeGeneration = true;
 +        world.captureTreeGenerationThreadLocal.set(true); // ShreddedPaper - use thread local
-         InteractionResult result = BoneMealItem.applyBonemeal(context);
--        world.captureTreeGeneration = false;
-+        world.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
- 
--        if (!world.capturedBlockStates.isEmpty()) {
--            TreeType treeType = SaplingBlock.treeType;
--            SaplingBlock.treeType = null;
--            List<org.bukkit.block.BlockState> states = new ArrayList<>(world.capturedBlockStates.values());
+         TreeType treeType;
+         InteractionResult result;
+         try {
+             result = BoneMealItem.applyBonemeal(context);
+         } finally {
+-            world.captureTreeGeneration = false;
+-
+-            capturedBlockStates = new ArrayList<>(world.capturedBlockStates.values());
 -            world.capturedBlockStates.clear();
-+        if (!world.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
-+            TreeType treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
-+            SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-+            List<org.bukkit.block.BlockState> states = new ArrayList<>(world.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
+-
+-            treeType = SaplingBlock.treeType;
+-            SaplingBlock.treeType = null;
++            world.captureTreeGenerationThreadLocal.remove(); // ShreddedPaper - use thread local
++
++            capturedBlockStates = new ArrayList<>(world.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
 +            world.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-             StructureGrowEvent structureEvent = null;
++
++            treeType = SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
++            SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
+         }
  
-             if (treeType != null) {
+         if (!capturedBlockStates.isEmpty()) {

@@ -7,7 +7,7 @@
  import net.minecraft.core.BlockPos;
  import net.minecraft.server.MinecraftServer;
  import net.minecraft.world.entity.Entity;
-@@ -142,7 +_,8 @@
+@@ -143,7 +_,8 @@
          maxRange = Math.min((world.spigotConfig.simulationDistance << 4) - 8, maxRange);
  
          for (final Player player : world.players()) {
@@ -17,7 +17,7 @@
              if (world.spigotConfig.ignoreSpectatorActivation && player.isSpectator()) {
                  continue;
              }
-@@ -177,13 +_,13 @@
+@@ -178,13 +_,13 @@
       * @param entity
       */
      private static void activateEntity(final Entity entity) {

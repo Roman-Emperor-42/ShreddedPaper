@@ -1,14 +1,14 @@
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -6,6 +_,7 @@
- import com.google.common.net.HostAndPort;
+@@ -5,6 +_,7 @@
+ import com.google.common.collect.ImmutableMap.Builder;
  import com.mojang.datafixers.DataFixer;
  import com.mojang.logging.LogUtils;
 +import io.multipaper.shreddedpaper.commands.ShreddedPaperCommands;
- import io.netty.handler.ssl.SslContext;
  import java.io.BufferedReader;
  import java.io.IOException;
-@@ -283,6 +_,7 @@
+ import java.io.InputStreamReader;
+@@ -244,6 +_,7 @@
          }
          org.purpurmc.purpur.PurpurConfig.registerCommands();
          // Purpur end - Migrate Setting to reintroduce end void rings

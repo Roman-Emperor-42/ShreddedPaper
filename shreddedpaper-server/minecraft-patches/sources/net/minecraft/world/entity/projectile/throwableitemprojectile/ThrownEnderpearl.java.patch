@@ -9,7 +9,7 @@
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.SectionPos;
  import net.minecraft.core.particles.ParticleTypes;
-@@ -18,6 +_,7 @@
+@@ -20,6 +_,7 @@
  import net.minecraft.world.item.Item;
  import net.minecraft.world.item.ItemStack;
  import net.minecraft.world.item.Items;
@@ -17,7 +17,7 @@
  import net.minecraft.world.level.Level;
  import net.minecraft.world.level.block.Blocks;
  import net.minecraft.world.level.block.state.BlockState;
-@@ -100,6 +_,7 @@
+@@ -102,6 +_,7 @@
              Entity owner = this.getOwner();
              if (owner != null && isAllowedToTeleportOwner(owner, level)) {
                  Vec3 teleportPos = this.oldPosition();
@@ -25,7 +25,7 @@
                  if (owner instanceof ServerPlayer player) {
                      if (player.connection.isAcceptingMessages()) {
                          // CraftBukkit start
-@@ -109,7 +_,7 @@
+@@ -111,7 +_,7 @@
                          ServerPlayer newOwner = player.teleport(new TeleportTransition(
                              level, teleportPos, Vec3.ZERO, 0.0F, 0.0F, Relative.union(Relative.ROTATION, Relative.DELTA), TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL));
                          if (newOwner == null) {
@@ -34,7 +34,7 @@
                              return;
                          }
                          // CraftBukkit end
-@@ -155,6 +_,7 @@
+@@ -157,6 +_,7 @@
  
                      this.playSound(level, teleportPos);
                  }

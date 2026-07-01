@@ -53,9 +53,9 @@
      }
  
 -    private static Vec3 findAdjustedSharedSpawnPos(final ServerLevel newLevel, final Entity entity) {
--        return entity.adjustSpawnLocation(newLevel, newLevel.getRespawnData().pos()).getBottomCenter();
+-        return Vec3.atBottomCenterOf(entity.adjustSpawnLocation(newLevel, newLevel.getRespawnData().pos()));
 +    private static CompletableFuture<Vec3> findAdjustedSharedSpawnPosAsync(final ServerLevel newLevel, final Entity entity) { // ShreddedPaper - respawn async
-+        return CompletableFuture.supplyAsync(() -> entity.adjustSpawnLocation(newLevel, newLevel.getRespawnData().pos()).getBottomCenter(), r -> ShreddedPaper.ensureSync(newLevel, newLevel.getRespawnData().pos(), r)); // ShreddedPaper - respawn async
++        return CompletableFuture.supplyAsync(() -> Vec3.atBottomCenterOf(entity.adjustSpawnLocation(newLevel, newLevel.getRespawnData().pos())), r -> ShreddedPaper.ensureSync(newLevel, newLevel.getRespawnData().pos(), r)); // ShreddedPaper - respawn async
      }
  
      public TeleportTransition withRotation(final float yRot, final float xRot) {

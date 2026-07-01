@@ -1,30 +1,32 @@
 --- a/net/minecraft/core/dispenser/DispenseItemBehavior.java
 +++ b/net/minecraft/core/dispenser/DispenseItemBehavior.java
-@@ -337,20 +_,20 @@
-                     return result;
-                 }
+@@ -293,7 +_,7 @@
                  // Paper end - Call BlockDispenseEvent
+                 List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates; // Paper
+                 org.bukkit.TreeType treeType; // Paper
 -                level.captureTreeGeneration = true; // CraftBukkit
 +                level.captureTreeGenerationThreadLocal.set(true); // CraftBukkit // ShreddedPaper - use thread local
+                 try { // Paper
                  if (!BoneMealItem.growCrop(dispensed, level, target) && !BoneMealItem.growWaterPlant(dispensed, level, target, null)) {
                      this.setSuccess(false);
-                 } else if (!level.isClientSide()) {
-                     level.levelEvent(LevelEvent.PARTICLES_AND_SOUND_PLANT_GROWTH, target, 15);
+@@ -302,13 +_,13 @@
                  }
-                 // CraftBukkit start
--                level.captureTreeGeneration = false;
--                if (!level.capturedBlockStates.isEmpty()) {
--                    org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeType;
--                    net.minecraft.world.level.block.SaplingBlock.treeType = null;
-+                level.captureTreeGenerationThreadLocal.set(false); // ShreddedPaper - use thread local
-+                if (!level.capturedBlockStatesThreadLocal.get().isEmpty()) { // ShreddedPaper - use thread local
-+                    org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
-+                    net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
-                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(target, level);
--                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStates.values());
+                 // Paper start
+                 } finally {
+-                    level.captureTreeGeneration = false;
+-
+-                    capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStates.values());
 -                    level.capturedBlockStates.clear();
-+                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
+-
+-                    treeType = net.minecraft.world.level.block.SaplingBlock.treeType;
+-                    net.minecraft.world.level.block.SaplingBlock.treeType = null;
++                    level.captureTreeGenerationThreadLocal.remove(); // ShreddedPaper - use thread local
++
++                    capturedBlockStates = new java.util.ArrayList<>(level.capturedBlockStatesThreadLocal.get().values()); // ShreddedPaper - use thread local
 +                    level.capturedBlockStatesThreadLocal.get().clear(); // ShreddedPaper - use thread local
-                     org.bukkit.event.world.StructureGrowEvent structureEvent = null;
-                     if (treeType != null) {
-                         structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, false, null, states);
++
++                    treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.get(); // ShreddedPaper - use thread local
++                    net.minecraft.world.level.block.SaplingBlock.treeTypeThreadLocal.remove(); // ShreddedPaper - use thread local
+                 }
+                 // Paper end
+                 // CraftBukkit start

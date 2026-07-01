@@ -10,7 +10,7 @@
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
  import net.minecraft.core.particles.ParticleTypes;
-@@ -142,19 +_,19 @@
+@@ -144,19 +_,19 @@
      }
  
      @Override
@@ -33,7 +33,7 @@
          }
  
          boolean toNether = newLevel.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.NETHER; // CraftBukkit
-@@ -170,16 +_,16 @@
+@@ -172,16 +_,16 @@
          // CraftBukkit start
          org.bukkit.craftbukkit.event.PortalEventResult result = org.bukkit.craftbukkit.event.CraftEventFactory.handlePortalEvents(entity, org.bukkit.craftbukkit.util.CraftLocation.toBukkit(approximateExitPos, newLevel), org.bukkit.PortalType.NETHER, portalSearchRadius, newLevel.paperConfig().environment.portalCreateRadius); // Paper - use custom portal search radius
          if (result == null) {
@@ -53,7 +53,7 @@
          final ServerLevel newLevel,
          final Entity entity,
          final BlockPos portalEntryPos,
-@@ -188,6 +_,7 @@
+@@ -190,6 +_,7 @@
          final WorldBorder worldBorder
          , org.bukkit.craftbukkit.event.PortalEventResult result // CraftBukkit
      ) {
@@ -61,7 +61,7 @@
          Optional<BlockPos> exitPortalPos = newLevel.getPortalForcer().findClosestPortalPosition(approximateExitPos, worldBorder, result.searchRadius()); // CraftBukkit
          BlockUtil.FoundRectangle exitPortal;
          TeleportTransition.PostTeleportTransition post;
-@@ -221,6 +_,7 @@
+@@ -223,6 +_,7 @@
          // CraftBukkit end
  
          return getDimensionTransitionFromExit(entity, portalEntryPos, exitPortal, newLevel, post);

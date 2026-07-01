@@ -1,6 +1,6 @@
 --- a/net/minecraft/util/Mth.java
 +++ b/net/minecraft/util/Mth.java
-@@ -317,7 +_,7 @@
+@@ -335,7 +_,7 @@
          return seed >> 16;
      }
  
