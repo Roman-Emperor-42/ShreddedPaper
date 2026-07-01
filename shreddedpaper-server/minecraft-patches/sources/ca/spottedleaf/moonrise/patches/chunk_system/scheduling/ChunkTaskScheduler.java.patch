@@ -18,7 +18,7 @@
 +        // ShreddedPaper start
 +        boolean ret = false;
 +        for (RegionPos regionPos : world.chunkScheduler.getRegionLocker().getLockedRegions()) {
-+            LevelChunkRegion region = world.chunkSource.tickingRegions.get(regionPos);
++            LevelChunkRegion region = world.getChunkSource().tickingRegions.get(regionPos);
 +            if (region != null) {
 +                ret |= region.getInternalTaskQueue().executeTask();
 +            }
@@ -30,7 +30,7 @@
 +                    for (int z = -1; z <= 1; z++) {
 +                        RegionPos borderRegionPos = new RegionPos(regionPos.x + x, regionPos.z + z);
 +                        if (world.chunkScheduler.getRegionLocker().hasLock(borderRegionPos)) continue; // Don't bother trying regions we already have locked
-+                        LevelChunkRegion region = world.chunkSource.tickingRegions.get(borderRegionPos);
++                        LevelChunkRegion region = world.getChunkSource().tickingRegions.get(borderRegionPos);
 +                        if (region != null && !region.getInternalTaskQueue().hasNoScheduledTasks()) {
 +                            ShreddedPaperRegionLocker.RegionLock lock = world.chunkScheduler.getRegionLocker().internalTryTakeReadOnlyLockNow(borderRegionPos, 0);
 +                            if (lock != null) {
@@ -58,7 +58,7 @@
      public PrioritisedExecutor.PrioritisedTask createChunkTask(final int chunkX, final int chunkZ, final Runnable run,
                                                                 final Priority priority) {
 -        return this.mainThreadExecutor.createTask(run, priority);
-+        return world.chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().createTask(run, priority); // ShreddedPaper
++        return world.getChunkSource().tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().createTask(run, priority); // ShreddedPaper
      }
  
      public PrioritisedExecutor.PrioritisedTask scheduleChunkTask(final int chunkX, final int chunkZ, final Runnable run) {
@@ -67,7 +67,7 @@
      public PrioritisedExecutor.PrioritisedTask scheduleChunkTask(final int chunkX, final int chunkZ, final Runnable run,
                                                                   final Priority priority) {
 -        return this.mainThreadExecutor.queueTask(run, priority);
-+        return world.chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().queueTask(run, priority); // ShreddedPaper
++        return world.getChunkSource().tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(chunkX, chunkZ))).getInternalTaskQueue().queueTask(run, priority); // ShreddedPaper
      }
  
      public boolean halt(final boolean sync, final long maxWaitNS) {

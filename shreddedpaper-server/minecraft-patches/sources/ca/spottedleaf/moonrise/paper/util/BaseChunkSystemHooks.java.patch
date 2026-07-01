@@ -26,14 +26,14 @@
              chunk.postProcessGeneration((ServerLevel)chunk.getLevel());
          }
          ((ServerLevel)chunk.getLevel()).startTickingChunk(chunk);
-+        chunk.level.getChunkSource().tickingRegions.addTickingChunk(chunk); // ShreddedPaper
++        ((ServerLevel)chunk.getLevel()).getChunkSource().tickingRegions.addTickingChunk(chunk); // ShreddedPaper
      }
  
      @Override
      public void onChunkNotTicking(final LevelChunk chunk, final ChunkHolder holder) {
 -        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().remove(chunk);
 +        // ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().remove(chunk); // ShreddedPaper - unused, replaced by tickingRegions
-+        chunk.level.getChunkSource().tickingRegions.removeTickingChunk(chunk); // ShreddedPaper
++        ((ServerLevel)chunk.getLevel()).getChunkSource().tickingRegions.removeTickingChunk(chunk); // ShreddedPaper
      }
  
      @Override

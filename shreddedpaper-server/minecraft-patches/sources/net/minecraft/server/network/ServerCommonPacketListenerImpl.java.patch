@@ -37,7 +37,7 @@
 +            // ShreddedPaper - run on player's thread
 +            if (this instanceof ServerGamePacketListenerImpl serverGamePacketListener) {
 +                if (TickThread.isTickThread()) {
-+                    serverGamePacketListener.player.level().chunkSource.tickingRegions.execute(RegionPos.forChunk(serverGamePacketListener.player.chunkPosition()), waitable);
++                    serverGamePacketListener.player.level().getChunkSource().tickingRegions.execute(RegionPos.forChunk(serverGamePacketListener.player.chunkPosition()), waitable);
 +                } else {
 +                    ShreddedPaper.runSync(serverGamePacketListener.player, waitable); // this.server.processQueue.add(waitable);
 +                }

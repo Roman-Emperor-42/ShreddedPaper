@@ -118,7 +118,7 @@
 +                        future = CompletableFuture.supplyAsync(supplier, r -> world.chunkScheduler.getRegionLocker().tryReadOnlyLockNow(RegionPos.forChunk(holder.vanillaChunkHolder.getPos()), r));
 +                        if (!future.isDone()) {
 +                            // Poll task while we wait for region to become unlocked
-+                            world.chunkSource.mainThreadProcessor.pollTask();
++                            world.getChunkSource().mainThreadProcessor.pollTask();
 +                        }
 +                    }
 +                } while (!future.isDone());

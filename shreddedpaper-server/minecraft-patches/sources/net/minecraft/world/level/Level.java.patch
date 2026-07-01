@@ -171,7 +171,7 @@
          if (!this.paperConfig().unsupportedSettings.ticking.blockEntities) return; // Paper - option to disable ticking
 -        (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker);
 +        // ShreddedPaper start - handle block entities ourselves
-+        LevelChunkRegion region = ((ServerLevel) this).chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(ChunkPos.containing(ticker.getPos())));
++        LevelChunkRegion region = ((ServerLevel) this).getChunkSource().tickingRegions.getOrCreate(RegionPos.forChunk(ChunkPos.containing(ticker.getPos())));
 +        synchronized (region.pendingBlockEntityTickers) {
 +            region.pendingBlockEntityTickers.add(ticker);
 +        }

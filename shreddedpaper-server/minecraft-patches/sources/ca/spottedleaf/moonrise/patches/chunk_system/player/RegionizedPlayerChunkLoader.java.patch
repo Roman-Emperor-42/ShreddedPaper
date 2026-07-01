@@ -75,7 +75,7 @@
 +                    if (!ShreddedPaperChunkTicker.isCurrentlyTickingRegion(this.world, RegionPos.forChunk(chunk.getPos()))) {
 +                        this.retryLaterSendQueue.add(this.sendQueue.dequeueLong());
 +                        ShreddedPaper.runSync(this.world, chunk.getPos(), () -> {
-+                            final LevelChunk chunk2 = this.world.chunkSource.getChunkAtIfLoadedImmediately(pendingSendX, pendingSendZ);
++                            final LevelChunk chunk2 = this.world.getChunkSource().getChunkAtIfLoadedImmediately(pendingSendX, pendingSendZ);
 +                            if (chunk2 != null && this.areNeighboursGenerated(pendingSendX, pendingSendZ, 1) && !chunk2.moonrise$isPostProcessingDone()) {
 +                                chunk2.postProcessGeneration(this.world);
 +                            }

@@ -13,7 +13,7 @@
          boolean neighborSignal = this.hasNeighborSignal(level, pos, state);
          // Paper start - Faster redstone torch rapid clock removal
 -        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.redstoneUpdateInfos;
-+        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos; // ShreddedPaper - move redstoneUpdateInfos to the region
++        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.getChunkSource().tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos; // ShreddedPaper - move redstoneUpdateInfos to the region
          if (toggles != null) {
              RedstoneTorchBlock.Toggle curr;
              while ((curr = toggles.peek()) != null && level.getGameTime() - curr.when > 60L) {
@@ -23,10 +23,10 @@
          // Paper start - Faster redstone torch rapid clock removal
 -        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = level.redstoneUpdateInfos;
 +        // ShreddedPaper start - move redstoneUpdateInfos to the region
-+        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos;
++        java.util.ArrayDeque<RedstoneTorchBlock.Toggle> toggles = ((ServerLevel) level).getChunkSource().tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos;
          if (toggles == null) {
 -            toggles = level.redstoneUpdateInfos = new java.util.ArrayDeque<>();
-+            toggles = ((ServerLevel) level).chunkSource.tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos = new java.util.ArrayDeque<>();
++            toggles = ((ServerLevel) level).getChunkSource().tickingRegions.get(RegionPos.forBlockPos(pos)).redstoneUpdateInfos = new java.util.ArrayDeque<>();
          }
 +        // ShreddedPaper end - move redstoneUpdateInfos to the region
          // Paper end - Faster redstone torch rapid clock removal
