@@ -42,7 +42,7 @@ public class ShreddedPaperChunkTicker {
         ServerLevel level = this.serverChunkCache.chunkMap.level;
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
-        level.chunkSource.tickingRegions.forEach(
+        level.getChunkSource().tickingRegions.forEach(
                 region -> futures.add(this.tickRegion(level, region, timeInhabited, filteredSpawningCategories, spawnState))
         );
 
@@ -63,7 +63,7 @@ public class ShreddedPaperChunkTicker {
             List<CompletableFuture<Void>> futures = new ArrayList<>();
 
             trackedEntitiesWorkerList.clear();
-            level.chunkSource.tickingRegions.forEach(
+            level.getChunkSource().tickingRegions.forEach(
                     region -> region.forEachTrackedEntity(trackedEntitiesWorkerList::add)
             );
 
@@ -154,7 +154,7 @@ public class ShreddedPaperChunkTicker {
             ShreddedPaperChangesBroadcaster.broadcastChanges();
 
             if (region.isEmpty()) {
-                level.chunkSource.tickingRegions.remove(region.getRegionPos());
+                level.getChunkSource().tickingRegions.remove(region.getRegionPos());
             }
         } finally {
             currentlyTickingRegion.remove();
@@ -184,11 +184,11 @@ public class ShreddedPaperChunkTicker {
     }
 
     private void _tickSpawningChunk(final ServerLevel world, final LevelChunk levelChunk, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
-        if (!world.chunkSource.chunkMap.isChunkNearPlayer(world.chunkSource.chunkMap, levelChunk.getPos(), levelChunk)) {
+        if (!world.getChunkSource().chunkMap.isChunkNearPlayer(world.getChunkSource().chunkMap, levelChunk.getPos(), levelChunk)) {
             return;
         }
 
-        world.chunkSource.tickSpawningChunk(levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
+        world.getChunkSource().tickSpawningChunk(levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
     }
 
     public static boolean willTrySpawnMobsThisTick(final ServerLevel level) {

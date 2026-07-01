@@ -54,7 +54,7 @@ public class LevelChunkRegion {
     }
 
     public void bumpLastAccess() {
-        this.lastAccessTick = this.level.levelData.getGameTime();
+        this.lastAccessTick = this.level.getGameTime();
     }
 
     public synchronized void add(LevelChunk levelChunk) {
@@ -216,7 +216,7 @@ public class LevelChunkRegion {
     }
 
     public boolean isEmpty() {
-        return this.lastAccessTick < this.level.levelData.getGameTime() - 20
+        return this.lastAccessTick < this.level.getGameTime() - 20
                 && levelChunks.isEmpty()
                 && playerTickingChunkRequests.isEmpty()
                 && tickingEntities.size() == 0
