@@ -1,0 +1,22 @@
+--- a/net/minecraft/world/level/block/entity/ContainerOpenersCounter.java
++++ b/net/minecraft/world/level/block/entity/ContainerOpenersCounter.java
+@@ -2,7 +_,10 @@
+ 
+ import java.util.List;
+ import java.util.stream.Collectors;
++
++import io.multipaper.shreddedpaper.ShreddedPaper;
+ import net.minecraft.core.BlockPos;
++import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.entity.ContainerUser;
+ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.entity.LivingEntity;
+@@ -173,7 +_,7 @@
+         scheduleRecheck(level, blockPos, blockState, 5);
+     }
+     private static void scheduleRecheck(final Level level, final BlockPos blockPos, final BlockState blockState, final int delay) {
+-        level.scheduleTick(blockPos, blockState.getBlock(), delay);
++        ShreddedPaper.ensureSync((ServerLevel) level, blockPos, () -> level.scheduleTick(blockPos, blockState.getBlock(), delay)); // ShreddedPaper - run on container's thread
+         // Paper end - delay open/close callbacks
+     }
+ }
