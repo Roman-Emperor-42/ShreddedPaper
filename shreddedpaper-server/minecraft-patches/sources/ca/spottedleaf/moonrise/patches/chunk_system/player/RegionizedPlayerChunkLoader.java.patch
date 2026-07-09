@@ -33,7 +33,7 @@
 -                new io.papermc.paper.event.packet.PlayerChunkUnloadEvent(player.getBukkitEntity().getWorld().getChunkAt(new ChunkPos(chunkX, chunkZ).longKey), player.getBukkitEntity()).callEvent();
 +                final ServerLevel level = player.level(); // ShreddedPaper - run on chunk's thread
 +                ShreddedPaper.ensureSync(level, new ChunkPos(chunkX, chunkZ), () -> { // ShreddedPaper - run on chunk's thread
-+                new io.papermc.paper.event.packet.PlayerChunkUnloadEvent(level.getWorld().getChunkAt(new ChunkPos(chunkX, chunkZ).longKey()), player.getBukkitEntity()).callEvent();
++                new io.papermc.paper.event.packet.PlayerChunkUnloadEvent(level.getWorld().getChunkAt(new ChunkPos(chunkX, chunkZ).longKey), player.getBukkitEntity()).callEvent();
 +                });// ShreddedPaper - run on chunk's thread
              }
              // Paper end - PlayerChunkUnloadEvent
