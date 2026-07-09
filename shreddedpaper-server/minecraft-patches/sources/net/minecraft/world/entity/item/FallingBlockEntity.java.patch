@@ -1,7 +1,6 @@
 --- a/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
-@@ -71,7 +_,8 @@
-     public @Nullable CompoundTag blockData;
+@@ -72,6 +_,7 @@
      public boolean forceTickAfterTeleportToDuplicate;
      protected static final EntityDataAccessor<BlockPos> DATA_START_POS = SynchedEntityData.defineId(FallingBlockEntity.class, EntityDataSerializers.BLOCK_POS);
      public boolean autoExpire = true; // Paper - Expand FallingBlock API
@@ -9,8 +8,7 @@
  
      public FallingBlockEntity(EntityType<? extends FallingBlockEntity> type, Level level) {
          super(type, level);
-@@ -148,23 +_,31 @@
-     @Override
+@@ -149,8 +_,11 @@
      public void tick() {
          if (this.blockState.isAir()) {
              this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
@@ -22,14 +20,7 @@
              this.time++;
              this.applyGravity();
              this.move(MoverType.SELF, this.getDeltaMovement());
-             this.applyEffectsFromBlocks();
-             // Paper start - Configurable falling blocks height nerf
-             if (this.level().paperConfig().fixes.fallingBlockHeightNerf.test(v -> this.getY() > v)) {
-                 if (this.dropItem && this.level() instanceof final ServerLevel serverLevel && serverLevel.getGameRules().get(GameRules.ENTITY_DROPS)) {
-                     this.spawnAtLocation(serverLevel, block);
-                 }
-                 this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.OUT_OF_WORLD);
-                 return;
+@@ -165,6 +_,11 @@
              }
              // Paper end - Configurable falling blocks height nerf
              this.handlePortal();
@@ -41,15 +32,15 @@
              if (this.level() instanceof ServerLevel serverLevel && (this.isAlive() || this.forceTickAfterTeleportToDuplicate)) {
                  BlockPos blockPos = this.blockPosition();
                  boolean flag = this.blockState.getBlock() instanceof ConcretePowderBlock;
-@@ -265,6 +_,11 @@
-         }
-     }
+@@ -263,6 +_,11 @@
  
+             this.setDeltaMovement(this.getDeltaMovement().scale(0.98));
+         }
++    }
++
 +    public void shreddedPaperTickAfterPortalTeleport() { // ShreddedPaper - async teleportation
 +        this.shreddedPaperSkipToPlacement = true;
 +        this.tick();
-+    }
-+
+     }
+ 
      public void callOnBrokenAfterFall(Block block, BlockPos pos) {
-         if (block instanceof Fallable) {
-             ((Fallable)block).onBrokenAfterFall(this.level(), pos, this);
