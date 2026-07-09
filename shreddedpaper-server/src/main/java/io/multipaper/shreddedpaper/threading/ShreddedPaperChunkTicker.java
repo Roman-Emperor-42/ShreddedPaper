@@ -157,6 +157,16 @@ public class ShreddedPaperChunkTicker {
         return region != null && level.equals(region.getLevel()) && regionPos.equals(region.getRegionPos());
     }
 
+    /**
+     * The {@link RegionPos} of the region this thread is currently ticking, or {@code null} if this thread
+     * is not inside a region tick. Used to attribute piston pushes to a region so the same entity isn't
+     * pushed by two different regions in one game tick (see Entity#move handling of MoverType.PISTON).
+     */
+    public static RegionPos currentlyTickingRegionPos() {
+        LevelChunkRegion region = currentlyTickingRegion.get();
+        return region == null ? null : region.getRegionPos();
+    }
+
     private void _tickRegionPhaseA(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             currentlyTickingRegion.set(region);
