@@ -24,17 +24,10 @@ public class ShreddedPaperEntityTicker {
             return;
         }
         entity.shreddedPaperLastTickedTick = MinecraftServer.currentTick;
-
-        // ShreddedPaper - also dedupe vehicles (minecarts, boats, etc.) that migrate across region boundaries.
-        // A vehicle could be ticked twice - once in the source region and once in the destination region
-        // before the passenger is ticked. The vehicle's deduplication prevents it from losing its passenger
-        // mid-tick and breaking contraptions.
-        Entity vehicle = entity.getVehicle();
-        if (vehicle != null && vehicle.shreddedPaperLastTickedTick == MinecraftServer.currentTick) {
-            return;
-        }
-        vehicle.shreddedPaperLastTickedTick = MinecraftServer.currentTick;
-
+        // Note: vehicles need no extra handling here - a vehicle is its own entry in the region ticking
+        // lists and is deduped by the stamp above, and passengers are already skipped below (the vehicle
+        // ticks them via tickPassenger). Stamping the vehicle from its passenger would make the vehicle
+        // skip its own tick whenever the passenger is iterated first.
         // ShreddedPaper end
 
         ProfilerFiller profilerFiller = Profiler.get();
@@ -46,7 +39,7 @@ public class ShreddedPaperEntityTicker {
                 entity.checkDespawn();
                 profilerFiller.pop();
                 if (true) { // Paper - rewrite chunk system
-                    vehicle = entity.getVehicle();
+                    Entity vehicle = entity.getVehicle();
                     if (vehicle != null) {
                         if (!vehicle.isRemoved() && vehicle.hasPassenger(entity)) {
                             return;
