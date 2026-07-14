@@ -59,9 +59,17 @@ public class ShreddedPaperChunkTicker {
             // in the same game tick regardless of the order regions were ticked.
             future = future.thenCompose(v -> drainBlockEventsAcrossRegions(level, MAX_BLOCK_EVENT_PASSES));
 
-            // Phase C: per-region entity / block-entity / player ticks and broadcast.
+            // Phase C1: entity ticks across all regions. Vanilla ticks ALL entities before ANY block
+            // entities; this barrier keeps that global order so an entity riding a contraption that
+            // straddles a region boundary (e.g. a minecart in a flying machine bucket) never collides
+            // against moving-piston shapes that have already advanced this tick - per-region fused
+            // ordering flips randomly at the boundary and lets the entity sink out of the machine.
             future = future.thenCompose(v -> scheduleAllRegions(level, region ->
-                    this._tickRegionPhaseC(level, region)));
+                    this._tickRegionPhaseC1(level, region)));
+
+            // Phase C2: per-region block-entity / player ticks and broadcast.
+            future = future.thenCompose(v -> scheduleAllRegions(level, region ->
+                    this._tickRegionPhaseC2(level, region)));
         } else {
             // Single fused pass per region; cross-region redstone may break.
             future = scheduleAllRegions(level, region ->
@@ -157,16 +165,6 @@ public class ShreddedPaperChunkTicker {
         return region != null && level.equals(region.getLevel()) && regionPos.equals(region.getRegionPos());
     }
 
-    /**
-     * The {@link RegionPos} of the region this thread is currently ticking, or {@code null} if this thread
-     * is not inside a region tick. Used to attribute piston pushes to a region so the same entity isn't
-     * pushed by two different regions in one game tick (see Entity#move handling of MoverType.PISTON).
-     */
-    public static RegionPos currentlyTickingRegionPos() {
-        LevelChunkRegion region = currentlyTickingRegion.get();
-        return region == null ? null : region.getRegionPos();
-    }
-
     private void _tickRegionPhaseA(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             currentlyTickingRegion.set(region);
@@ -224,12 +222,25 @@ public class ShreddedPaperChunkTicker {
         }
     }
 
-    private void _tickRegionPhaseC(final ServerLevel level, final LevelChunkRegion region) {
+    private void _tickRegionPhaseC1(final ServerLevel level, final LevelChunkRegion region) {
         try {
             currentlyTickingRegion.set(region);
             ShreddedPaperChangesBroadcaster.setAsWorkerThread();
 
             region.forEachTickingEntity(ShreddedPaperEntityTicker::tickEntity);
+
+            // Flush while we still hold this region's locks; any blockChanged calls from entity
+            // ticks must be sent before we release the region.
+            ShreddedPaperChangesBroadcaster.broadcastChanges();
+        } finally {
+            currentlyTickingRegion.remove();
+        }
+    }
+
+    private void _tickRegionPhaseC2(final ServerLevel level, final LevelChunkRegion region) {
+        try {
+            currentlyTickingRegion.set(region);
+            ShreddedPaperChangesBroadcaster.setAsWorkerThread();
 
             if (!ShreddedPaperConfiguration.get().optimizations.processTrackQueueInParallel) region.forEachTrackedEntity(ShreddedPaperEntityTicker::processTrackQueue);
 
