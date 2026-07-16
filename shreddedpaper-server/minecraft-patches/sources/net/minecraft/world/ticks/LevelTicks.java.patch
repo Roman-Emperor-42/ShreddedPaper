@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/ticks/LevelTicks.java
 +++ b/net/minecraft/world/ticks/LevelTicks.java
-@@ -285,4 +_,10 @@
+@@ -285,4 +_,45 @@
      interface PosAndContainerConsumer<T> {
          void accept(long pos, LevelChunkTicks<T> container);
      }
@@ -9,5 +9,40 @@
 +    public boolean isEmpty() {
 +        return this.allContainers.isEmpty();
 +    }
++
++    // ShreddedPaper start - split collect/run so LevelTicksRegionProxy can merge adjacent regions' drains
++    /**
++     * Collects this tick's due ticks into the internal run queue without running them.
++     * Must be paired with {@link #finishMergedRun()} after the caller has drained the
++     * queue via {@link #peekCollectedTick()}/{@link #pollCollectedTick()}.
++     */
++    public void collectTicksForMergedRun(long gameTime, int maxAllowedTicks) {
++        this.collectTicks(gameTime, maxAllowedTicks, Profiler.get());
++    }
++
++    public ScheduledTick<T> peekCollectedTick() {
++        return this.toRunThisTick.peek();
++    }
++
++    /**
++     * Removes the head of the collected queue, doing the same bookkeeping as
++     * {@link #runCollectedTicks} (so {@code willTickThisTick} keeps working while the
++     * merged drain is executing). The caller is responsible for actually running the tick.
++     */
++    public void pollCollectedTick() {
++        ScheduledTick<T> scheduledTick = this.toRunThisTick.poll();
++        if (scheduledTick != null) {
++            if (!this.toRunThisTickSet.isEmpty()) {
++                this.toRunThisTickSet.remove(scheduledTick);
++            }
++
++            this.alreadyRunThisTick.add(scheduledTick);
++        }
++    }
++
++    public void finishMergedRun() {
++        this.cleanupAfterTick();
++    }
++    // ShreddedPaper end - split collect/run so LevelTicksRegionProxy can merge adjacent regions' drains
 +    // ShreddedPaper end
  }

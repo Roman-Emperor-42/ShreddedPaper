@@ -40,7 +40,15 @@
      private boolean tickingBlockEntities;
      public final Thread thread;
      private final boolean isDebug;
-@@ -143,12 +_,11 @@
+@@ -136,19 +_,18 @@
+     private final RegistryAccess registryAccess;
+     private final DamageSources damageSources;
+     private final PalettedContainerFactory palettedContainerFactory;
+-    private long subTickCount;
++    private final java.util.concurrent.atomic.AtomicLong subTickCount = new java.util.concurrent.atomic.AtomicLong(); // ShreddedPaper - scheduled ticks can be created from multiple region threads; keep subtick order globally unique
+ 
+     // CraftBukkit start
+     public final io.papermc.paper.antixray.ChunkPacketBlockController chunkPacketBlockController; // Paper - Anti-Xray
      private final CraftWorld world;
      public org.bukkit.generator.@Nullable ChunkGenerator generator;
  
@@ -168,15 +176,19 @@
              if (previous != null) {
                  return previous.getHandle();
              }
-@@ -1433,15 +_,25 @@
+@@ -1433,15 +_,29 @@
      }
  
      public void addBlockEntityTicker(TickingBlockEntity ticker) {
 -        (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker);
 +        // ShreddedPaper start - handle block entities ourselves
-+        LevelChunkRegion region = ((ServerLevel) this).chunkSource.tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(ticker.getPos())));
++        io.multipaper.shreddedpaper.region.LevelChunkRegionMap tickingRegions = ((ServerLevel) this).chunkSource.tickingRegions;
++        LevelChunkRegion region = tickingRegions.getOrCreate(RegionPos.forChunk(new ChunkPos(ticker.getPos())));
 +        synchronized (region.pendingBlockEntityTickers) {
-+            region.pendingBlockEntityTickers.add(ticker);
++            // Assign the sequence inside the monitor so each region's ticker list stays
++            // sequence-ordered - the split-phase cluster drain merges adjacent regions' lists
++            // by this sequence to reproduce vanilla's global insertion order.
++            region.pendingBlockEntityTickers.add(new io.multipaper.shreddedpaper.region.SeqTickingBlockEntity(ticker, tickingRegions.blockEntityTickerSeqCounter.getAndIncrement()));
 +        }
 +        // ShreddedPaper end - handle block entities ourselves
 +//        (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker); // ShreddedPaper - handle block entities ourselves
@@ -210,15 +222,93 @@
              // Spigot end
              if (tickingBlockEntity.isRemoved()) {
                  toRemove.add(tickingBlockEntity); // Paper - Fix MC-117075; use removeAll
-@@ -1463,7 +_,7 @@
+@@ -1463,11 +_,81 @@
                  // Paper end - rewrite chunk system
              }
          }
 -        this.blockEntityTickers.removeAll(toRemove); // Paper - Fix MC-117075
+-
+-        this.tickingBlockEntities = false;
+-        this.spigotConfig.currentPrimedTnt = 0; // Spigot
+-    }
 +        blockEntityTickers.removeAll(toRemove); // Paper - Fix MC-117075 // ShreddedPaper - handle block entities ourselves
++
++        this.tickingBlockEntities = false;
++        this.spigotConfig.currentPrimedTnt = 0; // Spigot
++    }
++
++    // ShreddedPaper start - merged block entity ticking for clusters of interacting regions
++    /**
++     * Ticks the block entities of several regions merged by their registration sequence,
++     * reproducing vanilla's single global list order. {@code regionSwitch} is invoked before
++     * ticking each block entity with the region it belongs to, so the caller can keep the
++     * currently-ticking-region marker accurate.
++     */
++    public void tickBlockEntitiesMerged(final List<LevelChunkRegion> regions, final Consumer<LevelChunkRegion> regionSwitch) {
++        this.tickingBlockEntities = true;
++
++        final int regionCount = regions.size();
++        for (LevelChunkRegion region : regions) {
++            if (!region.pendingBlockEntityTickers.isEmpty()) {
++                synchronized (region.pendingBlockEntityTickers) {
++                    region.tickingBlockEntities.addAll(region.pendingBlockEntityTickers);
++                    region.pendingBlockEntityTickers.clear();
++                }
++            }
++        }
++
++        boolean runsNormally = this.tickRateManager().runsNormally();
++
++        int tickedEntities = 0;
++        final int[] indices = new int[regionCount];
++        @SuppressWarnings("unchecked")
++        final it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>[] toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet[regionCount];
++        for (int i = 0; i < regionCount; i++) {
++            toRemove[i] = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<>();
++            toRemove[i].add(null); // Paper - Fix MC-117075
++        }
++
++        while (true) {
++            // Each region's list is sequence-sorted, so a k-way merge over the heads yields
++            // vanilla's global insertion order. New tickers registered while ticking go to
++            // pendingBlockEntityTickers and are picked up next tick, like vanilla.
++            int best = -1;
++            long bestSeq = Long.MAX_VALUE;
++            for (int i = 0; i < regionCount; i++) {
++                List<TickingBlockEntity> list = regions.get(i).tickingBlockEntities;
++                if (indices[i] < list.size()) {
++                    long seq = list.get(indices[i]) instanceof io.multipaper.shreddedpaper.region.SeqTickingBlockEntity seqTicker ? seqTicker.seq() : Long.MIN_VALUE;
++                    if (best == -1 || seq < bestSeq) {
++                        bestSeq = seq;
++                        best = i;
++                    }
++                }
++            }
++            if (best == -1) break;
++
++            TickingBlockEntity tickingBlockEntity = regions.get(best).tickingBlockEntities.get(indices[best]++);
++            if (tickingBlockEntity.isRemoved()) {
++                toRemove[best].add(tickingBlockEntity);
++            } else if (runsNormally && this.shouldTickBlocksAt(tickingBlockEntity.getPos())) {
++                regionSwitch.accept(regions.get(best));
++                tickingBlockEntity.tick();
++                if ((++tickedEntities & 7) == 0) {
++                    ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel)(Level)(Object)this).moonrise$midTickTasks();
++                }
++            }
++        }
++
++        for (int i = 0; i < regionCount; i++) {
++            regions.get(i).tickingBlockEntities.removeAll(toRemove[i]);
++        }
++
++        this.tickingBlockEntities = false;
++        this.spigotConfig.currentPrimedTnt = 0; // Spigot
++    }
++    // ShreddedPaper end - merged block entity ticking for clusters of interacting regions
  
-         this.tickingBlockEntities = false;
-         this.spigotConfig.currentPrimedTnt = 0; // Spigot
+     public <T extends Entity> void guardEntityTick(Consumer<T> action, T entity) {
+         try {
 @@ -1480,7 +_,7 @@
              entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
              // Paper end - Prevent block entity and entity crashes
@@ -248,3 +338,12 @@
                  return;
              }
              // CraftBukkit end
+@@ -2072,7 +_,7 @@
+ 
+     @Override
+     public long nextSubTickCount() {
+-        return this.subTickCount++;
++        return this.subTickCount.getAndIncrement(); // ShreddedPaper - atomic
+     }
+ 
+     @Override

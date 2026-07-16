@@ -4,8 +4,8 @@ import ca.spottedleaf.concurrentutil.executor.queue.PrioritisedTaskQueue;
 import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.server.level.ServerLevel;
@@ -20,10 +20,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -42,8 +42,15 @@ public class LevelChunkRegion {
     public final List<TickingBlockEntity> tickingBlockEntities = new ReferenceArrayList<>();
     public final List<TickingBlockEntity> pendingBlockEntityTickers = new ReferenceArrayList<>();
     private final ObjectOpenHashSet<Mob> navigatingMobs = new ObjectOpenHashSet<>();
-    private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>();
+    // Insertion-ordered, deduplicating like the vanilla ObjectLinkedOpenHashSet, but each event
+    // also carries a level-global sequence number so the split-phase block-event drain can merge
+    // the queues of adjacent regions back into vanilla's single-FIFO processing order.
+    private final Object2LongLinkedOpenHashMap<BlockEventData> blockEvents = new Object2LongLinkedOpenHashMap<>();
     private volatile long lastAccessTick;
+    // Game time of the last block event queued at or near this region (within a piston's reach
+    // of its border). While fresh, this region's tick phases are merged with its interacting
+    // neighbours' so cross-boundary contraptions see vanilla ordering. See ShreddedPaperChunkTicker.
+    private volatile long lastBlockEventActivityTick = Long.MIN_VALUE;
     public ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos;
 
     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
@@ -195,12 +202,23 @@ public class LevelChunkRegion {
         toRun.forEach(DelayedTask::run);
     }
 
-    public synchronized void addBlockEvent(BlockEventData blockEvent) {
-        this.blockEvents.add(blockEvent);
+    public synchronized void addBlockEvent(BlockEventData blockEvent, AtomicLong seqCounter) {
+        // Assign the sequence inside the region monitor so this queue stays sorted by sequence;
+        // re-adding a duplicate keeps the original position and sequence, matching the vanilla
+        // linked-set behaviour.
+        if (!this.blockEvents.containsKey(blockEvent)) {
+            this.blockEvents.put(blockEvent, seqCounter.getAndIncrement());
+        }
     }
 
-    public synchronized void addAllBlockEvents(Collection<BlockEventData> blockEvents) {
-        this.blockEvents.addAll(blockEvents);
+    /**
+     * Re-queue an event that couldn't be processed this tick, keeping its original sequence
+     * so it stays ahead of anything queued after it.
+     */
+    public synchronized void addBlockEventWithSeq(BlockEventData blockEvent, long seq) {
+        if (!this.blockEvents.containsKey(blockEvent)) {
+            this.blockEvents.put(blockEvent, seq);
+        }
     }
 
     public boolean hasBlockEvents() {
@@ -215,18 +233,42 @@ public class LevelChunkRegion {
      */
     public synchronized boolean hasProcessableBlockEvents(ServerLevel level) {
         if (this.blockEvents.isEmpty()) return false;
-        for (BlockEventData event : this.blockEvents) {
+        for (BlockEventData event : this.blockEvents.keySet()) {
             if (level.shouldTickBlocksAt(event.pos())) return true;
         }
         return false;
     }
 
+    /**
+     * Sequence number of the oldest queued block event, or Long.MAX_VALUE if the queue is
+     * empty. Concurrent adds only ever append (the sequence counter is monotonic), so the
+     * head observed here can only be removed by the caller itself.
+     */
+    public synchronized long peekFirstBlockEventSeq() {
+        return this.blockEvents.isEmpty() ? Long.MAX_VALUE : this.blockEvents.getLong(this.blockEvents.firstKey());
+    }
+
     public synchronized BlockEventData removeFirstBlockEvent() {
-        return this.blockEvents.removeFirst();
+        BlockEventData event = this.blockEvents.firstKey();
+        this.blockEvents.removeLong(event);
+        return event;
     }
 
     public synchronized void removeBlockEventsIf(Predicate<BlockEventData> predicate) {
-        this.blockEvents.removeIf(predicate);
+        this.blockEvents.keySet().removeIf(predicate);
+    }
+
+    public void stampBlockEventActivity(long gameTime) {
+        this.lastBlockEventActivityTick = gameTime;
+    }
+
+    /**
+     * True if a block event was queued at or near this region recently enough that its tick
+     * phases should be merged with its interacting neighbours'. The window is a few ticks so
+     * contraptions with slow clocks stay merged between firings.
+     */
+    public boolean hasRecentBlockEventActivity(long gameTime) {
+        return gameTime - this.lastBlockEventActivityTick <= 5;
     }
 
     public boolean isEmpty() {

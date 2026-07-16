@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class LevelChunkRegionMap {
@@ -27,6 +28,8 @@ public class LevelChunkRegionMap {
     private final ServerLevel level;
     private final SimpleStampedLock regionsLock = new SimpleStampedLock();
     private final Long2ObjectOpenHashMap<LevelChunkRegion> regions = new Long2ObjectOpenHashMap<>(2048, 0.5f);
+    private final AtomicLong blockEventSeqCounter = new AtomicLong();
+    public final AtomicLong blockEntityTickerSeqCounter = new AtomicLong(); // See Level#addBlockEntityTicker
 
     public LevelChunkRegionMap(ServerLevel level) {
         this.level = level;
@@ -212,7 +215,27 @@ public class LevelChunkRegionMap {
     }
 
     public void addBlockEvent(BlockEventData blockEvent) {
-        getOrCreate(RegionPos.forBlockPos(blockEvent.pos())).addBlockEvent(blockEvent);
+        // The sequence counter is level-global so block events queued into different regions
+        // keep their relative queueing order - the split-phase drain merges adjacent regions'
+        // queues by this sequence to reproduce vanilla's single-FIFO processing order.
+        RegionPos centerRegionPos = RegionPos.forBlockPos(blockEvent.pos());
+        LevelChunkRegion centerRegion = getOrCreate(centerRegionPos);
+        centerRegion.addBlockEvent(blockEvent, this.blockEventSeqCounter);
+
+        // Stamp every region within a piston's reach (16 blocks) of the event as redstone-active,
+        // including neighbours the contraption is about to expand into, so the split-phase ticker
+        // merges their tick phases while the contraption works near the border. The 33x33 block
+        // square around the event spans at most 2x2 regions, so its corners cover all of them.
+        long gameTime = level.getGameTime();
+        centerRegion.stampBlockEventActivity(gameTime);
+        for (int dx = -16; dx <= 16; dx += 32) {
+            for (int dz = -16; dz <= 16; dz += 32) {
+                RegionPos nearbyRegion = RegionPos.forBlockPos(blockEvent.pos().getX() + dx, 0, blockEvent.pos().getZ() + dz);
+                if (nearbyRegion.longKey != centerRegionPos.longKey) {
+                    getOrCreate(nearbyRegion).stampBlockEventActivity(gameTime);
+                }
+            }
+        }
     }
 
     public void forEachRegionInBoundingBox(BoundingBox box, Consumer<LevelChunkRegion> consumer) {
