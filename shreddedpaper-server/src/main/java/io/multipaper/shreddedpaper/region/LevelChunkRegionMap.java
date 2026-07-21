@@ -9,6 +9,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.piston.MovingPistonBlock;
+import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.level.chunk.LevelChunk;
 import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionLocker;
 import io.multipaper.shreddedpaper.util.SimpleStampedLock;
@@ -222,17 +225,26 @@ public class LevelChunkRegionMap {
         LevelChunkRegion centerRegion = getOrCreate(centerRegionPos);
         centerRegion.addBlockEvent(blockEvent, this.blockEventSeqCounter);
 
-        // Stamp every region within a piston's reach (16 blocks) of the event as redstone-active,
+        // Only piston-family events are order-sensitive across region borders - container lid
+        // animations, note blocks and bells also arrive here but can run in any relative order,
+        // and must not mark regions for merged ticking or ambient container traffic chains much
+        // of the map into one serialized cluster.
+        Block block = blockEvent.block();
+        if (!(block instanceof PistonBaseBlock || block instanceof MovingPistonBlock)) {
+            return;
+        }
+
+        // Record a border edge with every region within a piston's reach (16 blocks) of the event,
         // including neighbours the contraption is about to expand into, so the split-phase ticker
-        // merges their tick phases while the contraption works near the border. The 33x33 block
-        // square around the event spans at most 2x2 regions, so its corners cover all of them.
+        // merges exactly the regions whose shared border the contraption is working across. The
+        // 33x33 block square around the event spans at most 2x2 regions, so its corners cover all
+        // of them. An interior piston clock records no edges and merges nothing.
         long gameTime = level.getGameTime();
-        centerRegion.stampBlockEventActivity(gameTime);
         for (int dx = -16; dx <= 16; dx += 32) {
             for (int dz = -16; dz <= 16; dz += 32) {
                 RegionPos nearbyRegion = RegionPos.forBlockPos(blockEvent.pos().getX() + dx, 0, blockEvent.pos().getZ() + dz);
                 if (nearbyRegion.longKey != centerRegionPos.longKey) {
-                    getOrCreate(nearbyRegion).stampBlockEventActivity(gameTime);
+                    centerRegion.stampBorderEdge(nearbyRegion.longKey, gameTime);
                 }
             }
         }

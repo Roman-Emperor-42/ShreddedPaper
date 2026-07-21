@@ -2,10 +2,13 @@ package io.multipaper.shreddedpaper.region;
 
 import ca.spottedleaf.concurrentutil.executor.queue.PrioritisedTaskQueue;
 import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.server.level.ServerLevel;
@@ -25,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 import java.util.function.Predicate;
 
 public class LevelChunkRegion {
@@ -47,10 +51,12 @@ public class LevelChunkRegion {
     // the queues of adjacent regions back into vanilla's single-FIFO processing order.
     private final Object2LongLinkedOpenHashMap<BlockEventData> blockEvents = new Object2LongLinkedOpenHashMap<>();
     private volatile long lastAccessTick;
-    // Game time of the last block event queued at or near this region (within a piston's reach
-    // of its border). While fresh, this region's tick phases are merged with its interacting
-    // neighbours' so cross-boundary contraptions see vanilla ordering. See ShreddedPaperChunkTicker.
-    private volatile long lastBlockEventActivityTick = Long.MIN_VALUE;
+    // Neighbouring regions (by RegionPos long key) near whose shared border an order-sensitive
+    // (piston-family) block event was recently queued, mapped to the game time of the last such
+    // event. While an edge is fresh, the split-phase ticker merges the two regions' tick phases
+    // so a contraption working across that border sees vanilla ordering. Guarded by this region's
+    // monitor. See ShreddedPaperChunkTicker.
+    private final Long2LongOpenHashMap activeBorderEdges = new Long2LongOpenHashMap();
     public ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos;
 
     public LevelChunkRegion(ServerLevel level, RegionPos regionPos) {
@@ -258,17 +264,29 @@ public class LevelChunkRegion {
         this.blockEvents.keySet().removeIf(predicate);
     }
 
-    public void stampBlockEventActivity(long gameTime) {
-        this.lastBlockEventActivityTick = gameTime;
+    // The freshness window is a few ticks so contraptions with slow clocks stay merged between
+    // firings, and covers the lifetime of the moving-piston block entities an event creates.
+    private static final int BORDER_EDGE_ACTIVITY_WINDOW = 5;
+
+    public synchronized void stampBorderEdge(long neighbourRegionKey, long gameTime) {
+        this.activeBorderEdges.put(neighbourRegionKey, gameTime);
     }
 
     /**
-     * True if a block event was queued at or near this region recently enough that its tick
-     * phases should be merged with its interacting neighbours'. The window is a few ticks so
-     * contraptions with slow clocks stay merged between firings.
+     * Passes the region key of each neighbour with fresh border block-event activity to the
+     * consumer, pruning stale edges as it goes.
      */
-    public boolean hasRecentBlockEventActivity(long gameTime) {
-        return gameTime - this.lastBlockEventActivityTick <= 5;
+    public synchronized void forEachRecentBorderEdge(long gameTime, LongConsumer consumer) {
+        if (this.activeBorderEdges.isEmpty()) return;
+        ObjectIterator<Long2LongMap.Entry> iterator = this.activeBorderEdges.long2LongEntrySet().fastIterator();
+        while (iterator.hasNext()) {
+            Long2LongMap.Entry entry = iterator.next();
+            if (gameTime - entry.getLongValue() <= BORDER_EDGE_ACTIVITY_WINDOW) {
+                consumer.accept(entry.getLongKey());
+            } else {
+                iterator.remove();
+            }
+        }
     }
 
     public boolean isEmpty() {

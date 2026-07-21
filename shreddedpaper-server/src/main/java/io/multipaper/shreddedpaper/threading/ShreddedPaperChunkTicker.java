@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
 import io.multipaper.shreddedpaper.region.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerChunkCache;
@@ -25,8 +26,10 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -38,6 +41,14 @@ public class ShreddedPaperChunkTicker {
     // Vanilla bounds piston/observer chains by physics; 8 passes is comfortably above what real
     // contraptions need.
     private static final int MAX_BLOCK_EVENT_PASSES = 8;
+
+    // Cap events processed per cluster per tick. A cluster that hits this is queueing new events
+    // as fast as the drain runs them - a self-powering machine (e.g. an end-portal duper) - and
+    // without a cap the drain's while-loop never empties, hanging the tick thread behind the
+    // phase barrier forever. Real contraptions burst well under 2000 events per tick; a capped
+    // cluster defers its remaining events to the next tick and logs where the machine is.
+    private static final int MAX_BLOCK_EVENTS_PER_CLUSTER_TICK = 10000;
+    private static volatile long lastEventCapWarnNanos = Long.MIN_VALUE;
 
     private static final ThreadLocal<LevelChunkRegion> currentlyTickingRegion = new ThreadLocal<>();
 
@@ -54,25 +65,35 @@ public class ShreddedPaperChunkTicker {
 
         CompletableFuture<Void> future;
         if (ShreddedPaperConfiguration.get().optimizations.splitTickPhases) {
-            // Regions with recent block-event activity near a shared border get their order-sensitive
-            // tick phases (scheduled ticks, block events, block entities) run merged on one thread, in
+            // Region pairs with a fresh border edge - a piston-family block event fired within 16
+            // blocks of their shared border in the last few ticks - get their order-sensitive tick
+            // phases (scheduled ticks, block events, block entities) run merged on one thread, in
             // vanilla's global ordering. A contraption straddling a region boundary depends on that
             // ordering end-to-end: moving-piston block entities finishing (C2) schedule observer pulses,
             // whose subtick order decides the scheduled-tick order (A), which decides the piston block
             // event order (B) - a random cross-region order at any of those stages tears the machine
-            // apart. Clusters are >= 3 regions apart, so everything else still runs in parallel.
-            final List<List<LevelChunkRegion>> mergedClusters = new ArrayList<>();
-            final Set<LevelChunkRegion> mergedClusterMembers = new ReferenceOpenHashSet<>();
+            // apart. Clusters are connected components over those edges, so only borders a contraption
+            // is actually working across get merged; everything else still runs in parallel. Adjacent
+            // clusters may have overlapping lock zones - the scheduler serializes those, and no ordering
+            // constraint exists between them because no contraption spans their border.
             final long gameTime = level.getGameTime();
-            List<LevelChunkRegion> activeRegions = new ArrayList<>();
-            level.chunkSource.tickingRegions.forEach(region -> {
-                if (region.hasRecentBlockEventActivity(gameTime)) activeRegions.add(region);
-            });
-            for (List<LevelChunkRegion> cluster : clusterInteractingRegions(activeRegions)) {
-                if (cluster.size() > 1) {
-                    mergedClusters.add(cluster);
-                    mergedClusterMembers.addAll(cluster);
+            final List<LevelChunkRegion[]> borderEdges = new ArrayList<>();
+            level.chunkSource.tickingRegions.forEach(region -> region.forEachRecentBorderEdge(gameTime, neighbourKey -> {
+                LevelChunkRegion neighbour = level.chunkSource.tickingRegions.get(new RegionPos(neighbourKey));
+                if (neighbour != null && neighbour != region) {
+                    borderEdges.add(new LevelChunkRegion[]{region, neighbour});
                 }
+            }));
+            final List<List<LevelChunkRegion>> mergedClusters = clusterConnectedRegions(borderEdges);
+            final Set<LevelChunkRegion> mergedClusterMembers = new ReferenceOpenHashSet<>();
+            for (List<LevelChunkRegion> cluster : mergedClusters) {
+                mergedClusterMembers.addAll(cluster);
+            }
+
+            if (!mergedClusters.isEmpty() && LOGGER.isDebugEnabled()) {
+                int largest = 0;
+                for (List<LevelChunkRegion> cluster : mergedClusters) largest = Math.max(largest, cluster.size());
+                LOGGER.debug("Merged tick clusters in {}: {} cluster(s), largest spans {} regions", WorldUtil.getWorldName(level), mergedClusters.size(), largest);
             }
 
             // Phase A: per-region prep + block/fluid/random ticks (no block events).
@@ -88,19 +109,31 @@ public class ShreddedPaperChunkTicker {
             // tear apart if the two engines' piston events run in a random relative order each tick.
             future = future.thenCompose(v -> drainBlockEventsAcrossRegions(level, MAX_BLOCK_EVENT_PASSES));
 
-            // Phase C1: entity ticks across all regions. Vanilla ticks ALL entities before ANY block
-            // entities; this barrier keeps that global order so an entity riding a contraption that
-            // straddles a region boundary (e.g. a minecart in a flying machine bucket) never collides
-            // against moving-piston shapes that have already advanced this tick - per-region fused
-            // ordering flips randomly at the boundary and lets the entity sink out of the machine.
-            future = future.thenCompose(v -> scheduleAllRegions(level, region ->
-                    this._tickRegionPhaseC1(level, region)));
+            if (mergedClusters.isEmpty()) {
+                // No cross-border piston activity anywhere this tick: run entities and block entities
+                // as one fused per-region phase, skipping the extra C1/C2 global barrier. The split
+                // only exists to protect entities riding contraptions across a region border, and any
+                // such contraption fires piston events near the border within the edge freshness
+                // window, producing a cluster.
+                future = future.thenCompose(v -> scheduleAllRegions(level, region -> {
+                    this._tickRegionPhaseC1(level, region);
+                    this._tickRegionPhaseC2(level, region);
+                }));
+            } else {
+                // Phase C1: entity ticks across all regions. Vanilla ticks ALL entities before ANY block
+                // entities; this barrier keeps that global order so an entity riding a contraption that
+                // straddles a region boundary (e.g. a minecart in a flying machine bucket) never collides
+                // against moving-piston shapes that have already advanced this tick - per-region fused
+                // ordering flips randomly at the boundary and lets the entity sink out of the machine.
+                future = future.thenCompose(v -> scheduleAllRegions(level, region ->
+                        this._tickRegionPhaseC1(level, region)));
 
-            // Phase C2: per-region block-entity / player ticks and broadcast. Clustered regions
-            // tick their block entities merged by registration order (vanilla's global list order).
-            future = future.thenCompose(v -> scheduleAllRegionsClustered(level, mergedClusters, mergedClusterMembers,
-                    region -> this._tickRegionPhaseC2(level, region),
-                    cluster -> this._tickClusterPhaseC2(level, cluster)));
+                // Phase C2: per-region block-entity / player ticks and broadcast. Clustered regions
+                // tick their block entities merged by registration order (vanilla's global list order).
+                future = future.thenCompose(v -> scheduleAllRegionsClustered(level, mergedClusters, mergedClusterMembers,
+                        region -> this._tickRegionPhaseC2(level, region),
+                        cluster -> this._tickClusterPhaseC2(level, cluster)));
+            }
         } else {
             // Single fused pass per region; cross-region redstone may break.
             future = scheduleAllRegions(level, region ->
@@ -155,6 +188,13 @@ public class ShreddedPaperChunkTicker {
     }
 
     private CompletableFuture<Void> drainBlockEventsAcrossRegions(final ServerLevel level, final int passesRemaining) {
+        // Regions belonging to a cluster that hit the per-tick event cap; excluded from later
+        // passes this tick so a runaway machine can't consume every remaining pass. Written by
+        // drain tasks on multiple worker threads.
+        return drainBlockEventsAcrossRegions(level, passesRemaining, ConcurrentHashMap.newKeySet());
+    }
+
+    private CompletableFuture<Void> drainBlockEventsAcrossRegions(final ServerLevel level, final int passesRemaining, final Set<LevelChunkRegion> cappedRegions) {
         if (!level.tickRateManager().runsNormally()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -163,7 +203,7 @@ public class ShreddedPaperChunkTicker {
         // piston/observer fired anywhere, the entire Phase B barrier is skipped.
         List<LevelChunkRegion> regionsWithEvents = new ArrayList<>();
         level.chunkSource.tickingRegions.forEach(region -> {
-            if (region.hasProcessableBlockEvents(level)) regionsWithEvents.add(region);
+            if (!cappedRegions.contains(region) && region.hasProcessableBlockEvents(level)) regionsWithEvents.add(region);
         });
         if (regionsWithEvents.isEmpty()) {
             return CompletableFuture.completedFuture(null);
@@ -179,7 +219,7 @@ public class ShreddedPaperChunkTicker {
 
         List<CompletableFuture<Void>> futures = new ArrayList<>(clusters.size());
         for (List<LevelChunkRegion> cluster : clusters) {
-            Runnable task = () -> this._drainClusterBlockEvents(level, cluster);
+            Runnable task = () -> this._drainClusterBlockEvents(level, cluster, cappedRegions);
             CompletableFuture<Void> future;
             if (cluster.size() == 1) {
                 future = level.chunkScheduler.schedule(cluster.get(0).getRegionPos(), task);
@@ -197,9 +237,52 @@ public class ShreddedPaperChunkTicker {
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .thenCompose(v -> {
                     if (passesRemaining <= 1) return CompletableFuture.completedFuture(null);
-                    if (!anyRegionHasProcessableBlockEvents(level)) return CompletableFuture.completedFuture(null);
-                    return drainBlockEventsAcrossRegions(level, passesRemaining - 1);
+                    if (!anyRegionHasProcessableBlockEvents(level, cappedRegions)) return CompletableFuture.completedFuture(null);
+                    return drainBlockEventsAcrossRegions(level, passesRemaining - 1, cappedRegions);
                 });
+    }
+
+    /**
+     * Builds connected components over explicit region pairs (recent border edges). Every
+     * returned cluster has at least two members.
+     */
+    private static List<List<LevelChunkRegion>> clusterConnectedRegions(List<LevelChunkRegion[]> edges) {
+        List<List<LevelChunkRegion>> clusters = new ArrayList<>();
+        if (edges.isEmpty()) return clusters;
+        Map<LevelChunkRegion, List<LevelChunkRegion>> clusterOf = new Reference2ReferenceOpenHashMap<>();
+        for (LevelChunkRegion[] edge : edges) {
+            LevelChunkRegion a = edge[0];
+            LevelChunkRegion b = edge[1];
+            List<LevelChunkRegion> clusterA = clusterOf.get(a);
+            List<LevelChunkRegion> clusterB = clusterOf.get(b);
+            if (clusterA == null && clusterB == null) {
+                List<LevelChunkRegion> cluster = new ArrayList<>(2);
+                cluster.add(a);
+                cluster.add(b);
+                clusters.add(cluster);
+                clusterOf.put(a, cluster);
+                clusterOf.put(b, cluster);
+            } else if (clusterA == null) {
+                clusterB.add(a);
+                clusterOf.put(a, clusterB);
+            } else if (clusterB == null) {
+                clusterA.add(b);
+                clusterOf.put(b, clusterA);
+            } else if (clusterA != clusterB) {
+                // This edge bridges two clusters - merge the smaller into the larger
+                if (clusterA.size() < clusterB.size()) {
+                    List<LevelChunkRegion> swap = clusterA;
+                    clusterA = clusterB;
+                    clusterB = swap;
+                }
+                clusterA.addAll(clusterB);
+                for (LevelChunkRegion member : clusterB) {
+                    clusterOf.put(member, clusterA);
+                }
+                clusters.remove(clusterB);
+            }
+        }
+        return clusters;
     }
 
     /**
@@ -242,10 +325,10 @@ public class ShreddedPaperChunkTicker {
         return false;
     }
 
-    private boolean anyRegionHasProcessableBlockEvents(final ServerLevel level) {
+    private boolean anyRegionHasProcessableBlockEvents(final ServerLevel level, final Set<LevelChunkRegion> cappedRegions) {
         AtomicBoolean found = new AtomicBoolean(false);
         level.chunkSource.tickingRegions.forEach(region -> {
-            if (!found.get() && region.hasProcessableBlockEvents(level)) {
+            if (!found.get() && !cappedRegions.contains(region) && region.hasProcessableBlockEvents(level)) {
                 found.set(true);
             }
         });
@@ -411,7 +494,7 @@ public class ShreddedPaperChunkTicker {
      * (into any member region) are picked up in the same sweep, and events cascading into
      * regions outside the cluster are handled by the next barrier pass.
      */
-    private void _drainClusterBlockEvents(final ServerLevel level, final List<LevelChunkRegion> cluster) {
+    private void _drainClusterBlockEvents(final ServerLevel level, final List<LevelChunkRegion> cluster, final Set<LevelChunkRegion> cappedRegions) {
         try {
             ShreddedPaperChangesBroadcaster.setAsWorkerThread();
             level.handlingTickThreadLocal.set(true);
@@ -419,6 +502,9 @@ public class ShreddedPaperChunkTicker {
             List<LevelChunkRegion> rescheduleRegions = null;
             List<BlockEventData> rescheduleEvents = null;
             LongArrayList rescheduleSeqs = null;
+
+            int processed = 0;
+            BlockEventData lastProcessed = null;
 
             while (true) {
                 LevelChunkRegion bestRegion = null;
@@ -432,7 +518,21 @@ public class ShreddedPaperChunkTicker {
                 }
                 if (bestRegion == null) break;
 
+                if (processed >= MAX_BLOCK_EVENTS_PER_CLUSTER_TICK) {
+                    cappedRegions.addAll(cluster);
+                    long now = System.nanoTime();
+                    if (now - lastEventCapWarnNanos > 5_000_000_000L) {
+                        lastEventCapWarnNanos = now;
+                        LOGGER.warn("Block-event drain for region cluster at {} in {} hit the {}-event cap - a contraption there is generating block events as fast as they drain (likely a self-powering machine). Deferring remaining events to next tick. Last event: {} {} at {}",
+                                cluster.get(0).getRegionPos(), WorldUtil.getWorldName(level), MAX_BLOCK_EVENTS_PER_CLUSTER_TICK,
+                                lastProcessed == null ? "?" : lastProcessed.block(), lastProcessed == null ? "" : "(params " + lastProcessed.paramA() + "," + lastProcessed.paramB() + ")", lastProcessed == null ? "?" : lastProcessed.pos().toShortString());
+                    }
+                    break;
+                }
+                processed++;
+
                 BlockEventData blockEventData = bestRegion.removeFirstBlockEvent();
+                lastProcessed = blockEventData;
                 currentlyTickingRegion.set(bestRegion);
                 if (!level.runQueuedBlockEvent(blockEventData)) {
                     // Stash unprocessable events and re-queue them after the drain (with their
