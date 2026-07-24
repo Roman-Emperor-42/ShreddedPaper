@@ -2,11 +2,14 @@ package io.multipaper.shreddedpaper.region;
 
 import ca.spottedleaf.concurrentutil.executor.queue.PrioritisedTaskQueue;
 import ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet;
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,11 +23,12 @@ import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 import java.util.function.Predicate;
 
 public class LevelChunkRegion {
@@ -42,7 +46,16 @@ public class LevelChunkRegion {
     public final List<TickingBlockEntity> tickingBlockEntities = new ReferenceArrayList<>();
     public final List<TickingBlockEntity> pendingBlockEntityTickers = new ReferenceArrayList<>();
     private final ObjectOpenHashSet<Mob> navigatingMobs = new ObjectOpenHashSet<>();
-    private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>();
+    // Insertion-ordered, deduplicating like the vanilla ObjectLinkedOpenHashSet, but each event
+    // also carries a level-global sequence number so the split-phase block-event drain can merge
+    // the queues of adjacent regions back into vanilla's single-FIFO processing order.
+    private final Object2LongLinkedOpenHashMap<BlockEventData> blockEvents = new Object2LongLinkedOpenHashMap<>();
+    // Neighbouring regions (by RegionPos long key) near whose shared border an order-sensitive
+    // (piston-family) block event was recently queued, mapped to the game time of the last such
+    // event. While an edge is fresh, the split-phase ticker merges the two regions' tick phases
+    // so a contraption working across that border sees vanilla ordering. Guarded by this region's
+    // monitor. See ShreddedPaperChunkTicker.
+    private final Long2LongOpenHashMap activeBorderEdges = new Long2LongOpenHashMap();
     private volatile long lastAccessTick;
     public ArrayDeque<RedstoneTorchBlock.Toggle> redstoneUpdateInfos;
 
@@ -195,24 +208,85 @@ public class LevelChunkRegion {
         toRun.forEach(DelayedTask::run);
     }
 
-    public synchronized void addBlockEvent(BlockEventData blockEvent) {
-        this.blockEvents.add(blockEvent);
+    public synchronized void addBlockEvent(BlockEventData blockEvent, AtomicLong seqCounter) {
+        // Assign the sequence inside the region monitor so this queue stays sorted by sequence;
+        // re-adding a duplicate keeps the original position and sequence, matching the vanilla
+        // linked-set behaviour.
+        if (!this.blockEvents.containsKey(blockEvent)) {
+            this.blockEvents.put(blockEvent, seqCounter.getAndIncrement());
+        }
     }
 
-    public synchronized void addAllBlockEvents(Collection<BlockEventData> blockEvents) {
-        this.blockEvents.addAll(blockEvents);
+    /**
+     * Re-queue an event that couldn't be processed this tick, keeping its original sequence
+     * so it stays ahead of anything queued after it.
+     */
+    public synchronized void addBlockEventWithSeq(BlockEventData blockEvent, long seq) {
+        if (!this.blockEvents.containsKey(blockEvent)) {
+            this.blockEvents.put(blockEvent, seq);
+        }
     }
 
     public boolean hasBlockEvents() {
         return !this.blockEvents.isEmpty();
     }
 
+    /**
+     * Returns true if this region has any queued block events whose position is currently
+     * tickable. Used to decide whether the cross-region block-event drain loop should run
+     * another pass — events whose chunks aren't tick-ready get rescheduled in place each
+     * pass, so checking only those would loop forever.
+     */
+    public synchronized boolean hasProcessableBlockEvents(ServerLevel level) {
+        if (this.blockEvents.isEmpty()) return false;
+        for (BlockEventData event : this.blockEvents.keySet()) {
+            if (level.shouldTickBlocksAt(event.pos())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Sequence number of the oldest queued block event, or Long.MAX_VALUE if the queue is
+     * empty. Concurrent adds only ever append (the sequence counter is monotonic), so the
+     * head observed here can only be removed by the caller itself.
+     */
+    public synchronized long peekFirstBlockEventSeq() {
+        return this.blockEvents.isEmpty() ? Long.MAX_VALUE : this.blockEvents.getLong(this.blockEvents.firstKey());
+    }
+
     public synchronized BlockEventData removeFirstBlockEvent() {
-        return this.blockEvents.removeFirst();
+        BlockEventData event = this.blockEvents.firstKey();
+        this.blockEvents.removeLong(event);
+        return event;
     }
 
     public synchronized void removeBlockEventsIf(Predicate<BlockEventData> predicate) {
-        this.blockEvents.removeIf(predicate);
+        this.blockEvents.keySet().removeIf(predicate);
+    }
+
+    // The freshness window is a few ticks so contraptions with slow clocks stay merged between
+    // firings, and covers the lifetime of the moving-piston block entities an event creates.
+    private static final int BORDER_EDGE_ACTIVITY_WINDOW = 5;
+
+    public synchronized void stampBorderEdge(long neighbourRegionKey, long gameTime) {
+        this.activeBorderEdges.put(neighbourRegionKey, gameTime);
+    }
+
+    /**
+     * Passes the region key of each neighbour with fresh border block-event activity to the
+     * consumer, pruning stale edges as it goes.
+     */
+    public synchronized void forEachRecentBorderEdge(long gameTime, LongConsumer consumer) {
+        if (this.activeBorderEdges.isEmpty()) return;
+        ObjectIterator<Long2LongMap.Entry> iterator = this.activeBorderEdges.long2LongEntrySet().fastIterator();
+        while (iterator.hasNext()) {
+            Long2LongMap.Entry entry = iterator.next();
+            if (gameTime - entry.getLongValue() <= BORDER_EDGE_ACTIVITY_WINDOW) {
+                consumer.accept(entry.getLongKey());
+            } else {
+                iterator.remove();
+            }
+        }
     }
 
     public boolean isEmpty() {

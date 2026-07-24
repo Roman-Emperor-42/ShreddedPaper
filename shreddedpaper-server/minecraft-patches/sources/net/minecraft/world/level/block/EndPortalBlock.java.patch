@@ -35,7 +35,7 @@
 +        CompletableFuture<Void> future; // ShreddedPaper - async teleportation
          if (!fromEnd) {
 -            EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos).below(), true, entity); // CraftBukkit
-+            future = CompletableFuture.runAsync(() -> EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(spawnPos.get()).below(), true, entity), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // CraftBukkit // ShreddedPaper - async teleportation
++            future = CompletableFuture.runAsync(() -> EndPlatformFeature.createEndPlatform(newLevel, BlockPos.containing(Vec3.atBottomCenterOf(spawnBlockPos)).below(), true, entity), r -> ShreddedPaper.ensureSync(newLevel, spawnBlockPos, r)); // CraftBukkit // ShreddedPaper - async teleportation - use immutable spawnBlockPos so the platform isn't shifted by the player y-subtraction below
              yRot = Direction.WEST.toYRot();
              xRot = 0.0F;
              relatives = Relative.union(Relative.DELTA, Set.of(Relative.X_ROT));

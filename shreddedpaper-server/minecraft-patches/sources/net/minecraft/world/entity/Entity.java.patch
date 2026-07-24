@@ -31,12 +31,13 @@
  import org.jetbrains.annotations.Contract;
  import org.jspecify.annotations.Nullable;
  import org.slf4j.Logger;
-@@ -298,6 +_,8 @@
+@@ -298,6 +_,9 @@
      public double xOld;
      public double yOld;
      public double zOld;
 +    public @Nullable ChunkPos previousTickingChunkPosRegion; // ShreddedPaper
 +    public @Nullable ChunkPos previousTrackedChunkPosRegion; // ShreddedPaper
++    public int shreddedPaperLastTickedTick = -1; // ShreddedPaper - prevent double-ticking entities that migrate across a region boundary mid-tick
      public float maxUpStep; // Purpur - Add option to set armorstand step height
      public boolean noPhysics;
      public final RandomSource random; // Paper - Share random for entities to make them more random // Purpur - Add toggle for RNG manipulation
@@ -93,27 +94,94 @@
              // Paper end - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
              this.needsSync = true;
          }
-@@ -3634,7 +_,9 @@
+@@ -3634,26 +_,105 @@
          }
      }
  
 +    private @Nullable CompletableFuture<Void> beingPortalled = null; // ShreddedPaper - async teleportation
++    private volatile boolean shreddedPaperInlinePortalTeleport = false; // ShreddedPaper - gravity block duping - true while an end-portal teleport chain is guaranteed to run inline within handlePortal
++
++    public boolean isShreddedPaperBeingPortalled() { // ShreddedPaper - async teleportation
++        return this.beingPortalled != null && !this.beingPortalled.isDone();
++    }
++
      protected void handlePortal() {
 +        if (this.beingPortalled != null && !this.beingPortalled.isDone()) return; // Currently being teleported by a portal // ShreddedPaper - async teleportation
          if (this.level() instanceof ServerLevel level) {
              this.processPortalCooldown();
              if (this.portalProcess != null) {
-@@ -3642,13 +_,17 @@
++                // ShreddedPaper start - gravity block duping - falling blocks must teleport AND place their block on the
++                // same game tick they enter an end portal (vanilla runs the whole teleport synchronously inside
++                // handlePortal, then the rest of FallingBlockEntity.tick places the block via forceTickAfterTeleportToDuplicate).
++                // If the teleport is deferred, piston-clocked dupers (ianxofour-style) move the world on before the placement
++                // leg runs and the dupe silently fails. End portals have a fixed, known destination, so take the destination
++                // region's lock right now; with both the origin lock (already held by this region tick) and the destination
++                // lock held, every ensureSync in the chain below runs inline and the teleport completes synchronously before
++                // this method returns.
++                // The lock is taken BEFORE processPortalTeleportation/setPortalCooldown touch any state so that a failed
++                // acquisition can skip the teleport for this tick without side effects: a landed (duper) block then places
++                // itself at the origin like a normal landing - the machine keeps its block and only this cycle's duplicate
++                // is skipped - while a still-falling block simply retries the teleport next tick. Deferring the teleport
++                // instead would place the block late into a machine that has already moved on, destroying it.
++                io.multipaper.shreddedpaper.threading.ShreddedPaperRegionLocker.RegionLock inlinePortalLock = null;
++                boolean inlinePortalTeleport = false;
++                if (this instanceof net.minecraft.world.entity.item.FallingBlockEntity && this.portalProcess.isInsidePortalThisTick() && this.canUsePortal(false)
++                        && this.portalProcess.isSamePortal((net.minecraft.world.level.block.EndPortalBlock) net.minecraft.world.level.block.Blocks.END_PORTAL)) {
++                    boolean endTypeWorld = level.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.END; // Match EndPortalBlock#getPortalDestinationAsync (SPIGOT-6152)
++                    net.minecraft.world.level.storage.LevelData.RespawnData respawnData = level.getRespawnData();
++                    ServerLevel destinationLevel = level.getServer().getLevel(endTypeWorld ? respawnData.dimension() : Level.END);
++                    if (destinationLevel != null) {
++                        ChunkPos destinationChunk = ChunkPos.containing(endTypeWorld ? respawnData.pos() : ServerLevel.END_SPAWN_POINT);
++                        if (ShreddedPaper.isSync(destinationLevel, destinationChunk)) {
++                            inlinePortalTeleport = true;
++                        } else {
++                            RegionPos destinationRegion = RegionPos.forChunk(destinationChunk);
++                            long deadline = System.nanoTime() + 5_000_000L; // Give up after 5ms
++                            while ((inlinePortalLock = destinationLevel.chunkScheduler.getRegionLocker().tryTakeLockNow(destinationRegion)) == null && System.nanoTime() < deadline) {
++                                java.util.concurrent.locks.LockSupport.parkNanos(20_000L);
++                            }
++                            if (inlinePortalLock == null) {
++                                return; // Skip the teleport this tick; portal state is untouched (see comment above)
++                            }
++                            inlinePortalTeleport = true;
++                        }
++                    }
++                }
++                try {
++                // ShreddedPaper end - gravity block duping
+                 if (this.portalProcess.processPortalTeleportation(level, this, this.canUsePortal(false))) {
                      ProfilerFiller profiler = Profiler.get();
                      profiler.push("portal");
                      this.setPortalCooldown();
 -                    TeleportTransition teleportTransition = this.portalProcess.getPortalDestination(level, this);
++                    // ShreddedPaper start - async teleportation - capture momentum/rotation at trigger time so it survives the deferred teleport.
++                    // The teleport is run asynchronously, but the entity keeps ticking in the origin dimension in the meantime (gravity,
++                    // drag and especially collision against the portal frame), which would otherwise zero out its velocity before teleport()
++                    // reads it. Snapshot here and restore just before teleporting to match vanilla's synchronous capture semantics.
++                    final Vec3 portalDeltaMovement = this.getDeltaMovement();
++                    final float portalYRot = this.getYRot();
++                    final float portalXRot = this.getXRot();
++                    // ShreddedPaper end - async teleportation
++                    this.shreddedPaperInlinePortalTeleport = inlinePortalTeleport; // ShreddedPaper - gravity block duping
 +                    this.beingPortalled = this.portalProcess.getPortalDestinationAsync(level, this).thenCompose(teleportTransition -> { // ShreddedPaper - async teleportation
                      if (teleportTransition != null) {
 +                        return CompletableFuture.runAsync(() -> { // ShreddedPaper - async teleportation
                          ServerLevel newLevel = teleportTransition.newLevel();
                          if (level.isAllowedToEnterPortal(newLevel) && (newLevel.dimension() == level.dimension() || this.canTeleport(level, newLevel))) {
++                            // ShreddedPaper start - async teleportation - restore captured momentum/rotation before teleporting
++                            this.setDeltaMovement(portalDeltaMovement);
++                            this.setYRot(portalYRot);
++                            this.setXRot(portalXRot);
++                            // ShreddedPaper end - async teleportation
++                            if (!this.isRemoved()) { // ShreddedPaper - async teleportation
                              this.teleport(teleportTransition);
++                            // ShreddedPaper start - async teleportation - sand duping runs placement in the same tick after teleport on Paper; resume that tick leg once the deferred teleport completes.
++                            // When the teleport ran inline (gravity block duping), the placement leg runs naturally as FallingBlockEntity.tick continues after handlePortal returns - resuming here too would place the block twice.
++                            if (this instanceof net.minecraft.world.entity.item.FallingBlockEntity fallingBlockEntity && fallingBlockEntity.forceTickAfterTeleportToDuplicate && !this.shreddedPaperInlinePortalTeleport) {
++                                fallingBlockEntity.shreddedPaperTickAfterPortalTeleport();
++                            }
++                            // ShreddedPaper end - async teleportation
++                            }
                          }
 +                        }, r -> ShreddedPaper.ensureSync(this, teleportTransition.newLevel(), ChunkPos.containing(BlockPos.containing(teleportTransition.position())), r)); // ShreddedPaper - async teleportation
                      }
@@ -122,6 +190,17 @@
  
                      profiler.pop();
                  } else if (this.portalProcess.hasExpired()) {
+                     this.portalProcess = null;
+                 }
++                // ShreddedPaper start - gravity block duping
++                } finally {
++                    this.shreddedPaperInlinePortalTeleport = false;
++                    if (inlinePortalLock != null) inlinePortalLock.unlock();
++                }
++                // ShreddedPaper end - gravity block duping
+             }
+         }
+     }
 @@ -4155,6 +_,11 @@
              PositionMoveRotation absolutePosition = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(this), PositionMoveRotation.of(transition), transition.relatives());
              Vec3 velocity = absolutePosition.deltaMovement(); // Paper

@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1,10 +_,20 @@
+@@ -1,12 +_,20 @@
  package net.minecraft.server.level;
  
 +import ca.spottedleaf.moonrise.common.util.TickThread;
@@ -10,6 +10,8 @@
  import com.mojang.datafixers.DataFixer;
  import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
+-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 +import io.multipaper.shreddedpaper.ShreddedPaper;
 +import io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration;
 +import io.multipaper.shreddedpaper.region.LevelChunkRegion;
@@ -18,14 +20,16 @@
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperRegionScheduler;
 +import io.multipaper.shreddedpaper.threading.ShreddedPaperTickThread;
 +import io.multipaper.shreddedpaper.util.NoOpServerWaypointManager;
- import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
- import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  import it.unimi.dsi.fastutil.longs.LongSet;
-@@ -26,7 +_,10 @@
+ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+@@ -26,7 +_,12 @@
  import java.util.Optional;
  import java.util.Set;
  import java.util.UUID;
 +import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.ConcurrentMap;
 +import java.util.concurrent.CopyOnWriteArrayList;
  import java.util.concurrent.Executor;
 +import java.util.concurrent.Executors;
@@ -46,7 +50,7 @@
      private final ServerWaypointManager waypointManager;
      private EnvironmentAttributeSystem environmentAttributes;
      // Paper - rewrite chunk system
-@@ -205,21 +_,23 @@
+@@ -205,21 +_,22 @@
      private final SleepStatus sleepStatus;
      private int emptyTime;
      private final PortalForcer portalForcer;
@@ -64,11 +68,11 @@
 -    private final List<BlockEventData> blockEventsToReschedule = new ArrayList<>(64);
 -    private boolean handlingTick;
 +    // private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents = new ObjectLinkedOpenHashSet<>(); // ShreddedPaper - moved into each region
-+    private final ThreadLocal<List<BlockEventData>> blockEventsToRescheduleThreadLocal = ThreadLocal.withInitial(() -> new ArrayList<>(64)); // ShreddedPaper
 +    public ThreadLocal<Boolean> handlingTickThreadLocal = ThreadLocal.withInitial(() -> false); // ShreddedPaper
      private final List<CustomSpawner> customSpawners;
      private @Nullable EnderDragonFight dragonFight;
-     private final Int2ObjectMap<EnderDragonPart> dragonParts = new Int2ObjectOpenHashMap<>();
+-    private final Int2ObjectMap<EnderDragonPart> dragonParts = new Int2ObjectOpenHashMap<>();
++    private final ConcurrentMap<Integer, EnderDragonPart> dragonParts = new ConcurrentHashMap<>(); // ShreddedPaper - thread-safe (concurrent put/remove from multiple region threads, iterated by getEntities)
      private final StructureManager structureManager;
      private final StructureCheck structureCheck;
      private final boolean tickTime;
@@ -551,7 +555,7 @@
          this.neighborUpdater.updateNeighborsAtExceptFromFacing(pos, sourceBlock, null, orientation);
      }
  
-@@ -2111,14 +_,15 @@
+@@ -2111,35 +_,63 @@
  
      @Override
      public void blockEvent(final BlockPos pos, final Block block, final int b0, final int b1) {
@@ -561,31 +565,85 @@
  
 -    private void runBlockEvents() {
 -        this.blockEventsToReschedule.clear();
-+    public void runBlockEvents(final LevelChunkRegion region) { // ShreddedPaper
-+        List<BlockEventData> blockEventsToReschedule = blockEventsToRescheduleThreadLocal.get(); // ShreddedPaper
-+        blockEventsToReschedule.clear(); // ShreddedPaper
++    public void runBlockEvents(final LevelChunkRegion region) { // ShreddedPaper - single-region drain, used by the fused tick path
++        List<BlockEventData> eventsToReschedule = null; // ShreddedPaper
++        it.unimi.dsi.fastutil.longs.LongArrayList seqsToReschedule = null; // ShreddedPaper
  
 -        while (!this.blockEvents.isEmpty()) {
 -            BlockEventData eventData = this.blockEvents.removeFirst();
+-            if (this.shouldTickBlocksAt(eventData.pos())) {
+-                if (this.doBlockEvent(eventData)) {
+-                    this.server
+-                        .getPlayerList()
+-                        .broadcast(
+-                            null,
+-                            eventData.pos().getX(),
+-                            eventData.pos().getY(),
+-                            eventData.pos().getZ(),
+-                            64.0,
+-                            this.dimension(),
+-                            new ClientboundBlockEventPacket(eventData.pos(), eventData.block(), eventData.paramA(), eventData.paramB())
+-                        );
 +        while (region.hasBlockEvents()) { // ShreddedPaper
-+            BlockEventData eventData = region.removeFirstBlockEvent(); // ShreddedPaper
-             if (this.shouldTickBlocksAt(eventData.pos())) {
-                 if (this.doBlockEvent(eventData)) {
-                     this.server
-@@ -2134,11 +_,11 @@
-                         );
++            long seq = region.peekFirstBlockEventSeq(); // ShreddedPaper
++            BlockEventData blockEventData = region.removeFirstBlockEvent(); // ShreddedPaper
++            if (!this.runQueuedBlockEvent(blockEventData)) { // ShreddedPaper
++                // ShreddedPaper start - keep the original sequence so the event stays ordered ahead of newer events
++                if (eventsToReschedule == null) {
++                    eventsToReschedule = new java.util.ArrayList<>();
++                    seqsToReschedule = new it.unimi.dsi.fastutil.longs.LongArrayList();
                  }
-             } else {
+-            } else {
 -                this.blockEventsToReschedule.add(eventData);
-+                blockEventsToReschedule.add(eventData); // ShreddedPaper
-             }
-         }
- 
+-            }
+-        }
+-
 -        this.blockEvents.addAll(this.blockEventsToReschedule);
-+        region.addAllBlockEvents(blockEventsToReschedule); // ShreddedPaper
-     }
+-    }
++                eventsToReschedule.add(blockEventData);
++                seqsToReschedule.add(seq);
++                // ShreddedPaper end
++            }
++        }
++
++        // ShreddedPaper start
++        if (eventsToReschedule != null) {
++            for (int i = 0; i < eventsToReschedule.size(); i++) {
++                region.addBlockEventWithSeq(eventsToReschedule.get(i), seqsToReschedule.getLong(i));
++            }
++        }
++        // ShreddedPaper end
++    }
++
++    // ShreddedPaper start - split out so the split-phase cluster drain can run events one at a time
++    /**
++     * Runs a single dequeued block event. Returns false if the event's position isn't
++     * currently tickable and the event should be re-queued for a later tick.
++     */
++    public boolean runQueuedBlockEvent(final BlockEventData eventData) {
++        if (!this.shouldTickBlocksAt(eventData.pos())) {
++            return false;
++        }
++
++        if (this.doBlockEvent(eventData)) {
++            this.server
++                .getPlayerList()
++                .broadcast(
++                    null,
++                    eventData.pos().getX(),
++                    eventData.pos().getY(),
++                    eventData.pos().getZ(),
++                    64.0,
++                    this.dimension(),
++                    new ClientboundBlockEventPacket(eventData.pos(), eventData.block(), eventData.paramA(), eventData.paramB())
++                );
++        }
++        return true;
++    }
++    // ShreddedPaper end
  
      private boolean doBlockEvent(final BlockEventData eventData) {
+         BlockState state = this.getBlockState(eventData.pos());
 @@ -2388,7 +_,7 @@
              final MapItemSavedData mapData = storage.get(MapItemSavedData.type(id)); // get populates the cache
              if (mapData != null) { // map was read, init it and return

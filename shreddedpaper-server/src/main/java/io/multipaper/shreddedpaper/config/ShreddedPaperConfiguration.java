@@ -46,6 +46,7 @@ public class ShreddedPaperConfiguration extends ConfigurationPart {
         public boolean useLazyExecuteWhenNotFlushing = true;
         public boolean processTrackQueueInParallel = true;
         public boolean flushQueueInParallel = true;
+        public boolean splitTickPhases = false;
         public int maximumTrackersPerEntity = 500;
         public long trackerFullUpdateFrequency = 20;
         public long purgeStaleTicketsFrequency = 20;

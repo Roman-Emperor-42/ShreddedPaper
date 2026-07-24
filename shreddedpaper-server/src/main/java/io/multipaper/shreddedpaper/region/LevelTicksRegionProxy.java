@@ -14,6 +14,8 @@ import net.minecraft.world.ticks.ScheduledTick;
 import org.slf4j.Logger;
 import io.multipaper.shreddedpaper.util.SimpleStampedLock;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.LongPredicate;
@@ -73,6 +75,54 @@ public class LevelTicksRegionProxy<T> extends LevelTicks<T> {
         get(regionPos).ifPresent(v -> {
             v.tick(time, maxTicks, ticker);
         });
+    }
+
+    /**
+     * Runs the due scheduled ticks of several regions merged in vanilla's global drain order
+     * (priority, then subtick order). Vanilla drains all of a level's scheduled ticks through
+     * one queue; per-region draining loses the cross-region relative order, which breaks
+     * contraptions whose observers fire on both sides of a region boundary in the same tick.
+     * All ticks are collected before any runs, exactly like a single vanilla drain, so ticks
+     * scheduled during execution run on a later tick.
+     */
+    public void tickMerged(List<RegionPos> regionPositions, long time, int maxTicks, BiConsumer<BlockPos, T> ticker) {
+        List<LevelTicks<T>> members = new ArrayList<>(regionPositions.size());
+        for (RegionPos regionPos : regionPositions) {
+            get(regionPos).ifPresent(members::add);
+        }
+        if (members.isEmpty()) {
+            return;
+        }
+        if (members.size() == 1) {
+            members.get(0).tick(time, maxTicks, ticker);
+            return;
+        }
+
+        try {
+            for (LevelTicks<T> member : members) {
+                member.collectTicksForMergedRun(time, maxTicks);
+            }
+
+            while (true) {
+                LevelTicks<T> bestMember = null;
+                ScheduledTick<T> bestTick = null;
+                for (LevelTicks<T> member : members) {
+                    ScheduledTick<T> tick = member.peekCollectedTick();
+                    if (tick != null && (bestTick == null || ScheduledTick.INTRA_TICK_DRAIN_ORDER.compare(tick, bestTick) < 0)) {
+                        bestMember = member;
+                        bestTick = tick;
+                    }
+                }
+                if (bestMember == null) break;
+
+                bestMember.pollCollectedTick();
+                ticker.accept(bestTick.pos(), bestTick.type());
+            }
+        } finally {
+            for (LevelTicks<T> member : members) {
+                member.finishMergedRun();
+            }
+        }
     }
 
     @Override

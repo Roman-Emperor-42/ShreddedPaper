@@ -1,0 +1,46 @@
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -73,6 +_,7 @@
+     public boolean forceTickAfterTeleportToDuplicate;
+     protected static final EntityDataAccessor<BlockPos> DATA_START_POS = SynchedEntityData.defineId(FallingBlockEntity.class, EntityDataSerializers.BLOCK_POS);
+     public boolean autoExpire = true; // Paper - Expand FallingBlock API
++    private transient boolean shreddedPaperSkipToPlacement = false; // ShreddedPaper - async teleportation
+ 
+     public FallingBlockEntity(final EntityType<? extends FallingBlockEntity> type, final Level level) {
+         super(type, level);
+@@ -150,8 +_,11 @@
+     public void tick() {
+         if (this.blockState.isAir()) {
+             this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
++        } else if (this.isShreddedPaperBeingPortalled() && !this.shreddedPaperSkipToPlacement) { // ShreddedPaper - async teleportation - freeze while a deferred portal teleport is in flight so the block is not placed/discarded first
++            return;
+         } else {
+             Block block = this.blockState.getBlock();
++            if (!this.shreddedPaperSkipToPlacement) { // ShreddedPaper - async teleportation
+             this.time++;
+             this.applyGravity();
+             this.move(MoverType.SELF, this.getDeltaMovement());
+@@ -166,6 +_,11 @@
+             }
+             // Paper end - Configurable falling blocks height nerf
+             this.handlePortal();
++            if (this.isShreddedPaperBeingPortalled()) { // ShreddedPaper - async teleportation
++                return;
++            }
++            } // ShreddedPaper - async teleportation
++            this.shreddedPaperSkipToPlacement = false; // ShreddedPaper - async teleportation
+             if (this.level() instanceof ServerLevel serverLevel && (this.isAlive() || this.forceTickAfterTeleportToDuplicate)) {
+                 BlockPos pos = this.blockPosition();
+                 boolean isConcrete = this.blockState.getBlock() instanceof ConcretePowderBlock;
+@@ -263,6 +_,11 @@
+ 
+             this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
+         }
++    }
++
++    public void shreddedPaperTickAfterPortalTeleport() { // ShreddedPaper - async teleportation
++        this.shreddedPaperSkipToPlacement = true;
++        this.tick();
+     }
+ 
+     public void callOnBrokenAfterFall(final Block block, final BlockPos pos) {
