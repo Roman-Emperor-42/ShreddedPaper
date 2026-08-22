@@ -11,13 +11,16 @@
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
  import net.minecraft.ReportedException;
-@@ -334,6 +_,41 @@
+@@ -334,6 +_,44 @@
      }
  
      public boolean executeMainThreadTask() {
 +        // ShreddedPaper start
 +        boolean ret = false;
-+        for (RegionPos regionPos : world.chunkScheduler.getRegionLocker().getLockedRegions()) {
++        // Snapshot the locked regions - executed tasks and the border-region locking below can add/remove
++        // entries in the underlying thread-local set, which corrupts a live ObjectOpenHashSet iterator
++        RegionPos[] lockedRegions = world.chunkScheduler.getRegionLocker().getLockedRegions().toArray(new RegionPos[0]);
++        for (RegionPos regionPos : lockedRegions) {
 +            LevelChunkRegion region = world.getChunkSource().tickingRegions.get(regionPos);
 +            if (region != null) {
 +                ret |= region.getInternalTaskQueue().executeTask();
@@ -25,7 +28,7 @@
 +        }
 +        if (!ret) {
 +            // Try bordering regions to our locked regions
-+            for (RegionPos regionPos : world.chunkScheduler.getRegionLocker().getLockedRegions()) {
++            for (RegionPos regionPos : lockedRegions) {
 +                for (int x = -1; x <= 1; x++) {
 +                    for (int z = -1; z <= 1; z++) {
 +                        RegionPos borderRegionPos = new RegionPos(regionPos.x + x, regionPos.z + z);
