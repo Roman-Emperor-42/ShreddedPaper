@@ -9,3 +9,42 @@
              }
  
              if (this.level().isClientSide()) {
+@@ -259,11 +_,37 @@
+         this.setDeltaMovement(movement.x * multiplier, movement.y + (movement.y < 0.06F ? 5.0E-4F : 0.0F), movement.z * multiplier);
+     }
+ 
++    // ShreddedPaper start - budget merge scanning per tick thread
++    // Merging is O(n^2) in the number of items piled together: every mergeable item scans its
++    // neighbourhood, and each scan runs the (component-map reading) isMergable predicate against
++    // every nearby item. A large enough pile (e.g. an unattended farm) stalls its region's tick
++    // for tens of seconds. Cap how many candidates each tick thread may examine per server tick;
++    // once exhausted, remaining merge scans are skipped and retried on later ticks.
++    private static final ThreadLocal<MergeScanBudget> MERGE_SCAN_BUDGET = ThreadLocal.withInitial(MergeScanBudget::new);
++
++    private static final class MergeScanBudget {
++        private int tick = Integer.MIN_VALUE;
++        private int remaining;
++    }
++    // ShreddedPaper end - budget merge scanning per tick thread
++
+     private void mergeWithNeighbours() {
+         if (this.isMergable()) {
++            // ShreddedPaper start - budget merge scanning per tick thread
++            final MergeScanBudget budget = MERGE_SCAN_BUDGET.get();
++            final int currentTick = net.minecraft.server.MinecraftServer.currentTick;
++            if (budget.tick != currentTick) {
++                budget.tick = currentTick;
++                final int maxBudget = io.multipaper.shreddedpaper.config.ShreddedPaperConfiguration.get().optimizations.itemMergeScanBudget;
++                budget.remaining = maxBudget < 0 ? Integer.MAX_VALUE : maxBudget;
++            }
++            if (budget.remaining <= 0) {
++                return;
++            }
++            // ShreddedPaper end - budget merge scanning per tick thread
+             double radius = this.level().spigotConfig.itemMerge; // Spigot
+             for (ItemEntity entity : this.level()
+-                .getEntitiesOfClass(ItemEntity.class, this.getBoundingBox().inflate(radius, this.level().paperConfig().entities.behavior.onlyMergeItemsHorizontally ? 0 : radius - 0.5D, radius), other -> other != this && other.isMergable())) { // Spigot // Paper - configuration to only merge items horizontally
++                .getEntitiesOfClass(ItemEntity.class, this.getBoundingBox().inflate(radius, this.level().paperConfig().entities.behavior.onlyMergeItemsHorizontally ? 0 : radius - 0.5D, radius), other -> budget.remaining-- > 0 && other != this && other.isMergable())) { // Spigot // Paper - configuration to only merge items horizontally // ShreddedPaper - budget merge scanning per tick thread
+                 if (entity.isMergable()) {
+                     // Paper start - Fix items merging through walls
+                     if (this.level().paperConfig().fixes.fixItemsMergingThroughWalls) {

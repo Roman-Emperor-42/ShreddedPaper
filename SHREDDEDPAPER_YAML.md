@@ -69,6 +69,14 @@ optimizations:
   # may break, but per-tick scheduling overhead is lower.
   split-tick-phases: false
 
+  # Maximum number of item entities each tick thread may examine per tick while
+  # merging dropped items. Item merging is O(n^2) in the number of items piled
+  # together, so a huge pile (e.g. an unattended farm) can stall its region's
+  # tick for tens of seconds. Once a thread exhausts its budget for the tick,
+  # remaining merge scans are skipped and retried on later ticks. Item pickup
+  # and despawning are unaffected. Set to -1 to disable the cap.
+  item-merge-scan-budget: 10000
+
 
   # Maximum number of players to render each entity to. Can be bypassed with the
   # permission 'shreddedpaper.maximumtrackerbypass'

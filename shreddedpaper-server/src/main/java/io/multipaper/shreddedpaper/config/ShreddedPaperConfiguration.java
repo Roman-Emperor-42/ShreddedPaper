@@ -51,6 +51,8 @@ public class ShreddedPaperConfiguration extends ConfigurationPart {
         public long trackerFullUpdateFrequency = 20;
         public long purgeStaleTicketsFrequency = 20;
         public boolean writePlayerSavesAsync = true;
+        @Comment("Maximum number of item entities each tick thread may examine per tick while merging dropped items. Stops huge item piles from stalling their region's tick; skipped merges are retried on later ticks. Set to -1 to disable the cap.")
+        public int itemMergeScanBudget = 10000;
         public ChunkPacketCaching chunkPacketCaching;
 
         public class ChunkPacketCaching extends ConfigurationPart {
