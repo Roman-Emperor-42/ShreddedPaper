@@ -305,8 +305,23 @@
          this.tickingBlockEntities = false;
      }
  
-@@ -1574,7 +_,7 @@
-             entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
+@@ -1571,10 +_,21 @@
+             final String msg = String.format("Entity threw exception at %s:%s,%s,%s", io.papermc.paper.util.MCUtil.getLevelName(entity.level()), entity.getX(), entity.getY(), entity.getZ());
+             MinecraftServer.LOGGER.error(msg, t);
+             getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, t))); // Paper - ServerExceptionEvent
+-            entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
++            // ShreddedPaper start - the crashed entity may already have moved into a region this thread doesn't
++            // own (e.g. a partially-completed teleport), in which case discarding it here fails the same thread
++            // check and crashes the entire region tick; retry the discard on the thread owning its new position
++            try {
++                entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
++            } catch (Throwable t2) {
++                MinecraftServer.LOGGER.error("Failed to discard crashed entity on this thread, rescheduling discard on its owning thread", t2);
++                if (this instanceof net.minecraft.server.level.ServerLevel serverLevel) {
++                    io.multipaper.shreddedpaper.ShreddedPaper.runSync(serverLevel, entity.chunkPosition(), () -> entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD));
++                }
++            }
++            // ShreddedPaper end
              // Paper end - Prevent block entity and entity crashes
          }
 -        this.moonrise$midTickTasks(); // Paper - rewrite chunk system

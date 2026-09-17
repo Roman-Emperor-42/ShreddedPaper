@@ -18,3 +18,29 @@
          }
      }
  
+@@ -276,6 +_,13 @@
+     }
+ 
+     private boolean maybeTeleportTo(final int x, final int y, final int z) {
++        // ShreddedPaper start - the random offset can push the destination across a region border into a region
++        // this thread doesn't own (even though the owner's own chunk is owned); reject such candidates so we
++        // don't crash in moveEntity - another offset will be tried, or the teleport retries next tick
++        if (this.level() instanceof ServerLevel serverLevel && !ShreddedPaper.isSync(serverLevel, new net.minecraft.world.level.ChunkPos(x >> 4, z >> 4))) {
++            return false;
++        }
++        // ShreddedPaper end
+         if (!this.canTeleportTo(new BlockPos(x, y, z))) {
+             return false;
+         }
+@@ -286,6 +_,11 @@
+             return false;
+         }
+         org.bukkit.Location to = event.getTo();
++        // ShreddedPaper start - a plugin may have moved the event's destination into an unowned region
++        if (this.level() instanceof ServerLevel serverLevel && !ShreddedPaper.isSync(serverLevel, new net.minecraft.world.level.ChunkPos(to.getBlockX() >> 4, to.getBlockZ() >> 4))) {
++            return false;
++        }
++        // ShreddedPaper end
+         this.snapTo(to.getX(), to.getY(), to.getZ(), to.getYaw(), to.getPitch());
+         // CraftBukkit end
+         this.navigation.stop();
