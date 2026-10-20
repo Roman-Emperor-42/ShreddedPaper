@@ -349,6 +349,23 @@
                  return;
              }
              // CraftBukkit end
+@@ -1975,6 +_,16 @@
+     public void blockEntityChanged(final BlockPos pos) {
+         if (this.hasChunkAt(pos)) {
+             this.getChunkAt(pos).markUnsaved();
++        // ShreddedPaper start - still mark chunks that are on their way to being unloaded
++        // Once a chunk drops below FULL it disappears from hasChunkAt but is only saved later, when its region
++        // processes the unload. A block entity change in that window (eg a container modified as its viewer leaves)
++        // would otherwise not mark the chunk unsaved, and the unload would skip saving it.
++        } else if (this instanceof net.minecraft.server.level.ServerLevel serverLevel) {
++            final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder holder = serverLevel.moonrise$getChunkTaskScheduler().chunkHolderManager.getChunkHolder(pos.getX() >> 4, pos.getZ() >> 4);
++            if (holder != null && holder.getCurrentChunk() instanceof net.minecraft.world.level.chunk.LevelChunk levelChunk) {
++                levelChunk.markUnsaved();
++            }
++        // ShreddedPaper end - still mark chunks that are on their way to being unloaded
+         }
+     }
+ 
 @@ -2194,7 +_,7 @@
  
      @Override

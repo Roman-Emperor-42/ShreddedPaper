@@ -23,6 +23,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -197,14 +198,15 @@ public class LevelChunkRegion {
         if (this.scheduledTasks.isEmpty()) return;
 
         List<DelayedTask> toRun = new ArrayList<>();
-        for (DelayedTask task : this.scheduledTasks) {
+        for (Iterator<DelayedTask> iterator = this.scheduledTasks.iterator(); iterator.hasNext(); ) {
+            DelayedTask task = iterator.next();
             // Check if a task should run before executing the tasks, as tasks may add more tasks while they are running
             if (task.shouldRun()) {
+                iterator.remove(); // Single pass - removeAll(toRun) was O(queued * due)
                 toRun.add(task);
             }
         }
 
-        this.scheduledTasks.removeAll(toRun);
         toRun.forEach(DelayedTask::run);
     }
 

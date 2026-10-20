@@ -26,7 +26,7 @@
 +        if (listener instanceof ServerGamePacketListenerImpl gamePacketListener) {
 +            if (TickThread.isTickThreadFor(gamePacketListener.player)) return;
 +            ShreddedPaper.runSync(gamePacketListener.player, () -> {
-+                if (listener.shouldHandleMessage(packet)) {
++                if (gamePacketListener.shouldHandleQueuedMessage(packet)) { // ShreddedPaper - don't drop queued packets when the client disconnects
 +                    try {
 +                        packet.handle(listener);
 +                    } catch (Exception var3) {

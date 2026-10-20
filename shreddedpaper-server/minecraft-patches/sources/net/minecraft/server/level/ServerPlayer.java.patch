@@ -26,6 +26,24 @@
      private ServerPlayer.@Nullable RespawnConfig respawnConfig;
      private final TextFilter textFilter;
      private boolean textFilteringEnabled;
+@@ -279,7 +_,7 @@
+     private @Nullable BlockPos raidOmenPosition;
+     private Vec3 lastKnownClientMovement = Vec3.ZERO;
+     private Input lastClientInput = Input.EMPTY;
+-    private final Set<ThrownEnderpearl> enderPearls = new HashSet<>();
++    private final Set<ThrownEnderpearl> enderPearls = java.util.concurrent.ConcurrentHashMap.newKeySet(); // ShreddedPaper - pearls (de)register from their own region's thread
+     private boolean postEffectsDirty = true;
+     private long timeEntitySatOnShoulder;
+     private CompoundTag shoulderEntityLeft = new CompoundTag();
+@@ -636,7 +_,7 @@
+             for (ThrownEnderpearl enderPearl : this.enderPearls) {
+                 if (enderPearl.level().paperConfig().misc.legacyEnderPearlBehavior) continue; // Paper - Allow using old ender pearl behavior
+                 if (enderPearl.isRemoved()) {
+-                    LOGGER.warn("Trying to save removed ender pearl, skipping");
++                    this.enderPearls.remove(enderPearl); // ShreddedPaper - drop pearls whose deregistration was missed, instead of warning on every save
+                 } else {
+                     ValueOutput pearlTag = pearlsOutput.addChild();
+                     enderPearl.save(pearlTag);
 @@ -655,6 +_,8 @@
          if (!pearlLevelKey.isEmpty()) {
              ServerLevel pearlLevel = this.level().getServer().getLevel(pearlLevelKey.get());
@@ -198,6 +216,26 @@
      }
  
      public void showEndCredits() {
+@@ -1604,6 +_,19 @@
+             this.removeVehicle();
+         }
+ 
++        // ShreddedPaper start - close containers before leaving the region
++        // An open container (eg a chest) belongs to the region we're leaving. Close it now, while the teleport still
++        // holds that region's lock. Otherwise it stays open until the player's next tick and is then torn down from the
++        // destination region's thread, racing the old region, which may already be unloading and saving that chunk
++        // (and closing the inventory from its own thread via ServerLevel#unload).
++        if (this.containerMenu != this.inventoryMenu) {
++            final Vec3 destination = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(this), PositionMoveRotation.of(transition), transition.relatives()).position();
++            if (newLevel != oldLevel || !io.multipaper.shreddedpaper.region.RegionPos.forChunk(this.chunkPosition()).equals(io.multipaper.shreddedpaper.region.RegionPos.forChunk(ChunkPos.containing(BlockPos.containing(destination))))) {
++                this.closeContainer(org.bukkit.event.inventory.InventoryCloseEvent.Reason.TELEPORT);
++            }
++        }
++        // ShreddedPaper end - close containers before leaving the region
++
+         if (newLevel.dimension() == lastDimension) {
+             this.connection.internalTeleport(PositionMoveRotation.of(transition), transition.relatives()); // CraftBukkit
+             this.connection.resetPosition();
 @@ -2733,6 +_,7 @@
      }
  

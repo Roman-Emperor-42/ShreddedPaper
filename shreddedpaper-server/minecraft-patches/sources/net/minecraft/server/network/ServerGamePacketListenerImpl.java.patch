@@ -23,6 +23,24 @@
              this.chatSpamThrottler.tick();
              this.commandSpamThrottler.tick();
              this.dropSpamThrottler.tick();
+@@ -496,6 +_,17 @@
+             || this.waitingForSwitchToConfig && this.connection.isConnected() && packet instanceof ServerboundConfigurationAcknowledgedPacket;
+     }
+ 
++    // ShreddedPaper start - don't drop queued packets when the client disconnects
++    // Packets are queued onto the player's entity scheduler and only run on the player's next region tick. If the
++    // client closes the connection in that window, shouldHandleMessage() is already false and the player's last
++    // actions (container clicks, block placements, ...) would be silently discarded even though the player is still
++    // in the world. The disconnect handler is queued on the same scheduler after these packets, so keep handling them
++    // until the player has actually been removed. A server kick still drops them, as in Paper.
++    public boolean shouldHandleQueuedMessage(final Packet<?> packet) {
++        return this.shouldHandleMessage(packet) || (!this.connection.isConnected() && !this.kicked && !this.waitingForSwitchToConfig && !this.player.hasDisconnected());
++    }
++    // ShreddedPaper end - don't drop queued packets when the client disconnects
++
+     @Override
+     protected GameProfile playerProfile() {
+         return this.player.getGameProfile();
 @@ -648,6 +_,12 @@
                      return;
                  }

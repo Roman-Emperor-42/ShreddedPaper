@@ -98,7 +98,7 @@ public class SynchronousPluginExecution {
             if (tryLockNow(locksToAcquire)) {
                 heldPluginLocks.get().addAll(locksToAcquire);
                 return;
-            } else {
+            } else if (!canWaitInOrder(locksToAcquire)) {
                 // We failed to instantly acquire the lock, back off from all locks and try again to avoid a deadlock
                 for (String plugin : heldPluginLocks.get()) {
                     getLock(plugin).unlock();
@@ -113,6 +113,21 @@ public class SynchronousPluginExecution {
             getLock(plugin).lock();
             heldPluginLocks.get().add(plugin);
         }
+    }
+
+    /**
+     * Waiting is deadlock-free when every lock we'd block on sorts after all locks we hold, as all
+     * blocking waits then follow one global order. Backing off instead would release the outer
+     * plugins' locks mid-call and let another thread run them concurrently.
+     */
+    private static boolean canWaitInOrder(List<String> locksToAcquire) {
+        String highestHeld = Collections.max(heldPluginLocks.get());
+        for (String plugin : locksToAcquire) {
+            if (plugin.compareTo(highestHeld) <= 0 && !getLock(plugin).isHeldByCurrentThread()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean tryLockNow(List<String> locksToReacquire) {

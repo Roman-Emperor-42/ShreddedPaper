@@ -11,6 +11,14 @@
  import io.netty.channel.ChannelFutureListener;
  import net.minecraft.CrashReport;
  import net.minecraft.CrashReportCategory;
+@@ -44,6 +_,7 @@
+     //private long keepAliveChallenge; // Paper - improve keepalives
+     private long closedListenerTime;
+     private boolean closed = false;
++    public volatile boolean kicked = false; // ShreddedPaper - don't drop queued packets when the client disconnects
+     private it.unimi.dsi.fastutil.longs.LongList keepAlives = new it.unimi.dsi.fastutil.longs.LongArrayList(); // Purpur - Alternative Keepalive Handling
+     private volatile int latency; // Paper - improve keepalives - make volatile
+     private final io.papermc.paper.util.KeepAlive keepAlive; // Paper - improve keepalives
 @@ -276,7 +_,7 @@
          this.disconnect(DISCONNECT_UNEXPECTED_QUERY, io.papermc.paper.connection.DisconnectionReason.INVALID_COOKIE); // Paper - kick event cause
      }
@@ -51,3 +59,11 @@
                  waitable.get();
              } catch (InterruptedException e) {
                  Thread.currentThread().interrupt();
+@@ -447,6 +_,7 @@
+     }
+ 
+     private void disconnect0(final DisconnectionDetails details) {
++        this.kicked = true; // ShreddedPaper - don't drop queued packets when the client disconnects
+         this.connection.send(new ClientboundDisconnectPacket(details.reason()), PacketSendListener.thenRun(() -> this.connection.disconnect(details)));
+         this.connection.setReadOnly();
+         this.connection.handleConnectionDisconnectOnNextTick = true; // Paper - Force kill connection ticking. Let this close the connection

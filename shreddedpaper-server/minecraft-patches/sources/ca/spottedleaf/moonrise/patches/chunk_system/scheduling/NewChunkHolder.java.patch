@@ -79,3 +79,33 @@
                          this.updateCurrentState(FullChunkStatus.ENTITY_TICKING);
                          this.changeEntityChunkStatus(FullChunkStatus.ENTITY_TICKING);
                          PlatformHooks.get().onChunkEntityTicking(chunk, this.vanillaChunkHolder);
+@@ -1711,18 +_,27 @@
+         if (!chunk.isUnsaved()) {
+             return false;
+         }
++        // ShreddedPaper start - clear the unsaved flag before serializing
++        // Upstream clears it after copyOf. With regions ticking in parallel, a change that lands while the chunk is being
++        // serialized (copyOf serializes every block entity, so chunks full of chests take longest) would be missing from
++        // the snapshot yet still be marked as saved, so it would never be written. Clearing first means such a change
++        // re-marks the chunk as unsaved and is picked up by the next save.
++        chunk.tryMarkSaved();
++        // ShreddedPaper end - clear the unsaved flag before serializing
+         try {
+             final SerializableChunkData chunkData;
+ 
+             DO_NOT_COPY_SAVED_DATA.set(Boolean.valueOf(unloading));
+             try {
+                 chunkData = SerializableChunkData.copyOf(this.world, chunk);
++            } catch (final Throwable thr) { // ShreddedPaper start - clear the unsaved flag before serializing
++                chunk.markUnsaved(); // nothing was captured, keep the chunk dirty
++                throw thr;
++                // ShreddedPaper end - clear the unsaved flag before serializing
+             } finally {
+                 DO_NOT_COPY_SAVED_DATA.set(Boolean.FALSE);
+             }
+             PlatformHooks.get().chunkSyncSave(this.world, chunk, chunkData);
+-
+-            chunk.tryMarkSaved();
+ 
+             final Completable<CompoundTag> completable = new Completable<>();
+ 
