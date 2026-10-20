@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/entity/item/ItemEntity.java
 +++ b/net/minecraft/world/entity/item/ItemEntity.java
-@@ -173,7 +_,7 @@
+@@ -166,7 +_,7 @@
              } else if (this.isInLava() && this.getFluidHeight(FluidTags.LAVA) > 0.1F) {
                  this.setUnderLavaMovement();
              } else {
@@ -9,7 +9,7 @@
              }
  
              if (this.level().isClientSide()) {
-@@ -259,11 +_,37 @@
+@@ -252,11 +_,37 @@
          this.setDeltaMovement(movement.x * multiplier, movement.y + (movement.y < 0.06F ? 5.0E-4F : 0.0F), movement.z * multiplier);
      }
  

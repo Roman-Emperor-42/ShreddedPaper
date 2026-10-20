@@ -60,7 +60,7 @@ public class ShreddedPaperChunkTicker {
         this.serverChunkCache = serverChunkCache;
     }
 
-    public CompletableFuture<Void> tickChunks(final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    public CompletableFuture<Void> tickChunks(final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         ServerLevel level = this.serverChunkCache.chunkMap.level;
 
         CompletableFuture<Void> future;
@@ -98,8 +98,8 @@ public class ShreddedPaperChunkTicker {
 
             // Phase A: per-region prep + block/fluid/random ticks (no block events).
             future = scheduleAllRegionsClustered(level, mergedClusters, mergedClusterMembers,
-                    region -> this._tickRegionPhaseA(level, region, timeInhabited, filteredSpawningCategories, spawnState),
-                    cluster -> this._tickClusterPhaseA(level, cluster, timeInhabited, filteredSpawningCategories, spawnState));
+                    region -> this._tickRegionPhaseA(level, region, filteredSpawningCategories, spawnState),
+                    cluster -> this._tickClusterPhaseA(level, cluster, filteredSpawningCategories, spawnState));
 
             // Phase B: drain block events across all regions. This barrier matches vanilla's single global
             // runBlockEvents loop, so a piston that triggers another piston in a neighbouring region resolves
@@ -137,7 +137,7 @@ public class ShreddedPaperChunkTicker {
         } else {
             // Single fused pass per region; cross-region redstone may break.
             future = scheduleAllRegions(level, region ->
-                    this._tickRegionFused(level, region, timeInhabited, filteredSpawningCategories, spawnState));
+                    this._tickRegionFused(level, region, filteredSpawningCategories, spawnState));
         }
 
         if (ShreddedPaperConfiguration.get().optimizations.processTrackQueueInParallel) future = future.thenCompose(v -> this.processTrackQueueInParallel(level));
@@ -377,7 +377,7 @@ public class ShreddedPaperChunkTicker {
         return region != null && level.equals(region.getLevel()) && regionPos.equals(region.getRegionPos());
     }
 
-    private void _tickRegionPhaseA(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickRegionPhaseA(final ServerLevel level, final LevelChunkRegion region, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             currentlyTickingRegion.set(region);
 
@@ -406,7 +406,7 @@ public class ShreddedPaperChunkTicker {
                 level.blockTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickBlock);
                 level.fluidTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickFluid);
 
-                region.forEach(chunk -> this._tickChunk(region, level, chunk, timeInhabited, filteredSpawningCategories, spawnState));
+                region.forEach(chunk -> this._tickChunk(region, level, chunk, filteredSpawningCategories, spawnState));
 
                 level.handlingTickThreadLocal.set(false);
             }
@@ -425,7 +425,7 @@ public class ShreddedPaperChunkTicker {
      * then per-member chunk ticks. Holding all members on one thread is what allows observers
      * firing on both sides of a region boundary in the same tick to fire in vanilla order.
      */
-    private void _tickClusterPhaseA(final ServerLevel level, final List<LevelChunkRegion> cluster, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickClusterPhaseA(final ServerLevel level, final List<LevelChunkRegion> cluster, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             if (!(ShreddedPaperTickThread.isShreddedPaperTickThread())) {
                 throw new IllegalStateException("Ticking region cluster " + WorldUtil.getWorldName(level) + " " + cluster.get(0).getRegionPos() + " outside of ShreddedPaperTickThread!");
@@ -467,7 +467,7 @@ public class ShreddedPaperChunkTicker {
 
                 for (LevelChunkRegion region : cluster) {
                     currentlyTickingRegion.set(region);
-                    region.forEach(chunk -> this._tickChunk(region, level, chunk, timeInhabited, filteredSpawningCategories, spawnState));
+                    region.forEach(chunk -> this._tickChunk(region, level, chunk, filteredSpawningCategories, spawnState));
                 }
 
                 level.handlingTickThreadLocal.set(false);
@@ -638,7 +638,7 @@ public class ShreddedPaperChunkTicker {
         }
     }
 
-    private void _tickRegionFused(final ServerLevel level, final LevelChunkRegion region, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickRegionFused(final ServerLevel level, final LevelChunkRegion region, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         try {
             currentlyTickingRegion.set(region);
 
@@ -667,7 +667,7 @@ public class ShreddedPaperChunkTicker {
                 level.blockTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickBlock);
                 level.fluidTicks.tick(region.getRegionPos(), level.getGameTime(), level.paperConfig().environment.maxBlockTicks, level::tickFluid);
 
-                region.forEach(chunk -> this._tickChunk(region, level, chunk, timeInhabited, filteredSpawningCategories, spawnState));
+                region.forEach(chunk -> this._tickChunk(region, level, chunk, filteredSpawningCategories, spawnState));
 
                 level.runBlockEvents(region);
 
@@ -694,7 +694,7 @@ public class ShreddedPaperChunkTicker {
         }
     }
 
-    private void _tickChunk(final LevelChunkRegion levelChunkRegion, final ServerLevel world, final LevelChunk levelChunk, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickChunk(final LevelChunkRegion levelChunkRegion, final ServerLevel world, final LevelChunk levelChunk, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         if (levelChunk.moonrise$getChunkHolder().vanillaChunkHolder.hasChangesToBroadcast())
             ShreddedPaperChangesBroadcaster.add(levelChunk.moonrise$getChunkHolder().vanillaChunkHolder); // ShreddedPaper
 
@@ -709,19 +709,19 @@ public class ShreddedPaperChunkTicker {
         }
 
         if (spawnState != null && levelChunkRegion.isPlayerTickingRequested(levelChunk.getPos())) {
-            this._tickSpawningChunk(world, levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
+            this._tickSpawningChunk(world, levelChunk, filteredSpawningCategories, spawnState);
         }
 
         final int randomTickSpeed = world.getGameRules().get(net.minecraft.world.level.gamerules.GameRules.RANDOM_TICK_SPEED);
         world.tickChunk(levelChunk, randomTickSpeed);
     }
 
-    private void _tickSpawningChunk(final ServerLevel world, final LevelChunk levelChunk, final long timeInhabited, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
+    private void _tickSpawningChunk(final ServerLevel world, final LevelChunk levelChunk, final List<MobCategory> filteredSpawningCategories, final NaturalSpawner.SpawnState spawnState) {
         if (!world.getChunkSource().chunkMap.isChunkNearPlayer(world.getChunkSource().chunkMap, levelChunk.getPos(), levelChunk)) {
             return;
         }
 
-        world.getChunkSource().tickSpawningChunk(levelChunk, timeInhabited, filteredSpawningCategories, spawnState);
+        world.getChunkSource().tickSpawningChunk(levelChunk, filteredSpawningCategories, spawnState);
     }
 
     public static boolean willTrySpawnMobsThisTick(final ServerLevel level) {
