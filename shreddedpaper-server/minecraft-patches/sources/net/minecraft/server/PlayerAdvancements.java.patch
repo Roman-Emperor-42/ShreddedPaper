@@ -1,0 +1,61 @@
+--- a/net/minecraft/server/PlayerAdvancements.java
++++ b/net/minecraft/server/PlayerAdvancements.java
+@@ -78,11 +_,11 @@
+         this.player = player;
+     }
+ 
+-    public void clearTriggers() {
++    public synchronized void clearTriggers() { // ShreddedPaper - thread-safe advancements
+         this.activeTriggers.clear();
+     }
+ 
+-    public void reload(final ServerAdvancementManager manager) {
++    public synchronized void reload(final ServerAdvancementManager manager) { // ShreddedPaper - thread-safe advancements
+         this.clearTriggers();
+         this.progress.clear();
+         this.visible.clear();
+@@ -157,7 +_,7 @@
+         });
+     }
+ 
+-    private PlayerAdvancements.Data asData() {
++    private synchronized PlayerAdvancements.Data asData() { // ShreddedPaper - thread-safe advancements
+         Map<Identifier, AdvancementProgress> map = new LinkedHashMap<>();
+         this.progress.forEach((advancement, progress) -> {
+             if (progress.hasProgress()) {
+@@ -167,7 +_,7 @@
+         return new PlayerAdvancements.Data(map);
+     }
+ 
+-    public boolean award(final AdvancementHolder holder, final String criterion) {
++    public synchronized boolean award(final AdvancementHolder holder, final String criterion) { // ShreddedPaper - thread-safe advancements
+         boolean result = false;
+         AdvancementProgress progress = this.getOrStartProgress(holder);
+         boolean wasDone = progress.isDone();
+@@ -209,7 +_,7 @@
+         return result;
+     }
+ 
+-    public boolean revoke(final AdvancementHolder advancement, final String criterion) {
++    public synchronized boolean revoke(final AdvancementHolder advancement, final String criterion) { // ShreddedPaper - thread-safe advancements
+         boolean result = false;
+         AdvancementProgress progress = this.getOrStartProgress(advancement);
+         boolean wasDone = progress.isDone();
+@@ -256,7 +_,7 @@
+         }
+     }
+ 
+-    public void flushDirty(final ServerPlayer player, final boolean showAdvancements) {
++    public synchronized void flushDirty(final ServerPlayer player, final boolean showAdvancements) { // ShreddedPaper - thread-safe advancements
+         if (this.isFirstPacket || !this.rootsToUpdate.isEmpty() || !this.progressChanged.isEmpty()) {
+             Map<Identifier, AdvancementProgress> progress = new HashMap<>();
+             Set<AdvancementNode> added = new java.util.TreeSet<>(java.util.Comparator.comparing(node -> node.holder().id().toString())); // Paper - Changed from HashSet to TreeSet ordered alphabetically.
+@@ -299,7 +_,7 @@
+         }
+     }
+ 
+-    public AdvancementProgress getOrStartProgress(final AdvancementHolder advancement) {
++    public synchronized AdvancementProgress getOrStartProgress(final AdvancementHolder advancement) { // ShreddedPaper - thread-safe advancements
+         AdvancementProgress progress = this.progress.get(advancement);
+         if (progress == null) {
+             progress = new AdvancementProgress();

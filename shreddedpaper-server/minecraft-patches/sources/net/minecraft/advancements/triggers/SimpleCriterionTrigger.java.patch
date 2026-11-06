@@ -1,0 +1,18 @@
+--- a/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java
++++ b/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java
+@@ -24,6 +_,7 @@
+             LootContext playerContext = null; // EntityPredicate.createContext(player, player); // Paper - Perf: lazily create LootContext for criterions
+             List<PlayerAdvancements.TriggerInstanceKey> matchedConditions = null;
+ 
++            synchronized (advancements) { // ShreddedPaper - listeners may be modified from another region thread
+             for (Entry<PlayerAdvancements.TriggerInstanceKey, T> entry : listenersForType.entrySet()) {
+                 T value = entry.getValue();
+                 if (matcher.test(value)) {
+@@ -37,6 +_,7 @@
+                     }
+                 }
+             }
++            } // ShreddedPaper
+ 
+             if (matchedConditions != null) {
+                 for (PlayerAdvancements.TriggerInstanceKey criterion : matchedConditions) {
