@@ -84,6 +84,14 @@
              }
  
              this.waitUntilNextTick();
+@@ -1089,6 +_,7 @@
+         }
+         // Paper end - rewrite chunk system
+         // Paper start - Improved watchdog support - move final shutdown items here
++        this.playerDataStorage.waitForPendingSaves(); // ShreddedPaper - write async
+         Util.shutdownExecutors();
+         this.onServerExit();
+         // Paper end - Improved watchdog support - move final shutdown items here
 @@ -1274,7 +_,9 @@
              // Paper start
              LOGGER.info("Running delayed init tasks");
