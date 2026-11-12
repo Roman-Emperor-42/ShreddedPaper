@@ -158,7 +158,7 @@
 +        this.tickConnection(); // ShreddedPaper - moved up
 +        // ShreddedPaper start - some players aren't registered in their level if they're dead, let's manually add a task for them to process them
 +        for (ServerPlayer player : this.playerList.getPlayers()) {
-+            if (player.isRemoved()) {
++            if (!player.valid) { // not in a world: dead and removed, or left in limbo by a failed respawn/teleport - no region will tick them
 +                ShreddedPaper.runSync((ServerLevel) player.level(), player.chunkPosition(), () -> {
 +                    if (TickThread.isTickThreadFor(player)) {
 +                        player.getBukkitEntity().taskScheduler.executeTick();

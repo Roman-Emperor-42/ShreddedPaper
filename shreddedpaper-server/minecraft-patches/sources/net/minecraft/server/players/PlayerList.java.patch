@@ -62,7 +62,7 @@
  
          return player;
 +        }, r -> ShreddedPaper.ensureSync(serverPlayer, respawnInfo.newLevel(), ChunkPos.containing(BlockPos.containing(respawnInfo.position())), r)); // ShreddedPaper - respawn async
-+        }); // ShreddedPaper - respawn async
++        }).whenComplete((p, t) -> { if (t != null) LOGGER.error("Failed to respawn {}, they are now stuck dead", serverPlayer.getScoreboardName(), t); }); // ShreddedPaper - respawn async - nobody else reports a failed respawn
      }
  
      public void sendActivePlayerEffects(final ServerPlayer player) {
