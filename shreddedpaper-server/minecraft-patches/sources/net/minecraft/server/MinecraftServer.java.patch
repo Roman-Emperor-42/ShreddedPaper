@@ -150,7 +150,7 @@
          // Paper end - optimise Folia entity scheduler
          // Paper end - Folia scheduler API
          io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(this.tickCount); // Paper
-@@ -1816,10 +_,25 @@
+@@ -1816,10 +_,26 @@
              this.processQueue.remove().run();
          }
  
@@ -163,6 +163,7 @@
 +                    if (TickThread.isTickThreadFor(player)) {
 +                        player.getBukkitEntity().taskScheduler.executeTick();
 +                        ShreddedPaperPlayerTicker.tickPlayer(player);
++                        player.connection.connection.flushQueue(); // the parallel flush only covers players in a world; without this a packet that was not ready (anti-xray chunk) blocks everything behind it, including the health update
 +                    }
 +                });
 +            }
